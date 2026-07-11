@@ -22,32 +22,46 @@ export default function Sidebar() {
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
 
   return (
-    <aside className="w-[248px] shrink-0 bg-panel border-r border-line hidden md:flex md:flex-col">
-      <div className="h-16 flex items-center gap-3 px-5 border-b border-line">
-        <div className="h-9 w-9 rounded-xl brand-grad grid place-items-center text-base font-extrabold text-white shadow-lg shadow-royal/30">F</div>
-        <div className="leading-tight">
-          <div className="font-semibold tracking-tight">FMC Financiero</div>
-          <div className="text-[11px] text-faint">Fondo Mutuo · S.A.S.</div>
-        </div>
+    <aside className="group fixed left-0 top-0 z-40 h-screen w-16 hover:w-[248px] overflow-hidden brand-grad text-white transition-[width] duration-200 ease-out shadow-xl shadow-[#0b1f52]/40 flex flex-col">
+      {/* Logo */}
+      <div className="h-16 flex items-center shrink-0 border-b border-white/10">
+        <span className="w-16 flex justify-center shrink-0">
+          <span className="h-8 w-8 rounded-lg bg-white/15 grid place-items-center text-base font-extrabold">F</span>
+        </span>
+        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap leading-tight">
+          <span className="block font-semibold text-sm">FMC Financiero</span>
+          <span className="block text-[11px] text-white/60">Fondo Mutuo · S.A.S.</span>
+        </span>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
+
+      {/* Nav */}
+      <nav className="flex-1 py-3">
         {NAV.map(({ href, match, label, icon: Icon }) => {
           const active = match === "/" ? pathname === "/" : pathname.startsWith(match);
           return (
             <Link
               key={href}
               href={`${href}${qs}`}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                active ? "bg-accentdim text-accent2 font-medium" : "text-muted hover:text-fg hover:bg-card2"
+              title={label}
+              className={`flex items-center h-11 transition-colors ${
+                active ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <Icon size={18} className={active ? "text-sky" : ""} />
-              {label}
+              <span className="w-16 flex justify-center shrink-0 relative">
+                {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-sky" />}
+                <Icon size={20} />
+              </span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-sm">{label}</span>
             </Link>
           );
         })}
       </nav>
-      <div className="px-5 py-4 border-t border-line text-[11px] text-faint">v1 · datos a MAY 2026</div>
+
+      <div className="h-10 flex items-center shrink-0 border-t border-white/10">
+        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-[11px] text-white/50 pl-4">
+          v1 · datos a MAY 2026
+        </span>
+      </div>
     </aside>
   );
 }
