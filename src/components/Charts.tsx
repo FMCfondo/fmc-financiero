@@ -109,8 +109,9 @@ function WaterfallTT({ active, payload, label }: any) {
 
 export function WaterfallChart({ data }: { data: { name: string; base: number; value: number; tipo: string; signo: number }[] }) {
   const d = data.map((x) => ({ ...x, base: x.base / 1e6, value: x.value / 1e6 }));
+  // Ingresos en verde, costos/gastos en rojo, subtotales en azul rey (o rojo si negativo)
   const color = (x: { tipo: string; signo: number }) =>
-    x.tipo === "total" ? (x.signo >= 0 ? "#1e40af" : "#dc2626") : x.tipo === "inc" ? "#45b6e8" : "#c99a2e";
+    x.tipo === "total" ? (x.signo >= 0 ? "#1e40af" : "#dc2626") : x.tipo === "inc" ? "#16a34a" : "#dc2626";
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={d} margin={{ top: 8, right: 8, left: 4, bottom: 24 }}>

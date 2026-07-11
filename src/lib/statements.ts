@@ -128,12 +128,12 @@ export function operacion(etq: string) {
 export function cascadaChart(etq: string) {
   const o = operacion(etq);
   const pasos: { label: string; tipo: "inc" | "dec" | "total"; valor: number }[] = [
-    { label: "Ing. cobertura", tipo: "inc", valor: o.ingCob },
-    { label: "(−) Costo", tipo: "dec", valor: -o.costo },
-    { label: "Bruto cobertura", tipo: "total", valor: o.brutoCob },
+    { label: "Ingresos cobertura", tipo: "inc", valor: o.ingCob },
+    { label: "(−) Costo cobertura", tipo: "dec", valor: -o.costo },
+    { label: "Result. bruto cobertura", tipo: "total", valor: o.brutoCob },
     { label: "(+) Otros ingresos", tipo: "inc", valor: o.otrosIng },
     { label: "(−) Gastos admón.", tipo: "dec", valor: -o.gastosAdmin },
-    { label: "(−) Impuesto", tipo: "dec", valor: -o.impuesto },
+    { label: "(−) Impuesto renta", tipo: "dec", valor: -o.impuesto },
     { label: "Utilidad neta", tipo: "total", valor: o.utilNeta },
   ];
   let run = 0;
