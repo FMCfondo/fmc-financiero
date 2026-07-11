@@ -34,7 +34,7 @@ function Row({ n, showYtd, expandDepth }: { n: Nodo; showYtd: boolean; expandDep
     <>
       <div
         className={`flex items-center px-4 border-b border-line-soft transition-colors ${
-          strong ? "py-2 fila-total" : "py-1.5 hover:bg-white/[0.02]"
+          strong ? "py-2 fila-total" : "py-1.5 hover:bg-card2"
         }`}
       >
         <button

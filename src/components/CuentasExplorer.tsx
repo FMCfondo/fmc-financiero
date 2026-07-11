@@ -35,7 +35,7 @@ export default function CuentasExplorer({ cuentas }: { cuentas: C[] }) {
           {[0, 1, 2, 3, 4, 5].map((c) => (
             <button key={c} onClick={() => setClase(c)}
               className={`px-3 py-2 rounded-lg text-xs border transition-colors ${
-                clase === c ? "bg-accentdim border-accent/40 text-white" : "border-line text-muted hover:text-fg"
+                clase === c ? "bg-accentdim border-accent/40 text-accent2" : "border-line text-muted hover:text-fg"
               }`}>
               {c === 0 ? "Todas" : CLASES[c]}
             </button>
@@ -51,7 +51,7 @@ export default function CuentasExplorer({ cuentas }: { cuentas: C[] }) {
         </div>
         <div className="max-h-[62vh] overflow-y-auto">
           {filt.slice(0, 500).map((c) => (
-            <div key={c.codigo} className="flex items-center px-4 py-1.5 border-b border-line-soft text-sm hover:bg-white/[0.02]">
+            <div key={c.codigo} className="flex items-center px-4 py-1.5 border-b border-line-soft text-sm hover:bg-card2">
               <span className="w-[110px] tnum text-faint">{c.codigo}</span>
               <span className="flex-1 truncate" style={{ paddingLeft: nivelIdx(c.longitud) * 14 }}>
                 <span className={c.longitud <= 2 ? "font-medium" : "text-muted"}>{c.nombre}</span>

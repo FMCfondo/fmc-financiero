@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
-/* ===== FMC Financiero · tema oscuro + marca ===== */
+/* ===== FMC Financiero · tema claro + marca ===== */
 @theme {
-  --color-base: #0a0d14;
-  --color-panel: #0c1019;
-  --color-card: #121824;
-  --color-card2: #18202e;
-  --color-line: #232d3d;
-  --color-line-soft: #1a2230;
-  --color-fg: #eef1f6;          /* alto contraste */
-  --color-muted: #acb5c4;        /* legible sobre oscuro */
-  --color-faint: #737d8f;
+  --color-base: #f2f6fc;          /* fondo claro azulado (suave a la vista) */
+  --color-panel: #ffffff;         /* barra lateral / topbar */
+  --color-card: #ffffff;
+  --color-card2: #eef3fb;         /* hover / superficie sutil */
+  --color-line: #e3e9f2;
+  --color-line-soft: #eef2f8;
+  --color-fg: #17233b;            /* texto principal (navy) */
+  --color-muted: #5b6b86;         /* texto secundario */
+  --color-faint: #93a1b8;         /* texto tenue */
 
-  --color-accent: #45b6e8;       /* azul cielo */
-  --color-accent2: #86cef0;      /* cielo claro (texto/realce) */
-  --color-accentdim: #16233f;    /* azul rey tenue (estado activo) */
-  --color-royal: #1e40af;        /* azul rey */
+  --color-accent: #1b6ca8;        /* azul medio: enlaces/acento con buen contraste */
+  --color-accent2: #1e40af;       /* azul rey: acentos fuertes */
+  --color-accentdim: #e8f0fc;     /* fondo activo (nav) tinte azul claro */
+  --color-royal: #1e40af;         /* azul rey */
   --color-royal2: #13286e;
-  --color-sky: #45b6e8;
-  --color-gold: #e0b94a;         /* dorado */
-  --color-pos: #3ddc97;
-  --color-neg: #fb7185;
-  --color-warn: #f4b740;
+  --color-sky: #45b6e8;           /* azul cielo: rellenos/gráficos */
+  --color-gold: #c99a2e;          /* dorado (contraste sobre claro) */
+  --color-pos: #16a34a;
+  --color-neg: #dc2626;
+  --color-warn: #d97706;
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jakarta), ui-monospace, monospace;
@@ -34,30 +34,27 @@ body {
   color: var(--color-fg);
   font-family: var(--font-sans);
   min-height: 100%;
-  background-image:
-    radial-gradient(920px 520px at 84% -12%, rgba(30, 64, 175, 0.22), transparent 60%),
-    radial-gradient(680px 480px at -6% 6%, rgba(69, 182, 232, 0.09), transparent 55%);
+  background-image: linear-gradient(180deg, #e7f0fb 0%, var(--color-base) 260px);
   background-attachment: fixed;
 }
 
-/* cifras tabulares (misma fuente Jakarta) */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 
-* { scrollbar-width: thin; scrollbar-color: #2a3444 transparent; }
+* { scrollbar-width: thin; scrollbar-color: #c3d0e2 transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: #26303f; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:hover { background: #33404f; background-clip: content-box; }
+*::-webkit-scrollbar-thumb { background: #cdd8e8; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #b3c2d8; background-clip: content-box; }
 
 .card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
   background-color: var(--color-card);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-xl);
+  box-shadow: 0 1px 2px rgba(16, 42, 90, 0.04), 0 4px 14px rgba(16, 42, 90, 0.05);
 }
 .hairline { border-color: var(--color-line); }
-.fila-total { background: linear-gradient(90deg, rgba(69,182,232,0.12), rgba(30,64,175,0.03)); }
+.fila-total { background: linear-gradient(90deg, rgba(69, 182, 232, 0.16), rgba(30, 64, 175, 0.05)); }
 .brand-grad { background-image: linear-gradient(135deg, #1e40af, #13286e); }
 .text-grad {
-  background: linear-gradient(120deg, #86cef0, #45b6e8 55%, #1e40af);
+  background: linear-gradient(120deg, #1e40af, #1b6ca8 55%, #45b6e8);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }

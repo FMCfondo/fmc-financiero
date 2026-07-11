@@ -38,7 +38,7 @@ export default function Sidebar() {
               key={href}
               href={`${href}${qs}`}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                active ? "bg-accentdim text-white" : "text-muted hover:text-fg hover:bg-card2"
+                active ? "bg-accentdim text-accent2 font-medium" : "text-muted hover:text-fg hover:bg-card2"
               }`}
             >
               <Icon size={18} className={active ? "text-sky" : ""} />
