@@ -193,3 +193,47 @@ export function kpisResumen(etq: string) {
     utilYoY: oPy ? variacion(o.utilNeta, oPy.utilNeta).pct : null,
   };
 }
+
+// ---------- Análisis Vertical (% de una base) y Horizontal (vs año anterior) ----------
+export type LineaAnalisis = {
+  codigo: string; nombre: string; nivel: number; depth: number; valor: number;
+  pct: number; valorPrev: number | null; varAbs: number | null; varPct: number | null;
+  hijos: LineaAnalisis[];
+};
+
+function enrich(node: Linea, base: number, etqPrev: string | null, conYtd: boolean): LineaAnalisis {
+  const valorPrev = etqPrev ? (conYtd ? D.ytd(etqPrev, node.codigo) : D.fact(etqPrev, node.codigo)) : null;
+  return {
+    codigo: node.codigo, nombre: node.nombre, nivel: node.nivel, depth: node.depth, valor: node.valor,
+    pct: base ? node.valor / base : 0,
+    valorPrev,
+    varAbs: valorPrev !== null ? node.valor - valorPrev : null,
+    varPct: valorPrev ? ((node.valor - valorPrev) / Math.abs(valorPrev)) * 100 : null,
+    hijos: node.hijos.map((h) => enrich(h, base, etqPrev, conYtd)),
+  };
+}
+
+export function esfAnalisis(etq: string) {
+  const s = esf(etq);
+  const py = D.sameMonthPrevYear(etq)?.etiqueta ?? null;
+  const base = s.totalActivo || 1; // vertical: % del total de activos
+  return {
+    py, base,
+    activo: (s.activo?.hijos ?? []).map((h) => enrich(h, base, py, false)),
+    pasivo: (s.pasivo?.hijos ?? []).map((h) => enrich(h, base, py, false)),
+    patrimonio: (s.patrimonio?.hijos ?? []).map((h) => enrich(h, base, py, false)),
+    totalActivo: s.totalActivo, totalPasivo: s.totalPasivo, totalPatrim: s.totalPatrim,
+  };
+}
+
+export function erAnalisis(etq: string) {
+  const s = er(etq);
+  const py = D.sameMonthPrevYear(etq)?.etiqueta ?? null;
+  const base = s.ingYTD || 1; // vertical: % de los ingresos
+  return {
+    py, base,
+    ingresos: (s.ingresos?.hijos ?? []).map((h) => enrich(h, base, py, true)),
+    gastos: (s.gastos?.hijos ?? []).map((h) => enrich(h, base, py, true)),
+    ingYTD: s.ingYTD, gasYTD: s.gasYTD, resYTD: s.resYTD,
+  };
+}
