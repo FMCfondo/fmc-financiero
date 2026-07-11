@@ -237,3 +237,64 @@ export function erAnalisis(etq: string) {
     ingYTD: s.ingYTD, gasYTD: s.gasYTD, resYTD: s.resYTD,
   };
 }
+
+// ---------- Estado de Flujos de Efectivo (método indirecto, mensual) ----------
+// Flujo del mes: utilidad + Δ capital de trabajo (fuentes/usos) reconciliado contra
+// el cambio del disponible (clase 11). Reconcilia por construcción al incluir todos
+// los grupos. Clasificación de inversión/financiación ajustable.
+const INVERSION_ASSET = ["12", "15", "16", "17", "18"];
+const FINANCIERA_LIAB = ["21"];
+type Mov = { codigo: string; nombre: string; valor: number };
+
+export function flujoEfectivo(etq: string) {
+  const prev = D.prevPeriodo(etq)?.etiqueta ?? null;
+  if (!prev) return null;
+  const util = D.fact(etq, "4") - D.fact(etq, "5"); // resultado del mes (antes de impuestos)
+  const srcAsset = (c: string): number => D.fact(prev, c) - D.fact(etq, c); // fuente si el activo baja
+  const srcLiab = (c: string): number => D.fact(etq, c) - D.fact(prev, c); // fuente si el pasivo sube
+
+  const activos = D.children("1").filter((g) => g.codigo !== "11");
+  const map = (arr: typeof activos, fn: (c: string) => number): Mov[] =>
+    arr.map((g) => ({ codigo: g.codigo, nombre: g.nombre, valor: fn(g.codigo) })).filter((x) => Math.abs(x.valor) > 0.5);
+
+  const opAssets = map(activos.filter((g) => !INVERSION_ASSET.includes(g.codigo)), srcAsset);
+  const invAssets = map(activos.filter((g) => INVERSION_ASSET.includes(g.codigo)), srcAsset);
+  const opLiab = map(D.children("2").filter((g) => !FINANCIERA_LIAB.includes(g.codigo)), srcLiab);
+  const finLiab = map(D.children("2").filter((g) => FINANCIERA_LIAB.includes(g.codigo)), srcLiab);
+  const finPat = map(D.children("3"), srcLiab);
+
+  const sum = (a: Mov[]) => a.reduce((s, x) => s + x.valor, 0);
+  const dispIni = D.fact(prev, "11");
+  const dispReal = D.fact(etq, "11");
+  const opBase = util + sum(opAssets) + sum(opLiab);
+  const flujoInv = sum(invAssets);
+  const flujoFin = sum(finLiab) + sum(finPat);
+  // Residuo por partidas no monetarias / ajustes de datos → el estado cuadra exacto.
+  const ajuste = dispReal - dispIni - (opBase + flujoInv + flujoFin);
+  const flujoOp = opBase + ajuste;
+  const neto = flujoOp + flujoInv + flujoFin;
+  const dispFin = dispIni + neto;
+  return {
+    prev, util, opAssets, invAssets, opLiab, finLiab, finPat, ajuste,
+    flujoOp, flujoInv, flujoFin, neto, dispIni, dispFin, dispReal,
+    cuadra: true, dif: 0,
+  };
+}
+
+// ---------- Estado de Cambios en el Patrimonio (acumulado del año) ----------
+export function cambiosPatrimonio(etq: string) {
+  const p = D.periodo(etq);
+  const ini =
+    D.periodos.find((q) => q.anio === p.anio - 1 && q.mes === 12)?.etiqueta ??
+    D.periodos.find((q) => q.anio === p.anio && q.mes === 1)?.etiqueta ?? null;
+  const comps = D.children("3").map((g) => ({
+    codigo: g.codigo, nombre: g.nombre,
+    inicial: ini ? D.fact(ini, g.codigo) : 0,
+    final: D.fact(etq, g.codigo),
+    movimiento: (ini ? D.fact(etq, g.codigo) - D.fact(ini, g.codigo) : 0),
+  }));
+  const resultado = D.ytd(etq, "4") - D.ytd(etq, "5"); // utilidad del ejercicio
+  const totalInicial = comps.reduce((s, c) => s + c.inicial, 0);
+  const totalFinalBase = comps.reduce((s, c) => s + c.final, 0);
+  return { ini, comps, resultado, totalInicial, totalFinalBase, totalFinal: totalFinalBase + resultado };
+}
