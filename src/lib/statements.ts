@@ -298,3 +298,26 @@ export function cambiosPatrimonio(etq: string) {
   const totalFinalBase = comps.reduce((s, c) => s + c.final, 0);
   return { ini, comps, resultado, totalInicial, totalFinalBase, totalFinal: totalFinalBase + resultado };
 }
+
+// ---------- ER multi-mes: cada mes en una columna + acumulado del año ----------
+export function erMatriz(etq: string, nMeses: number) {
+  const meses = D.ultimosPeriodos(etq, nMeses).map((p) => ({ etq: p.etiqueta, label: `${mesCorto[p.mes]} ${String(p.anio).slice(2)}` }));
+  const fila = (codigo: string, nombre: string) => ({
+    codigo, nombre,
+    vals: meses.map((m) => D.fact(m.etq, codigo)),
+    acum: D.ytd(etq, codigo),
+  });
+  const noCero = (f: { vals: number[]; acum: number }) => f.acum !== 0 || f.vals.some((v) => v !== 0);
+  return {
+    meses,
+    ingresos: D.children("4").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
+    totalIng: fila("4", "TOTAL INGRESOS"),
+    gastos: D.children("5").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
+    totalGas: fila("5", "TOTAL GASTOS"),
+    utilidad: {
+      codigo: "", nombre: "UTILIDAD ANTES DE IMPUESTOS",
+      vals: meses.map((m) => D.fact(m.etq, "4") - D.fact(m.etq, "5")),
+      acum: D.ytd(etq, "4") - D.ytd(etq, "5"),
+    },
+  };
+}
