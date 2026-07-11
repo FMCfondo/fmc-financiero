@@ -5,8 +5,8 @@ import {
 } from "recharts";
 import { fmtCompact, fmtNum } from "@/lib/format";
 
-const AX = "#646d7d";
-const GRID = "#1b2029";
+const AX = "#64748b";
+const GRID = "#e6ecf5";
 export const PALETTE = ["#45b6e8", "#1e40af", "#e0b94a", "#86cef0", "#5b6ee1", "#3ddc97", "#c9a227", "#94a3b8"];
 
 function TT({ active, payload, label }: any) {

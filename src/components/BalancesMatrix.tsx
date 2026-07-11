@@ -53,7 +53,7 @@ export default function BalancesMatrix({ periodos, rows }: { periodos: Col[]; ro
         {[0, 1, 2, 3, 4, 5].map((c) => (
           <button key={c} onClick={() => setClase(c)}
             className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-              clase === c ? "bg-accentdim border-accent/40 text-white" : "border-line text-muted hover:text-fg"
+              clase === c ? "bg-accentdim border-accent/40 text-accent2" : "border-line text-muted hover:text-fg"
             }`}>
             {c === 0 ? "Todas" : CLASES[c]}
           </button>

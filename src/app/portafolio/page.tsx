@@ -41,7 +41,7 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
           <span className="w-44 text-right">Saldo</span>
         </div>
         {inv.map((r) => (
-          <div key={r.codigo} className="flex items-center px-4 py-2 border-b border-line-soft text-sm hover:bg-white/[0.02]">
+          <div key={r.codigo} className="flex items-center px-4 py-2 border-b border-line-soft text-sm hover:bg-card2">
             <span className="w-[110px] tnum text-faint">{r.codigo}</span>
             <span className="flex-1 truncate text-muted">{r.nombre}</span>
             <span className="w-44 text-right tnum">{fmtNum(r.valor)}</span>

@@ -18,7 +18,7 @@ export default function StatCard({
     tone === "pos" ? "bg-emerald-500/10 text-pos"
     : tone === "neg" ? "bg-rose-500/10 text-neg"
     : tone === "accent" ? "bg-accent/10 text-accent2"
-    : "bg-white/5 text-muted";
+    : "bg-card2 text-muted";
 
   return (
     <div className="card p-5 flex flex-col gap-3">
