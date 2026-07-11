@@ -129,3 +129,22 @@ export function WaterfallChart({ data }: { data: { name: string; base: number; v
     </ResponsiveContainer>
   );
 }
+
+export function DualLine({ data }: { data: { mes: string; activo: number; pasivo: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1e40af" stopOpacity={0.28} /><stop offset="100%" stopColor="#1e40af" stopOpacity={0} /></linearGradient>
+          <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c99a2e" stopOpacity={0.28} /><stop offset="100%" stopColor="#c99a2e" stopOpacity={0} /></linearGradient>
+        </defs>
+        <CartesianGrid stroke={GRID} vertical={false} />
+        <XAxis dataKey="mes" stroke={AX} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis stroke={AX} tick={{ fontSize: 11 }} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={52} />
+        <Tooltip content={<TT />} />
+        <Area type="monotone" dataKey="activo" name="Activo" stroke="#1e40af" strokeWidth={2} fill="url(#gA)" />
+        <Area type="monotone" dataKey="pasivo" name="Pasivo" stroke="#c99a2e" strokeWidth={2} fill="url(#gP)" />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}

@@ -299,6 +299,18 @@ export function cambiosPatrimonio(etq: string) {
   return { ini, comps, resultado, totalInicial, totalFinalBase, totalFinal: totalFinalBase + resultado };
 }
 
+// ---------- Gráficos de la hoja ESF (tendencia + participación) ----------
+export function esfCharts(etq: string) {
+  const trend = D.ultimosPeriodos(etq, 12).map((q) => ({
+    mes: `${mesCorto[q.mes]} ${String(q.anio).slice(2)}`,
+    activo: D.fact(q.etiqueta, "1"),
+    pasivo: D.fact(q.etiqueta, "2"),
+  }));
+  const comp = (cod: string) =>
+    D.children(cod).map((g) => ({ name: g.nombre, value: D.fact(etq, g.codigo) })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
+  return { trend, compActivo: comp("1"), compInversiones: comp("12") };
+}
+
 // ---------- ER multi-mes: cada mes en una columna + acumulado del año ----------
 export function erMatriz(etq: string, nMeses: number) {
   const meses = D.ultimosPeriodos(etq, nMeses).map((p) => ({ etq: p.etiqueta, label: `${mesCorto[p.mes]} ${String(p.anio).slice(2)}` }));
