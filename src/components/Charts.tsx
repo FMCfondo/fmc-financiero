@@ -109,8 +109,9 @@ function WaterfallTT({ active, payload, label }: any) {
 
 export function WaterfallChart({ data }: { data: { name: string; base: number; value: number; tipo: string; signo: number }[] }) {
   const d = data.map((x) => ({ ...x, base: x.base / 1e6, value: x.value / 1e6 }));
+  // Ingresos en verde, costos/gastos en rojo, subtotales en azul rey (o rojo si negativo)
   const color = (x: { tipo: string; signo: number }) =>
-    x.tipo === "total" ? (x.signo >= 0 ? "#1e40af" : "#dc2626") : x.tipo === "inc" ? "#45b6e8" : "#c99a2e";
+    x.tipo === "total" ? (x.signo >= 0 ? "#1e40af" : "#dc2626") : x.tipo === "inc" ? "#16a34a" : "#dc2626";
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={d} margin={{ top: 8, right: 8, left: 4, bottom: 24 }}>
@@ -125,6 +126,25 @@ export function WaterfallChart({ data }: { data: { name: string; base: number; v
           ))}
         </Bar>
       </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function DualLine({ data }: { data: { mes: string; activo: number; pasivo: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1e40af" stopOpacity={0.28} /><stop offset="100%" stopColor="#1e40af" stopOpacity={0} /></linearGradient>
+          <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c99a2e" stopOpacity={0.28} /><stop offset="100%" stopColor="#c99a2e" stopOpacity={0} /></linearGradient>
+        </defs>
+        <CartesianGrid stroke={GRID} vertical={false} />
+        <XAxis dataKey="mes" stroke={AX} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis stroke={AX} tick={{ fontSize: 11 }} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={52} />
+        <Tooltip content={<TT />} />
+        <Area type="monotone" dataKey="activo" name="Activo" stroke="#1e40af" strokeWidth={2} fill="url(#gA)" />
+        <Area type="monotone" dataKey="pasivo" name="Pasivo" stroke="#c99a2e" strokeWidth={2} fill="url(#gP)" />
+      </AreaChart>
     </ResponsiveContainer>
   );
 }

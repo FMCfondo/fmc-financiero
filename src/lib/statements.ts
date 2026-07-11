@@ -128,12 +128,12 @@ export function operacion(etq: string) {
 export function cascadaChart(etq: string) {
   const o = operacion(etq);
   const pasos: { label: string; tipo: "inc" | "dec" | "total"; valor: number }[] = [
-    { label: "Ing. cobertura", tipo: "inc", valor: o.ingCob },
-    { label: "(−) Costo", tipo: "dec", valor: -o.costo },
-    { label: "Bruto cobertura", tipo: "total", valor: o.brutoCob },
+    { label: "Ingresos cobertura", tipo: "inc", valor: o.ingCob },
+    { label: "(−) Costo cobertura", tipo: "dec", valor: -o.costo },
+    { label: "Result. bruto cobertura", tipo: "total", valor: o.brutoCob },
     { label: "(+) Otros ingresos", tipo: "inc", valor: o.otrosIng },
     { label: "(−) Gastos admón.", tipo: "dec", valor: -o.gastosAdmin },
-    { label: "(−) Impuesto", tipo: "dec", valor: -o.impuesto },
+    { label: "(−) Impuesto renta", tipo: "dec", valor: -o.impuesto },
     { label: "Utilidad neta", tipo: "total", valor: o.utilNeta },
   ];
   let run = 0;
@@ -297,4 +297,39 @@ export function cambiosPatrimonio(etq: string) {
   const totalInicial = comps.reduce((s, c) => s + c.inicial, 0);
   const totalFinalBase = comps.reduce((s, c) => s + c.final, 0);
   return { ini, comps, resultado, totalInicial, totalFinalBase, totalFinal: totalFinalBase + resultado };
+}
+
+// ---------- Gráficos de la hoja ESF (tendencia + participación) ----------
+export function esfCharts(etq: string) {
+  const trend = D.ultimosPeriodos(etq, 12).map((q) => ({
+    mes: `${mesCorto[q.mes]} ${String(q.anio).slice(2)}`,
+    activo: D.fact(q.etiqueta, "1"),
+    pasivo: D.fact(q.etiqueta, "2"),
+  }));
+  const comp = (cod: string) =>
+    D.children(cod).map((g) => ({ name: g.nombre, value: D.fact(etq, g.codigo) })).filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
+  return { trend, compActivo: comp("1"), compInversiones: comp("12") };
+}
+
+// ---------- ER multi-mes: cada mes en una columna + acumulado del año ----------
+export function erMatriz(etq: string, nMeses: number) {
+  const meses = D.ultimosPeriodos(etq, nMeses).map((p) => ({ etq: p.etiqueta, label: `${mesCorto[p.mes]} ${String(p.anio).slice(2)}` }));
+  const fila = (codigo: string, nombre: string) => ({
+    codigo, nombre,
+    vals: meses.map((m) => D.fact(m.etq, codigo)),
+    acum: D.ytd(etq, codigo),
+  });
+  const noCero = (f: { vals: number[]; acum: number }) => f.acum !== 0 || f.vals.some((v) => v !== 0);
+  return {
+    meses,
+    ingresos: D.children("4").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
+    totalIng: fila("4", "TOTAL INGRESOS"),
+    gastos: D.children("5").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
+    totalGas: fila("5", "TOTAL GASTOS"),
+    utilidad: {
+      codigo: "", nombre: "UTILIDAD ANTES DE IMPUESTOS",
+      vals: meses.map((m) => D.fact(m.etq, "4") - D.fact(m.etq, "5")),
+      acum: D.ytd(etq, "4") - D.ytd(etq, "5"),
+    },
+  };
 }
