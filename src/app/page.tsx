@@ -1,8 +1,8 @@
-import { dashboard, cascadaChart, kpisResumen } from "@/lib/statements";
+import { dashboard, cascadaChart, kpisResumen, esfCharts } from "@/lib/statements";
 import { ensureLoaded } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCompact, fmtPct } from "@/lib/format";
-import { TrendChart, ResultBars, DonutComposition, WaterfallChart, PALETTE } from "@/components/Charts";
+import { TrendChart, ResultBars, DonutComposition, WaterfallChart, DualLine, PALETTE } from "@/components/Charts";
 import { Landmark, Scale, PiggyBank, TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
@@ -12,9 +12,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   const k = kpisResumen(etq);
   const d = dashboard(etq);
   const cas = cascadaChart(etq);
+  const ec = esfCharts(etq);
   const top = d.compActivo.slice(0, 6);
   const otros = d.compActivo.slice(6).reduce((s, x) => s + x.value, 0);
   const donut = otros > 0 ? [...top, { name: "Otros", value: otros }] : top;
+  const inv = ec.compInversiones.slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -48,6 +50,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5"><h2 className="font-medium mb-4">Ingresos vs Gastos (12 meses)</h2><TrendChart data={d.trend} /></div>
         <div className="card p-5"><h2 className="font-medium mb-4">Resultado mensual</h2><ResultBars data={d.trend} /></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="card p-5 lg:col-span-2">
+          <h2 className="font-medium mb-3">Tendencia Activo vs Pasivo (12 meses)</h2>
+          <DualLine data={ec.trend} />
+        </div>
+        {inv.length > 0 && (
+          <div className="card p-5">
+            <h2 className="font-medium mb-1">Participación de inversiones</h2>
+            <DonutComposition data={inv} />
+            <Legend items={inv} />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { esf, esfAnalisis, esfCharts } from "@/lib/statements";
+import { esf, esfAnalisis } from "@/lib/statements";
 import { ensureLoaded } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
-import { fmtCOP, fmtCompact, fmtNum } from "@/lib/format";
+import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementTree, { type Nodo } from "@/components/StatementTree";
 import AnalisisTabs from "@/components/AnalisisTabs";
 import AnalisisTree, { type NodoA } from "@/components/AnalisisTree";
-import { DualLine, DonutComposition, PALETTE } from "@/components/Charts";
 import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
 
 export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string }> }) {
@@ -32,7 +31,6 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
 /* ---------- Estado ---------- */
 function VistaEstado({ etq }: { etq: string }) {
   const s = esf(etq);
-  const c = esfCharts(etq);
   const cuadra = Math.abs(s.descuadre) < 1;
   return (
     <div className="space-y-5">
@@ -48,34 +46,6 @@ function VistaEstado({ etq }: { etq: string }) {
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="card p-5 lg:col-span-2">
-          <h2 className="font-medium mb-3">Tendencia Activo vs Pasivo (12 meses)</h2>
-          <DualLine data={c.trend} />
-        </div>
-        <div className="card p-5">
-          <h2 className="font-medium mb-1">Participación del activo</h2>
-          <DonutComposition data={c.compActivo.slice(0, 6)} />
-        </div>
-      </div>
-      {c.compInversiones.length > 0 && (
-        <div className="card p-5">
-          <h2 className="font-medium mb-2">Participación de inversiones (CDT, Fiducias…)</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
-            <DonutComposition data={c.compInversiones.slice(0, 6)} />
-            <ul className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {c.compInversiones.slice(0, 8).map((x, i) => (
-                <li key={x.name} className="flex items-center gap-2 text-xs">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-                  <span className="text-muted truncate flex-1">{x.name}</span>
-                  <span className="tnum text-faint">{fmtCompact(x.value)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <Seccion titulo="Activo" tono="activo" total={s.totalActivo} totalLabel="TOTAL ACTIVOS" lineas={s.activo?.hijos ?? []} />

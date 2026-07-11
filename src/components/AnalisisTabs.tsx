@@ -2,15 +2,15 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-const VISTAS = [
-  { id: "estado", label: "Estado" },
-  { id: "vertical", label: "Análisis Vertical" },
-  { id: "horizontal", label: "Análisis Horizontal" },
-  { id: "ejec-acum", label: "Ejecución Acum.", soon: true },
-  { id: "ejec-mes", label: "Ejecución Mes", soon: true },
-];
-
-export default function AnalisisTabs({ current }: { current: string }) {
+export default function AnalisisTabs({ current, mensual }: { current: string; mensual?: boolean }) {
+  const VISTAS = [
+    { id: "estado", label: "Estado", soon: false },
+    ...(mensual ? [{ id: "mensual", label: "Por meses", soon: false }] : []),
+    { id: "vertical", label: "Análisis Vertical", soon: false },
+    { id: "horizontal", label: "Análisis Horizontal", soon: false },
+    { id: "ejec-acum", label: "Ejecución Acum.", soon: true },
+    { id: "ejec-mes", label: "Ejecución Mes", soon: true },
+  ];
   const pathname = usePathname();
   const sp = useSearchParams();
   const p = sp.get("p");
