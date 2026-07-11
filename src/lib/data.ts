@@ -85,3 +85,13 @@ export function ultimosPeriodos(etq: string, n: number): Periodo[] {
   const end = idx < 0 ? periodos.length : idx + 1;
   return periodos.slice(Math.max(0, end - n), end);
 }
+
+// Comparativos: mes anterior y mismo mes del año anterior (variaciones y flujo de efectivo).
+export function prevPeriodo(etq: string): Periodo | null {
+  const idx = periodos.findIndex((p) => p.etiqueta === etq);
+  return idx > 0 ? periodos[idx - 1] : null;
+}
+export function sameMonthPrevYear(etq: string): Periodo | null {
+  const p = periodo(etq);
+  return periodos.find((q) => q.anio === p.anio - 1 && q.mes === p.mes) ?? null;
+}

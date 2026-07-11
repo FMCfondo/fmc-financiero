@@ -95,3 +95,36 @@ export function HBars({ data }: { data: { name: string; value: number }[] }) {
     </ResponsiveContainer>
   );
 }
+
+function WaterfallTT({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const v = payload.find((p: any) => p.dataKey === "value");
+  return (
+    <div className="rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
+      <div className="mb-0.5 font-medium text-fg">{label}</div>
+      <div className="tnum text-fg">{fmtNum((v?.value ?? 0) * 1e6)}</div>
+    </div>
+  );
+}
+
+export function WaterfallChart({ data }: { data: { name: string; base: number; value: number; tipo: string; signo: number }[] }) {
+  const d = data.map((x) => ({ ...x, base: x.base / 1e6, value: x.value / 1e6 }));
+  const color = (x: { tipo: string; signo: number }) =>
+    x.tipo === "total" ? (x.signo >= 0 ? "#1e40af" : "#dc2626") : x.tipo === "inc" ? "#45b6e8" : "#c99a2e";
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={d} margin={{ top: 8, right: 8, left: 4, bottom: 24 }}>
+        <CartesianGrid stroke={GRID} vertical={false} />
+        <XAxis dataKey="name" stroke={AX} tick={{ fontSize: 10 }} interval={0} tickLine={false} axisLine={false} angle={-20} textAnchor="end" height={50} />
+        <YAxis stroke={AX} tick={{ fontSize: 11 }} tickFormatter={(v) => fmtCompact(v * 1e6)} tickLine={false} axisLine={false} width={52} />
+        <Tooltip content={<WaterfallTT />} cursor={{ fill: "#1e40af10" }} />
+        <Bar dataKey="base" stackId="a" fill="transparent" />
+        <Bar dataKey="value" stackId="a" radius={[3, 3, 0, 0]}>
+          {d.map((x, i) => (
+            <Cell key={i} fill={color(x)} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
