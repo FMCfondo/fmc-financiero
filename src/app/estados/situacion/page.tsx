@@ -1,33 +1,48 @@
 import Link from "next/link";
-import { esf } from "@/lib/statements";
+import { esf, esfAnalisis } from "@/lib/statements";
 import { ensureLoaded } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementTree, { type Nodo } from "@/components/StatementTree";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import AnalisisTabs from "@/components/AnalisisTabs";
+import AnalisisTree, { type NodoA } from "@/components/AnalisisTree";
+import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
 
-export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
+export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string }> }) {
+  const { p, vista } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
+  const current = vista || "estado";
   await ensureLoaded();
-  const s = esf(etq);
-  const cuadra = Math.abs(s.descuadre) < 1;
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted -mt-1">{etqNombre(etq)} · cifras en pesos colombianos</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted">{etqNombre(etq)} · cifras en pesos colombianos</p>
+        <AnalisisTabs current={current} />
+      </div>
+      {current === "estado" && <VistaEstado etq={etq} />}
+      {current === "vertical" && <VistaVertical etq={etq} />}
+      {current === "horizontal" && <VistaHorizontal etq={etq} />}
+      {(current === "ejec-acum" || current === "ejec-mes") && <Pendiente />}
+    </div>
+  );
+}
 
+/* ---------- Estado ---------- */
+function VistaEstado({ etq }: { etq: string }) {
+  const s = esf(etq);
+  const cuadra = Math.abs(s.descuadre) < 1;
+  return (
+    <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Mini label="Total Activos" value={fmtCOP(s.totalActivo)} tone="accent" />
-        <Mini label="Total Pasivos" value={fmtCOP(s.totalPasivo)} />
-        <Mini label="Total Patrimonio" value={fmtCOP(s.totalPatrim)} />
+        <MiniK label="Total Activos" value={fmtCOP(s.totalActivo)} tone="accent" />
+        <MiniK label="Total Pasivos" value={fmtCOP(s.totalPasivo)} />
+        <MiniK label="Total Patrimonio" value={fmtCOP(s.totalPatrim)} />
         <div className={`card p-4 flex items-center gap-3 ${cuadra ? "" : "border-neg/50"}`}>
           {cuadra ? <CheckCircle2 className="text-pos" size={22} /> : <AlertTriangle className="text-neg" size={22} />}
           <div>
             <div className="text-xs text-muted">Ecuación contable</div>
-            <div className={`text-sm font-medium ${cuadra ? "text-pos" : "text-neg"}`}>
-              {cuadra ? "Cuadra (A = P + K)" : `Descuadre ${fmtNum(s.descuadre)}`}
-            </div>
+            <div className={`text-sm font-medium ${cuadra ? "text-pos" : "text-neg"}`}>{cuadra ? "Cuadra (A = P + K)" : `Descuadre ${fmtNum(s.descuadre)}`}</div>
           </div>
         </div>
       </div>
@@ -38,19 +53,47 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
           <Seccion titulo="Pasivo" total={s.totalPasivo} totalLabel="TOTAL PASIVOS" lineas={s.pasivo?.hijos ?? []}
             extra={[{ nombre: "Provisión impuesto de renta (estimado)", valor: s.impuesto }]} />
           <Seccion titulo="Patrimonio" total={s.totalPatrim} totalLabel="TOTAL PATRIMONIO" lineas={s.patrimonio?.hijos ?? []}
-            extra={[{ nombre: "Resultado del ejercicio (estimado)", valor: s.neto }]} />
+            extra={[{ nombre: "Utilidad del ejercicio (estimada)", valor: s.neto }]} />
         </div>
       </div>
 
       <p className="text-xs text-faint">
-        Impuesto estimado al {fmtNum(s.tasa * 100)}% sobre el resultado antes de impuestos ({fmtCOP(s.preTax)}).
+        Impuesto estimado al {fmtNum(s.tasa * 100)}% sobre la utilidad antes de impuestos ({fmtCOP(s.preTax)}).
         Ajústalo en <Link href={`/impuesto?p=${etq}`} className="text-accent2 hover:underline">Provisión de Impuesto</Link>.
       </p>
     </div>
   );
 }
 
-function Mini({ label, value, tone }: { label: string; value: string; tone?: "accent" }) {
+/* ---------- Vertical ---------- */
+function VistaVertical({ etq }: { etq: string }) {
+  const a = esfAnalisis(etq);
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-faint">Cada línea como <b>% del total de activos</b> (base = {fmtCOP(a.totalActivo)}).</p>
+      <SeccionA titulo="Activo" lineas={a.activo as NodoA[]} modo="vertical" />
+      <SeccionA titulo="Pasivo" lineas={a.pasivo as NodoA[]} modo="vertical" />
+      <SeccionA titulo="Patrimonio" lineas={a.patrimonio as NodoA[]} modo="vertical" />
+    </div>
+  );
+}
+
+/* ---------- Horizontal ---------- */
+function VistaHorizontal({ etq }: { etq: string }) {
+  const a = esfAnalisis(etq);
+  if (!a.py) return <SinComparativo />;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-faint">Saldos vs. el mismo mes del año anterior.</p>
+      <SeccionA titulo="Activo" lineas={a.activo as NodoA[]} modo="horizontal" />
+      <SeccionA titulo="Pasivo" lineas={a.pasivo as NodoA[]} modo="horizontal" />
+      <SeccionA titulo="Patrimonio" lineas={a.patrimonio as NodoA[]} modo="horizontal" />
+    </div>
+  );
+}
+
+/* ---------- helpers ---------- */
+function MiniK({ label, value, tone }: { label: string; value: string; tone?: "accent" }) {
   return (
     <div className="card p-4">
       <div className="text-xs text-muted">{label}</div>
@@ -58,10 +101,7 @@ function Mini({ label, value, tone }: { label: string; value: string; tone?: "ac
     </div>
   );
 }
-
-function Seccion({
-  titulo, total, totalLabel, lineas, extra = [],
-}: { titulo: string; total: number; totalLabel: string; lineas: Nodo[]; extra?: { nombre: string; valor: number }[] }) {
+function Seccion({ titulo, total, totalLabel, lineas, extra = [] }: { titulo: string; total: number; totalLabel: string; lineas: Nodo[]; extra?: { nombre: string; valor: number }[] }) {
   return (
     <div className="card overflow-hidden">
       <div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">{titulo}</h2></div>
@@ -78,4 +118,23 @@ function Seccion({
       </div>
     </div>
   );
+}
+function SeccionA({ titulo, lineas, modo }: { titulo: string; lineas: NodoA[]; modo: "vertical" | "horizontal" }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">{titulo}</h2></div>
+      <AnalisisTree lineas={lineas} modo={modo} />
+    </div>
+  );
+}
+function Pendiente() {
+  return (
+    <div className="card p-6 flex items-start gap-3 border-accent/25">
+      <Info size={18} className="text-accent2 mt-0.5 shrink-0" />
+      <p className="text-sm text-muted">La ejecución presupuestal se activa al migrar el <span className="text-fg">PPTO 2026</span> a la base de datos (siguiente paso). La estructura ya está lista.</p>
+    </div>
+  );
+}
+function SinComparativo() {
+  return <div className="card p-6 text-sm text-muted">No hay período del año anterior para comparar en este corte.</div>;
 }
