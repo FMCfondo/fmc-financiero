@@ -101,6 +101,9 @@ export function dashboard(etq: string) {
 // utilidad final (sólo la presentación). SAS → "Utilidad", no "excedente".
 export const COSTO_COBERTURA = "5199150101";
 export const ING_COBERTURA = "4180";
+// Rendimiento de las inversiones (CDT + fiducias). Es el segundo motor de utilidad:
+// aporta ~46% de la contribución bruta, casi tanto como la cobertura.
+export const ING_FINANCIERO = "4150";
 
 export function variacion(cur: number, prev: number | null | undefined) {
   if (prev === null || prev === undefined) return { abs: 0, pct: 0, has: false };
@@ -192,6 +195,55 @@ export function kpisResumen(etq: string) {
     patrimYoY: py ? variacion(patrim, D.fact(py, "3")).pct : null,
     utilYoY: oPy ? variacion(o.utilNeta, oPy.utilNeta).pct : null,
   };
+}
+
+// ---------- Contribución: los dos motores de utilidad ----------
+// FMC gana por dos vías que comparten una misma estructura administrativa:
+// cubrir (4180 − 5199150101) e invertir (4150). Los gastos de administración son
+// un COSTO CONJUNTO — parte de ellos gestiona las inversiones — así que NO se
+// reparten entre los dos motores: se restan de la contribución total.
+// Repartirlos daría un "resultado técnico" falso (validado con el analista).
+export function contribucion(etq: string) {
+  const ingCob = D.ytd(etq, ING_COBERTURA);
+  const costoCob = D.ytd(etq, COSTO_COBERTURA);
+  const contribCob = ingCob - costoCob;
+  const contribInv = D.ytd(etq, ING_FINANCIERO);
+  const contribTotal = contribCob + contribInv;
+  const gastosAdmin = D.ytd(etq, "51") - costoCob; // admin reales, sin el costo de cobertura
+  const ingYTD = D.ytd(etq, "4"), gasYTD = D.ytd(etq, "5");
+  const utilAntesImp = ingYTD - gasYTD;
+  // Todo lo demás (otros ingresos/gastos, devoluciones) va a un residuo explícito
+  // para que la descomposición cuadre exactamente contra clase 4 − clase 5.
+  const otrosNetos = utilAntesImp - (contribTotal - gastosAdmin);
+  const tasa = D.tasaImpuesto;
+  const impuesto = Math.max(utilAntesImp, 0) * tasa;
+  return {
+    ingCob, costoCob, contribCob, contribInv, contribTotal, gastosAdmin, otrosNetos,
+    utilAntesImp, impuesto, utilNeta: utilAntesImp - impuesto,
+    pctCob: contribTotal ? contribCob / contribTotal : 0,
+    pctInv: contribTotal ? contribInv / contribTotal : 0,
+  };
+}
+
+/** Gastos de administración REALES por categoría, ordenados.
+ *  Excluye 5199 porque ahí vive el costo de cobertura (es el 84% de la clase 51):
+ *  sin excluirlo, cualquier gráfico de gastos muestra una barra gigante llamada
+ *  "Otros gastos" y no dice nada. */
+export function gastosAdminDetalle(etq: string) {
+  return D.children("51")
+    .filter((g) => !g.codigo.startsWith("5199"))
+    .map((g) => ({ codigo: g.codigo, name: g.nombre, value: D.ytd(etq, g.codigo) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value);
+}
+
+/** Serie mensual de la contribución de cada motor, para ver cómo se mueve la mezcla. */
+export function contribucionTrend(etq: string, n = 12) {
+  return D.ultimosPeriodos(etq, n).map((q) => ({
+    mes: `${mesCorto[q.mes]} ${String(q.anio).slice(2)}`,
+    cobertura: D.fact(q.etiqueta, ING_COBERTURA) - D.fact(q.etiqueta, COSTO_COBERTURA),
+    inversiones: D.fact(q.etiqueta, ING_FINANCIERO),
+  }));
 }
 
 // ---------- Análisis Vertical (% de una base) y Horizontal (vs año anterior) ----------
