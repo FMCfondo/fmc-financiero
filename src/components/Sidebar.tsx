@@ -2,12 +2,11 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  LayoutDashboard, Landmark, Table2, Target, Percent, Upload, ListTree, Wallet,
+  Landmark, Table2, Target, Percent, Upload, ListTree, Wallet,
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", match: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/estados/resultados", match: "/estados", label: "Estados Financieros", icon: Landmark },
+  { href: "/estados/dashboard", match: "/estados", label: "Estados Financieros", icon: Landmark },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icon: Table2 },
   { href: "/ejecucion", match: "/ejecucion", label: "Ejecución Presupuestal", icon: Target },
   { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icon: Percent },
@@ -37,7 +36,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 py-3">
         {NAV.map(({ href, match, label, icon: Icon }) => {
-          const active = match === "/" ? pathname === "/" : pathname.startsWith(match);
+          const active = pathname.startsWith(match);
           return (
             <Link
               key={href}

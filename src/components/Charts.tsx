@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, Cell, PieChart, Pie,
 } from "recharts";
-import { fmtCompact, fmtNum } from "@/lib/format";
+import { fmtCompact, fmtNum, fmtPct } from "@/lib/format";
 
 const AX = "#64748b";
 const GRID = "#e6ecf5";
@@ -91,6 +91,50 @@ export function HBars({ data }: { data: { name: string; value: number }[] }) {
         <YAxis type="category" dataKey="name" stroke={AX} tick={{ fontSize: 11 }} width={150} tickLine={false} axisLine={false} />
         <Tooltip content={<TT />} cursor={{ fill: "#ffffff08" }} />
         <Bar dataKey="value" name="Valor" radius={[0, 4, 4, 0]} fill="#45b6e8" barSize={16} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function TTPct({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
+  return (
+    <div className="rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
+      <div className="mb-0.5 font-medium text-fg">{label}</div>
+      <div className="tnum text-fg">{fmtPct(p.value / 100)}</div>
+      {p.payload?.valor !== undefined && <div className="tnum text-muted">{fmtNum(p.payload.valor)}</div>}
+    </div>
+  );
+}
+
+/** Análisis vertical: participación de cada línea sobre la base, en %. */
+export function PctBars({ data }: { data: { name: string; pct: number; valor: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(150, data.length * 34)}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 40, left: 4, bottom: 4 }}>
+        <XAxis type="number" stroke={AX} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" stroke={AX} tick={{ fontSize: 11 }} width={170} tickLine={false} axisLine={false} />
+        <Tooltip content={<TTPct />} cursor={{ fill: "#1e40af0d" }} />
+        <Bar dataKey="pct" name="Participación" radius={[0, 4, 4, 0]} barSize={14}>
+          {data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Análisis horizontal: variación % vs. año anterior (divergente, verde/rojo). */
+export function VarBars({ data }: { data: { name: string; varPct: number; valor: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(150, data.length * 34)}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 40, left: 4, bottom: 4 }}>
+        <XAxis type="number" stroke={AX} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" stroke={AX} tick={{ fontSize: 11 }} width={170} tickLine={false} axisLine={false} />
+        <Tooltip content={<TTPct />} cursor={{ fill: "#1e40af0d" }} />
+        <Bar dataKey="varPct" name="Variación" radius={[0, 4, 4, 0]} barSize={14}>
+          {data.map((d, i) => <Cell key={i} fill={d.varPct >= 0 ? "#16a34a" : "#dc2626"} />)}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
