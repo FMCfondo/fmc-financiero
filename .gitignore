@@ -43,3 +43,6 @@ next-env.d.ts
 # datos reales (viven en Neon, NO en el repo)
 /db/*.csv
 /src/db/seed.json
+
+# graphify (grafo derivado del codigo, se regenera con `graphify update .`)
+/graphify-out
