@@ -2,8 +2,8 @@ import Link from "next/link";
 import { esf, esfAnalisis } from "@/lib/statements";
 import { ensureLoaded } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
-import { fmtCOP, fmtNum } from "@/lib/format";
-import StatementTree, { type Nodo } from "@/components/StatementTree";
+import { fmtCOP, fmtNum, fmtCont } from "@/lib/format";
+import StatementTree, { TotalRow, type Nodo } from "@/components/StatementTree";
 import AnalisisTabs from "@/components/AnalisisTabs";
 import AnalisisTree, { type NodoA } from "@/components/AnalisisTree";
 import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
@@ -111,15 +111,12 @@ function Seccion({ titulo, total, totalLabel, lineas, extra = [], tono }: { titu
       </div>
       <StatementTree lineas={lineas} expandDepth={1} />
       {extra.map((e) => (
-        <div key={e.nombre} className="flex items-center px-4 py-1.5 border-b border-line-soft text-sm">
-          <span className="flex-1 text-muted italic pl-[14px]">{e.nombre}</span>
-          <span className="w-40 text-right tnum">{fmtNum(e.valor)}</span>
+        <div key={e.nombre} className="flex items-center px-5 py-[7px] border-b border-line-soft text-sm">
+          <span className="flex-1 text-muted italic pl-[29px]">{e.nombre}</span>
+          <span className="w-36 text-right tnum tabular-nums text-fg/90">{fmtCont(e.valor)}</span>
         </div>
       ))}
-      <div className="flex items-center px-4 py-3 fila-total">
-        <span className="flex-1 font-semibold text-sm uppercase tracking-wide text-fg">{totalLabel}</span>
-        <span className="w-40 text-right tnum font-semibold text-base">{fmtNum(total)}</span>
-      </div>
+      <TotalRow label={totalLabel} valores={[total]} doble />
     </div>
   );
 }

@@ -96,6 +96,39 @@ export function HBars({ data }: { data: { name: string; value: number }[] }) {
   );
 }
 
+/** Sparkline: contexto histórico junto a la cifra. Sin ejes ni etiquetas — no se
+ *  leen valores, se lee la forma. Comparten escala solo dentro de una misma serie. */
+export function Sparkline({ data, color = "#1e40af", height = 30 }: { data: number[]; color?: string; height?: number }) {
+  if (data.length < 2) return <div style={{ height }} />;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${100 - ((v - min) / span) * 100}`).join(" ");
+  const last = data[data.length - 1];
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ height, width: "100%" }} aria-hidden>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <circle cx={100} cy={100 - ((last - min) / span) * 100} r={2.5} fill={color} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** Los dos motores de utilidad, mes a mes. Apilado SOLO porque el total (la
+ *  contribución) es el mensaje; la mezcla se lee en la sección inferior. */
+export function ContribBars({ data }: { data: { mes: string; cobertura: number; inversiones: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <CartesianGrid stroke={GRID} vertical={false} />
+        <XAxis dataKey="mes" stroke={AX} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis stroke={AX} tick={{ fontSize: 11 }} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={52} />
+        <Tooltip content={<TT />} cursor={{ fill: "#1e40af0d" }} />
+        <Bar dataKey="cobertura" name="Cobertura" stackId="c" fill="#1e40af" radius={[0, 0, 0, 0]} />
+        <Bar dataKey="inversiones" name="Inversiones" stackId="c" fill="#45b6e8" radius={[3, 3, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 function TTPct({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
