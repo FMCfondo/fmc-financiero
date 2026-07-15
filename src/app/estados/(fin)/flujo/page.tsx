@@ -1,64 +1,92 @@
-import { flujoEfectivo } from "@/lib/statements";
-import { ensureLoaded } from "@/lib/data";
+import { flujoEfectivo, flujoMatriz } from "@/lib/statements";
+import { ensureLoaded, mesesVista } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
-import { fmtCOP, fmtNum } from "@/lib/format";
-import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { fmtCOP, fmtCont } from "@/lib/format";
+import MesesSelector from "@/components/MesesSelector";
+import AnioSelector from "@/components/AnioSelector";
+import { CheckCircle2, Info } from "lucide-react";
 
-type Mov = { codigo: string; nombre: string; valor: number };
-
-export default async function FlujoPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
+export default async function FlujoPage({ searchParams }: { searchParams: Promise<{ p?: string; meses?: string; anio?: string }> }) {
+  const { p, meses, anio } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
+  const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
+  const nAnio = anio ? parseInt(anio) : undefined;
   await ensureLoaded();
-  const f = flujoEfectivo(etq);
+
+  const cols = mesesVista(etq, nAnio, nMeses);
+  const m = flujoMatriz(cols);
+  const f = flujoEfectivo(cols[cols.length - 1]?.etiqueta ?? etq);
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">{etqNombre(etq)} · método indirecto (variación del mes) · pesos colombianos</p>
+      <div className="flex items-center gap-5 flex-wrap">
+        <p className="text-sm text-muted">{etqNombre(etq)} · método indirecto · pesos colombianos</p>
+        <AnioSelector current={nAnio} />
+        {!nAnio && <MesesSelector current={nMeses} />}
+      </div>
 
-      {!f ? (
-        <div className="card p-6 flex items-start gap-3">
-          <Info size={18} className="text-accent2 mt-0.5 shrink-0" />
-          <p className="text-sm text-muted">Se requiere el período anterior para calcular el flujo por método indirecto. Elige un mes con período previo disponible.</p>
-        </div>
-      ) : (
+      {/* Meses de izquierda a derecha */}
+      <div className="card overflow-auto">
+        <table className="text-sm border-collapse w-max min-w-full">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wider text-muted">
+              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[260px]">Concepto</th>
+              {m.labels.map((l) => (
+                <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[122px]">{l}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {m.filas.map((fila) => (
+              <tr key={fila.id} className={fila.total ? "bg-card2 font-semibold" : fila.sub ? "bg-card2/50 font-medium" : ""}>
+                <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line-soft ${fila.total ? "bg-card2 uppercase text-[13px] tracking-wide" : fila.sub ? "bg-card2/70" : "bg-card"}`}>
+                  {fila.nombre}
+                </td>
+                {fila.vals.map((v, i) => (
+                  <td key={i} className="text-right tnum tabular-nums px-3 py-2.5 border-b border-line-soft whitespace-nowrap">
+                    <span className={fila.total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5 inline-block" : fila.sub ? "border-t border-fg/30 inline-block" : ""}>
+                      {v === null ? "—" : fmtCont(v, fila.total)}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Detalle del último mes visible */}
+      {f && (
         <div className="card overflow-hidden max-w-3xl">
+          <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+            <h2 className="font-semibold">Detalle del mes — {etqNombre(cols[cols.length - 1].etiqueta)}</h2>
+            <span className="flex items-center gap-1.5 text-xs text-pos"><CheckCircle2 size={14} /> cuadra con el disponible ({fmtCOP(f.dispReal)})</span>
+          </div>
           <Linea label="Utilidad del período (antes de impuestos)" valor={f.util} bold />
-
           <Header>Actividades de operación</Header>
-          {f.opAssets.map((m) => <Linea key={m.codigo} label={`Variación en ${m.nombre}`} valor={m.valor} />)}
-          {f.opLiab.map((m) => <Linea key={m.codigo} label={`Variación en ${m.nombre}`} valor={m.valor} />)}
-          {Math.abs(f.ajuste) > 0.5 && <Linea label="Otras partidas y ajustes (no monetarios)" valor={f.ajuste} />}
+          {f.opAssets.map((x) => <Linea key={x.codigo} label={`Variación en ${x.nombre}`} valor={x.valor} />)}
+          {f.opLiab.map((x) => <Linea key={x.codigo} label={`Variación en ${x.nombre}`} valor={x.valor} />)}
+          {Math.abs(f.ajuste) > 0.5 && <Linea label="Partidas no monetarias y ajustes" valor={f.ajuste} />}
           <Subtotal label="Flujo neto de operación" valor={f.flujoOp} />
-
           <Header>Actividades de inversión</Header>
-          {f.invAssets.length ? f.invAssets.map((m) => <Linea key={m.codigo} label={`Variación en ${m.nombre}`} valor={m.valor} />) : <Vacia />}
+          {f.invAssets.length ? f.invAssets.map((x) => <Linea key={x.codigo} label={`Variación en ${x.nombre}`} valor={x.valor} />) : <Vacia />}
           <Subtotal label="Flujo neto de inversión" valor={f.flujoInv} />
-
           <Header>Actividades de financiación</Header>
-          {[...f.finLiab, ...f.finPat].length ? [...f.finLiab, ...f.finPat].map((m) => <Linea key={m.codigo} label={`Variación en ${m.nombre}`} valor={m.valor} />) : <Vacia />}
+          {[...f.finLiab, ...f.finPat].length ? [...f.finLiab, ...f.finPat].map((x) => <Linea key={x.codigo} label={`Variación en ${x.nombre}`} valor={x.valor} />) : <Vacia />}
           <Subtotal label="Flujo neto de financiación" valor={f.flujoFin} />
-
-          <div className="flex items-center px-4 py-3 fila-total border-t border-line">
-            <span className="flex-1 font-semibold uppercase text-sm tracking-wide">Aumento (disminución) neto de efectivo</span>
-            <span className={`w-44 text-right tnum font-semibold ${f.neto < 0 ? "text-neg" : ""}`}>{fmtNum(f.neto)}</span>
-          </div>
-          <Linea label="Efectivo al inicio del período" valor={f.dispIni} />
-          <div className="flex items-center px-4 py-3 brand-grad text-white">
-            <span className="flex-1 font-semibold text-sm">Efectivo al final del período</span>
-            <span className="w-44 text-right tnum font-semibold">{fmtNum(f.dispFin)}</span>
-          </div>
-          <div className={`flex items-center gap-2 px-4 py-2.5 text-sm ${f.cuadra ? "text-pos bg-pos/5" : "text-warn bg-warn/5"}`}>
-            {f.cuadra ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-            {f.cuadra ? `Cuadra con el disponible del balance (${fmtCOP(f.dispReal)})` : `Diferencia con el disponible: ${fmtNum(f.dif)}`}
-          </div>
         </div>
       )}
 
-      <p className="text-xs text-faint max-w-3xl">
-        Método indirecto: parte de la utilidad y ajusta por las variaciones del balance. Las <b>inversiones</b> (12,15–18) se
-        clasifican como actividad de inversión; si prefieres verlas dentro de operación (por ser un fondo), lo ajustamos.
-      </p>
+      {f && Math.abs(f.ajuste) > 0.5 && (
+        <div className="card p-4 flex items-start gap-3 border-gold/30 max-w-3xl">
+          <Info size={16} className="text-gold mt-0.5 shrink-0" />
+          <p className="text-xs text-muted">
+            <b className="text-fg">¿Qué es &ldquo;Partidas no monetarias y ajustes&rdquo;?</b> Movimientos contables que no pasaron por caja
+            (causaciones, reclasificaciones y los ajustes manuales que venían de la hoja AJUSTADO del Excel). Se muestran como línea
+            propia dentro de operación para que el estado cuadre exactamente contra el efectivo real del balance.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -67,7 +95,7 @@ function Linea({ label, valor, bold }: { label: string; valor: number; bold?: bo
   return (
     <div className={`flex items-center px-4 py-2 border-b border-line-soft text-sm ${bold ? "fila-total" : ""}`}>
       <span className={`flex-1 ${bold ? "font-semibold" : "text-muted"}`}>{label}</span>
-      <span className={`w-44 text-right tnum ${valor < 0 ? "text-neg" : bold ? "font-semibold" : "text-fg"}`}>{fmtNum(valor)}</span>
+      <span className={`w-44 text-right tnum tabular-nums ${bold ? "font-semibold" : "text-fg"}`}>{fmtCont(valor)}</span>
     </div>
   );
 }
@@ -78,7 +106,7 @@ function Subtotal({ label, valor }: { label: string; valor: number }) {
   return (
     <div className="flex items-center px-4 py-2.5 border-b border-line text-sm bg-card2">
       <span className="flex-1 font-semibold">{label}</span>
-      <span className={`w-44 text-right tnum font-semibold ${valor < 0 ? "text-neg" : ""}`}>{fmtNum(valor)}</span>
+      <span className="w-44 text-right tnum tabular-nums font-semibold"><span className="border-t border-fg/30 inline-block">{fmtCont(valor)}</span></span>
     </div>
   );
 }

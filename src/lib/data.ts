@@ -18,6 +18,13 @@ export let periodos: Periodo[] = [];
 export let tasaImpuesto = 0.35;
 export let cuentaByCodigo = new Map<string, Cuenta>();
 
+/* Parámetros de la provisión de renta (tabla `parametro`, editables desde /impuesto).
+   Cambiarlos recalcula la provisión EN TODA la app: estados, dashboard e indicadores
+   leen de aquí, no tienen copias. */
+export let parametros: Record<string, number> = {};
+export const paramNum = (clave: string, def = 0): number =>
+  Number.isFinite(parametros[clave]) ? parametros[clave] : def;
+
 let childrenMap = new Map<string, Cuenta[]>();
 let facts: Record<string, Record<string, number>> = {};
 let ready: Promise<void> | null = null;
@@ -48,7 +55,7 @@ async function loadFromNeon() {
         from fact_saldo fs
         join dim_cuenta dc on dc.cuenta_id = fs.cuenta_id
         join dim_periodo dp on dp.periodo_id = fs.periodo_id`,
-    sql`select valor from parametro where clave = 'tasa_imporenta'`,
+    sql`select clave, valor from parametro`,
   ]);
 
   cuentas = (cu as any[]).map((r) => ({
@@ -60,12 +67,32 @@ async function loadFromNeon() {
   for (const r of fa as any[]) {
     (facts[r.etiqueta] ??= {})[String(r.codigo_puc)] = Number(r.movimiento_mes);
   }
-  if ((pr as any[])[0]) tasaImpuesto = Number((pr as any[])[0].valor);
+  parametros = {};
+  for (const r of pr as any[]) {
+    const v = Number(r.valor);
+    if (Number.isFinite(v)) parametros[String(r.clave)] = v;
+  }
+  tasaImpuesto = paramNum("tasa_imporenta", 0.35);
 }
 
 export function ensureLoaded(): Promise<void> {
   if (!ready) ready = loadFromNeon().then(buildIndexes);
   return ready;
+}
+
+/** Guarda parámetros en Neon y actualiza la copia en memoria de esta instancia. */
+export async function guardarParametros(vals: Record<string, number>): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  for (const [clave, valor] of Object.entries(vals)) {
+    if (!Number.isFinite(valor)) continue;
+    await sql`insert into parametro (clave, valor) values (${clave}, ${JSON.stringify(valor)}::jsonb)
+              on conflict (clave) do update set valor = excluded.valor`;
+    parametros[clave] = valor;
+  }
+  tasaImpuesto = paramNum("tasa_imporenta", 0.35);
 }
 
 export const children = (codigo: string): Cuenta[] => childrenMap.get(codigo) ?? [];
@@ -84,6 +111,13 @@ export function ultimosPeriodos(etq: string, n: number): Periodo[] {
   const idx = periodos.findIndex((p) => p.etiqueta === etq);
   const end = idx < 0 ? periodos.length : idx + 1;
   return periodos.slice(Math.max(0, end - n), end);
+}
+
+/** Meses a mostrar según los segmentadores: si hay año, todos los meses de ese año
+ *  (con datos); si no, los últimos n meses hasta el período seleccionado. */
+export function mesesVista(etq: string, anio?: number, n = 4): Periodo[] {
+  if (anio) return periodos.filter((p) => p.anio === anio);
+  return ultimosPeriodos(etq, n);
 }
 
 // Comparativos: mes anterior y mismo mes del año anterior (variaciones y flujo de efectivo).

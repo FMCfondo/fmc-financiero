@@ -7,6 +7,15 @@ export const fmtCOP = (n: number) => cop0.format(Math.round(n || 0));
 export const fmtNum = (n: number) => num0.format(Math.round(n || 0));
 export const fmtPct = (n: number) => `${num2.format((n || 0) * 100)}%`;
 
+/* Cifra redondeada a millones: "$ 1.496 millones".
+   Se usa SOLO para las cifras de reservas del Resumen del Dashboard, mientras se
+   concilia la contabilidad con el informe de gestión: redondeado, ambos dicen lo
+   mismo y no se abre la pregunta por una diferencia que está en revisión. */
+export function fmtMillones(n: number): string {
+  const m = Math.round((n || 0) / 1e6);
+  return `$ ${num0.format(m)} millones`;
+}
+
 /* Formato CONTABLE, sólo para los estados financieros (no para tarjetas ni gráficos).
    Convención de informe financiero (GAAP/IFRS, y lo que hace NetSuite en pantalla):
      · negativos entre PARÉNTESIS, no con signo menos — el menos mide dos píxeles,
