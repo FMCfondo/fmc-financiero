@@ -1,5 +1,5 @@
 import { flujoEfectivo, flujoMatriz } from "@/lib/statements";
-import { ensureLoaded, mesesVista } from "@/lib/data";
+import { ensureLoaded, mesesVista, periodo } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCont } from "@/lib/format";
 import MesesSelector from "@/components/MesesSelector";
@@ -10,8 +10,8 @@ export default async function FlujoPage({ searchParams }: { searchParams: Promis
   const { p, meses, anio } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
-  const nAnio = anio ? parseInt(anio) : undefined;
   await ensureLoaded();
+  const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
 
   const cols = mesesVista(etq, nAnio, nMeses);
   const m = flujoMatriz(cols);

@@ -5,7 +5,7 @@ import {
 } from "@/lib/statements";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import Link from "next/link";
-import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd } from "@/lib/data";
+import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd, periodo } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCompact, fmtPct, fmtMillones, fmtCont, fmtPctCont } from "@/lib/format";
 import {
@@ -24,8 +24,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const etq = p || PERIODO_DEFAULT;
   const current = sec || "resumen";
   const nMeses = Math.min(Math.max(parseInt(meses || "6") || 6, 1), 24);
-  const nAnio = anio ? parseInt(anio) : undefined;
   await ensureLoaded();
+  // Por defecto, el segmentador arranca en el AÑO del corte (2026 hoy).
+  const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
 
   return (
     <div className="space-y-5">

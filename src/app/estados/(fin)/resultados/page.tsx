@@ -18,9 +18,10 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
   const etq = p || PERIODO_DEFAULT;
   const current = vista || "estado";
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
-  const nAnio = anio ? parseInt(anio) : undefined;
   const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
+  // Por defecto, el segmentador arranca en el AÑO del corte (2026 hoy).
+  const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
   // Interanual: unidad de período + índice (por defecto, el período que contiene el mes del corte).
   const UNIDADES = ["mes", "bimestre", "trimestre", "cuatrimestre", "semestre", "anio"];
   const vUnidad = (UNIDADES.includes(unidad || "") ? unidad : "mes") as UnidadPeriodo;

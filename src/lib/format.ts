@@ -42,9 +42,12 @@ export function fmtPctCont(n: number): string {
 export function fmtCompact(n: number): string {
   const a = Math.abs(n || 0);
   const s = n < 0 ? "-" : "";
-  if (a >= 1e12) return `${s}${num2.format(a / 1e12)} B`;
-  if (a >= 1e9) return `${s}${num2.format(a / 1e9)} MM`;
-  if (a >= 1e6) return `${s}${num2.format(a / 1e6)} M`;
+  // Todo en MILLONES (decisión del analista): nada de "MM" ni "B" —
+  // 1.496.304.428 se lee "1.496 M", no "1,5 MM".
+  if (a >= 1e6) {
+    const m = a / 1e6;
+    return `${s}${m >= 100 ? num0.format(m) : num2.format(m)} M`;
+  }
   if (a >= 1e3) return `${s}${num0.format(a / 1e3)} k`;
   return `${s}${num0.format(a)}`;
 }

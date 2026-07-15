@@ -11,8 +11,8 @@ const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "O
 
 export default function TrendExplorer({ data }: { data: PuntoTrend[] }) {
   const anios = useMemo(() => [...new Set(data.map((d) => d.anio))].sort(), [data]);
-  // Por defecto: el año en curso y el anterior, todos los meses.
-  const [selAnios, setSelAnios] = useState<number[]>(anios.slice(-2));
+  // Por defecto: el año en curso, todos los meses.
+  const [selAnios, setSelAnios] = useState<number[]>(anios.slice(-1));
   const [selMeses, setSelMeses] = useState<number[]>(MESES.map((_, i) => i + 1));
   // Por defecto solo picos y valles: con varios años, etiquetar todo tapa las líneas.
   const [etiquetas, setEtiquetas] = useState<ModoEtiquetas>("picos");

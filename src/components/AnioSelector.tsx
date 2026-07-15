@@ -10,10 +10,10 @@ const ANIOS = [...new Set(PERIODOS.map((p) => p.slice(3)))];
 export default function AnioSelector({ current }: { current?: number }) {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const href = (a: string | null) => {
+  // El defecto (sin ?anio) es el AÑO ACTUAL del corte; "Últimos" se pide explícito.
+  const href = (a: string) => {
     const params = new URLSearchParams(sp.toString());
-    if (a === null) params.delete("anio");
-    else params.set("anio", a);
+    params.set("anio", a);
     const q = params.toString();
     return pathname + (q ? "?" + q : "");
   };
@@ -24,7 +24,7 @@ export default function AnioSelector({ current }: { current?: number }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-xs text-muted mr-1">Año:</span>
-      <Link href={href(null)} className={cls(!current)}>Últimos</Link>
+      <Link href={href("ultimos")} className={cls(!current)}>Últimos</Link>
       {ANIOS.map((a) => (
         <Link key={a} href={href(a)} className={cls(current === Number(a))}>{a}</Link>
       ))}
