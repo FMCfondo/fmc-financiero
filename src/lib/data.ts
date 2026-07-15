@@ -75,9 +75,32 @@ async function loadFromNeon() {
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
 }
 
+/* Los parámetros de la provisión se refrescan en cada request (consulta mínima):
+   sin esto, otra instancia del serverless seguiría sirviendo la tasa vieja después
+   de guardar — el "bug del porcentaje anterior al cambiar de hoja". */
+let ultimaCargaParams = 0;
+async function refreshParametros(): Promise<void> {
+  if (Date.now() - ultimaCargaParams < 2000) return; // colapsa ráfagas de una misma página
+  const url = process.env.DATABASE_URL;
+  if (!url) return;
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  const pr = await sql`select clave, valor from parametro`;
+  parametros = {};
+  for (const r of pr as any[]) {
+    const v = Number(r.valor);
+    if (Number.isFinite(v)) parametros[String(r.clave)] = v;
+  }
+  tasaImpuesto = paramNum("tasa_imporenta", 0.35);
+  ultimaCargaParams = Date.now();
+}
+
 export function ensureLoaded(): Promise<void> {
-  if (!ready) ready = loadFromNeon().then(buildIndexes);
-  return ready;
+  if (!ready) {
+    ready = loadFromNeon().then(buildIndexes).then(() => { ultimaCargaParams = Date.now(); });
+    return ready;
+  }
+  return ready.then(refreshParametros);
 }
 
 /** Guarda parámetros en Neon y actualiza la copia en memoria de esta instancia. */

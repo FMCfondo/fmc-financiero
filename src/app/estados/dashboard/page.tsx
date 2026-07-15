@@ -1,8 +1,10 @@
 import {
-  dashboard, cascadaChart, kpisResumen, esfCharts, contribucion, contribucionTrend,
-  gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, provisionRenta, type LineaAnalisis,
+  dashboard, cascadaChart, kpisResumen, esfCharts, contribucion, contribucionPeriodo, contribucionTrend,
+  gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, provisionRenta, trendCompleto,
+  patrimonioComposicion, type LineaAnalisis,
 } from "@/lib/statements";
-import { indicadoresMatriz } from "@/lib/indicadores";
+import { indicadoresMatriz, type Nivel } from "@/lib/indicadores";
+import Link from "next/link";
 import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCompact, fmtPct, fmtMillones, fmtCont, fmtPctCont } from "@/lib/format";
@@ -10,13 +12,14 @@ import {
   TrendChart, ResultBars, WaterfallChart, DualLine, HBars, PctBars, VarBars,
   Sparkline, ContribBars,
 } from "@/components/Charts";
+import TrendExplorer from "@/components/TrendExplorer";
 import SeccionesTabs from "@/components/SeccionesTabs";
 import MesesSelector from "@/components/MesesSelector";
 import AnioSelector from "@/components/AnioSelector";
 import { ShieldCheck, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle2, type LucideIcon } from "lucide-react";
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string; meses?: string; anio?: string }> }) {
-  const { p, sec, meses, anio } = await searchParams;
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string; meses?: string; anio?: string; modo?: string }> }) {
+  const { p, sec, meses, anio, modo } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
   const current = sec || "resumen";
   const nMeses = Math.min(Math.max(parseInt(meses || "6") || 6, 1), 24);
@@ -27,7 +30,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div className="space-y-5">
       <SeccionesTabs current={current} />
       <p className="text-sm text-muted">{etqNombre(etq)} · cifras en pesos colombianos</p>
-      {current === "resumen" && <Resumen etq={etq} />}
+      {current === "resumen" && <Resumen etq={etq} modo={modo === "mes" ? "mes" : "acum"} />}
       {current === "situacion" && <Situacion etq={etq} />}
       {current === "resultados" && <Resultados etq={etq} />}
       {current === "flujo" && <Flujo etq={etq} />}
@@ -38,8 +41,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 }
 
 /* ================= RESUMEN — la portada ejecutiva ================= */
-function Resumen({ etq }: { etq: string }) {
-  const c = contribucion(etq);
+function Resumen({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
+  const c = contribucionPeriodo(etq, modo);
+  const tag = modo === "mes" ? "del mes" : "acumulada del año";
   const k = kpisResumen(etq);
   const respaldo = fact(etq, "12") + fact(etq, "11");
   const oblig = fact(etq, "2640");
@@ -52,6 +56,7 @@ function Resumen({ etq }: { etq: string }) {
 
   return (
     <div className="space-y-5">
+      <ModoToggle modo={modo} />
       {/* Titular: la cobertura. Cifras de reservas redondeadas a millones mientras
           se concilia la contabilidad con el informe de gestión. */}
       <div className="card p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
@@ -79,7 +84,7 @@ function Resumen({ etq }: { etq: string }) {
       <div className="card p-5">
         <div className="flex items-baseline justify-between mb-1">
           <h2 className="font-medium">¿De dónde sale la utilidad?</h2>
-          <span className="text-xs text-muted">Contribución acumulada del año</span>
+          <span className="text-xs text-muted">Contribución {tag}</span>
         </div>
         <p className="text-sm text-muted mb-4">
           Dos vías sobre una misma estructura administrativa. Los gastos de administración no se reparten
@@ -90,14 +95,14 @@ function Resumen({ etq }: { etq: string }) {
           <Cifra label="Contribución total" value={fmtCOP(c.contribTotal)} />
           <Cifra label="(−) Gastos de administración" value={fmtCOP(c.gastosAdmin)} />
           <Cifra label="(+) Otros netos" value={fmtCOP(c.otrosNetos)} />
-          <Cifra label="Utilidad neta (año)" value={fmtCOP(c.utilNeta)} tone={c.utilNeta >= 0 ? "pos" : "neg"} />
+          <Cifra label={modo === "mes" ? "Utilidad neta (mes)" : "Utilidad neta (año)"} value={fmtCOP(c.utilNeta)} tone={c.utilNeta >= 0 ? "pos" : "neg"} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card p-5 lg:col-span-2">
-          <h2 className="font-medium mb-1">De los ingresos a la utilidad</h2>
-          <WaterfallChart data={cascadaChart(etq)} />
+          <h2 className="font-medium mb-1">De los ingresos a la utilidad <span className="text-xs text-muted font-normal">({tag})</span></h2>
+          <WaterfallChart data={cascadaChart(etq, modo)} />
         </div>
         <div className="space-y-4">
           <KpiMini label="Activos totales" value={fmtCOP(k.activo)} yoy={k.activoYoY} />
@@ -114,6 +119,7 @@ function Situacion({ etq }: { etq: string }) {
   const k = kpisResumen(etq);
   const ec = esfCharts(etq);
   const a = esfAnalisis(etq);
+  const pat = patrimonioComposicion(etq);
   const respaldo = fact(etq, "12") + fact(etq, "11");
   const oblig = fact(etq, "2640");
   const cuadra = Math.abs(k.activo - (k.pasivo + k.patrim)) < 1;
@@ -135,20 +141,23 @@ function Situacion({ etq }: { etq: string }) {
         </div>
       </div>
 
-      <div className="card p-5">
-        <h2 className="font-medium mb-1">Respaldo frente a obligaciones</h2>
-        <p className="text-sm text-muted mb-4">Lo que el fondo tiene invertido contra lo que debe garantizar.</p>
-        <HBars data={[{ name: "Respaldo (inversiones + efectivo)", value: respaldo }, { name: "Obligaciones de garantías", value: oblig }]} />
+      {/* Las participaciones que la Junta siempre pregunta: protagonistas y a lo ancho. */}
+      <Card titulo="Composición del activo" sub="Participación sobre el total de activos">
+        <PctBars grueso data={pctData(a.activo)} />
+      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <Card titulo="Composición del pasivo" sub="Participación sobre el total de activos">
+          <PctBars grueso data={pctData(a.pasivo)} />
+        </Card>
+        <Card titulo="Composición del patrimonio" sub="Incluye utilidad estimada — suma el patrimonio total">
+          <PctBars grueso data={pat.partes.map((x) => ({ name: x.name, pct: +((x.value / (pat.total || 1)) * 100).toFixed(1), valor: x.value }))} />
+          <p className="text-xs text-muted mt-1">Patrimonio total: <b className="tnum text-fg">{fmtCOP(pat.total)}</b> — con este total la ecuación A = P + K cuadra.</p>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <Card titulo="Composición del activo" sub="Ordenado por peso">
-          <PctBars data={pctData(a.activo)} />
-        </Card>
-        <Card titulo="Composición del pasivo" sub="Ordenado por peso">
-          <PctBars data={pctData(a.pasivo)} />
-        </Card>
-      </div>
+      <Card titulo="Respaldo frente a obligaciones" sub="Lo invertido contra lo que se debe garantizar">
+        <HBars grueso data={[{ name: "Respaldo (inversiones + efectivo)", value: respaldo }, { name: "Obligaciones de garantías", value: oblig }]} />
+      </Card>
 
       <Card titulo="Tendencia Activo vs Pasivo" sub="12 meses">
         <DualLine data={ec.trend} />
@@ -189,8 +198,8 @@ function Resultados({ etq }: { etq: string }) {
             la clase 51. Incluirlo taparía todo lo demás bajo una barra llamada &ldquo;Otros gastos&rdquo;.
           </p>
         </Card>
-        <Card titulo="Ingresos vs Gastos" sub="12 meses">
-          <TrendChart data={d.trend} />
+        <Card titulo="Ingresos vs Gastos" sub="elige años y meses">
+          <TrendExplorer data={trendCompleto()} />
         </Card>
       </div>
 
@@ -247,74 +256,101 @@ function Indicadores({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
   if (!meses.length) return <Vacio texto="No hay datos para ese año." />;
   const cats = indicadoresMatriz(meses);
   const labels = meses.map((m) => `${["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m.mes]} ${String(m.anio).slice(2)}`);
-  const conNota = cats.flatMap((c) => c.filas).filter((f) => f.nota);
-
-  const fmtVal = (v: number, formato: string) =>
-    formato === "pct" ? fmtPctCont(v) : formato === "veces" ? (v ? v.toFixed(2) + "x" : "—") : fmtCont(v);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-5 flex-wrap">
         <AnioSelector current={anio} />
         {!anio && <MesesSelector current={nMeses} />}
+        <span className="flex items-center gap-3 text-xs text-muted">
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-pos/20 border border-pos/50" /> bien</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-gold/20 border border-gold/60" /> alerta</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-neg/15 border border-neg/50" /> mal</span>
+          <span>· pasa el mouse por un indicador para ver qué es y cómo leerlo</span>
+        </span>
       </div>
 
       <div className="card overflow-auto">
         <table className="text-sm border-collapse w-max min-w-full">
           <thead>
             <tr className="text-[11px] uppercase tracking-wider text-muted">
-              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Indicador</th>
+              <th className="sticky left-0 z-20 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Indicador</th>
               {labels.map((l) => (
                 <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[104px]">{l}</th>
               ))}
+              <th className="text-right font-semibold px-4 py-2.5 border-b border-line min-w-[128px] bg-card2 border-l-2 border-l-line">Acumulado</th>
             </tr>
           </thead>
           <tbody>
             {cats.map((cat) => (
-              <CatRows key={cat.id} cat={cat} nCols={labels.length} fmtVal={fmtVal} />
+              <CatRows key={cat.id} cat={cat} nCols={labels.length} />
             ))}
           </tbody>
         </table>
       </div>
-
-      {conNota.length > 0 && (
-        <div className="card p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium text-fg"><AlertTriangle size={14} className="text-gold" /> Léelos con contexto</div>
-          {conNota.map((f) => (
-            <p key={f.id} className="text-xs text-muted"><b className="text-fg">{f.nombre}:</b> {f.nota}</p>
-          ))}
-        </div>
-      )}
+      <p className="text-xs text-muted">
+        Los indicadores de ingresos muestran el valor de cada mes y su acumulado del año; los de saldo y las razones
+        muestran su valor al cierre de cada mes (la última columna es el cierre del último mes visible).
+      </p>
     </div>
   );
 }
 
-function CatRows({ cat, nCols, fmtVal }: {
-  cat: { id: string; nombre: string; desc: string; filas: { id: string; nombre: string; formato: string; nota?: string; formula: string; vals: number[] }[] };
+type FilaInd = {
+  id: string; nombre: string; formato: string; formula: string; explica: string; rango: string;
+  nota?: string; vals: number[]; acum: number; niveles: Nivel[] | null; nivelAcum: Nivel | null;
+};
+
+const NIVEL_BG: Record<Nivel, string> = {
+  bien: "bg-pos/10 text-pos",
+  regular: "bg-gold/15 text-[#8A6A1D]",
+  mal: "bg-neg/10 text-neg",
+};
+
+function fmtIndVal(v: number, formato: string) {
+  return formato === "pct" ? fmtPctCont(v) : formato === "veces" ? (v ? v.toFixed(2) + "x" : "—") : fmtCont(v);
+}
+
+function CatRows({ cat, nCols }: {
+  cat: { id: string; nombre: string; desc: string; filas: FilaInd[] };
   nCols: number;
-  fmtVal: (v: number, formato: string) => string;
 }) {
   return (
     <>
       <tr>
-        <td colSpan={nCols + 1} className="px-5 py-2.5 bg-card2 border-y border-line">
+        <td colSpan={nCols + 2} className="px-5 py-2.5 bg-card2 border-y border-line">
           <span className="font-semibold">{cat.nombre}</span>
           <span className="text-xs text-muted ml-3">{cat.desc}</span>
         </td>
       </tr>
       {cat.filas.map((f) => (
         <tr key={f.id} className="hover:bg-card2/60">
-          <td className="sticky left-0 z-10 bg-card px-5 py-2 border-b border-line-soft" title={f.formula}>
-            <span className="flex items-center gap-1.5 pl-3">
-              <span className="text-muted">{f.nombre}</span>
+          <td className="sticky left-0 z-10 bg-card px-5 py-2 border-b border-line-soft">
+            <span className="group relative flex items-center gap-1.5 pl-3 cursor-help">
+              <span className="text-fg font-medium text-[13px]">{f.nombre}</span>
               {f.nota && <AlertTriangle size={12} className="text-gold shrink-0" />}
+              {/* Tarjeta emergente: qué es, cómo se calcula y cómo leerlo */}
+              <span className="pointer-events-none invisible group-hover:visible absolute left-2 top-full z-50 mt-1 w-[380px] rounded-xl border border-line bg-panel shadow-2xl p-4 text-left whitespace-normal">
+                <span className="block text-sm font-semibold text-fg mb-1.5">{f.nombre}</span>
+                <span className="block text-xs text-muted leading-relaxed mb-2">{f.explica}</span>
+                <span className="block text-[11px] text-faint mb-2"><b className="text-muted">Fórmula:</b> {f.formula}</span>
+                <span className="block text-[11px] leading-relaxed rounded-lg bg-card2 p-2"><b>Cómo leerlo:</b> {f.rango}</span>
+                {f.nota && <span className="mt-2 block text-[11px] leading-relaxed text-[#8A6A1D] border-l-2 border-gold/50 pl-2">{f.nota}</span>}
+              </span>
             </span>
           </td>
           {f.vals.map((v, i) => (
-            <td key={i} className={`text-right tnum tabular-nums px-3 py-2 border-b border-line-soft whitespace-nowrap ${f.nota ? "text-muted" : "text-fg"}`}>
-              {fmtVal(v, f.formato)}
+            <td key={i} className="text-right px-1.5 py-1 border-b border-line-soft whitespace-nowrap">
+              <span className={`inline-block w-full rounded-md px-1.5 py-1 tnum tabular-nums ${f.niveles ? NIVEL_BG[f.niveles[i]] : "text-fg"}`}>
+                {fmtIndVal(v, f.formato)}
+              </span>
             </td>
           ))}
+          <td className="text-right px-2.5 py-1 border-b border-line-soft whitespace-nowrap bg-card2 border-l-2 border-l-line">
+            <span className={`inline-block w-full rounded-md px-1.5 py-1 tnum tabular-nums font-semibold ${f.nivelAcum ? NIVEL_BG[f.nivelAcum] : "text-fg"}`}>
+              {fmtIndVal(f.acum, f.formato)}
+            </span>
+          </td>
         </tr>
       ))}
     </>
@@ -369,7 +405,7 @@ function Tendencias({ etq }: { etq: string }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card titulo="Activo vs Pasivo" sub="12 meses"><DualLine data={ec.trend} /></Card>
-        <Card titulo="Ingresos vs Gastos" sub="12 meses"><TrendChart data={d.trend} /></Card>
+        <Card titulo="Ingresos vs Gastos" sub="elige años y meses"><TrendExplorer data={trendCompleto()} /></Card>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card titulo="Resultado mensual" sub="12 meses"><ResultBars data={d.trend} /></Card>
@@ -439,6 +475,19 @@ function BarraMezcla({ pctCob, pctInv, cob, inv }: { pctCob: number; pctInv: num
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /><span className="text-muted">Ingresos por cobertura de créditos (netos)</span> <span className="tnum text-fg">{fmtCompact(cob)}</span></span>
         <span className="flex items-center gap-1.5"><span className="tnum text-fg">{fmtCompact(inv)}</span> <span className="text-muted">Ingresos por inversiones</span><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#C99A2E" }} /></span>
       </div>
+    </div>
+  );
+}
+function ModoToggle({ modo }: { modo: "acum" | "mes" }) {
+  const chip = (active: boolean) =>
+    `px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+      active ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"
+    }`;
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-medium text-fg mr-1">Ver:</span>
+      <Link href="?sec=resumen" className={chip(modo === "acum")}>Acumulado del año</Link>
+      <Link href="?sec=resumen&modo=mes" className={chip(modo === "mes")}>Mes seleccionado</Link>
     </div>
   );
 }

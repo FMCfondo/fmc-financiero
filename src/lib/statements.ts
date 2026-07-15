@@ -31,10 +31,14 @@ function nodo(codigo: string, etq: string, depth: number, conYtd: boolean): Line
 //   (=) Impuesto de renta por pagar (saldo con la DIAN, informativo)
 // Los parámetros viven en la tabla `parametro` y se editan en /impuesto:
 // cambiarlos recalcula TODA la app porque todos los estados llaman aquí.
+// El GMF (4×1000) vive en la cuenta 53152001; el 50% no es deducible y se suma
+// a la renta líquida. Se calcula AUTOMÁTICO sobre el acumulado al mes seleccionado.
+export const CTA_GMF = "53152001";
+
 export function provisionRenta(etq: string) {
   const ingYTD = D.ytd(etq, "4"), gasYTD = D.ytd(etq, "5");
   const utilidad = ingYTD - gasYTD;
-  const gmf = D.paramNum("prov_gmf", 0);
+  const gmf = D.ytd(etq, CTA_GMF) * 0.5;
   const otrosND = D.paramNum("prov_otros_nd", 0);
   const rentaLiquida = utilidad + gmf + otrosND;
   const tasa = D.paramNum("tasa_imporenta", 0.35);
@@ -144,16 +148,20 @@ export function operacion(etq: string) {
 }
 
 // Cascada (waterfall) lista para el gráfico: base transparente + valor visible.
-export function cascadaChart(etq: string) {
-  const o = operacion(etq);
+// Estructura con ANCLAS de subtotal (vuelven al eje cero y re-anclan la lectura):
+// sigue el modelo de los dos motores, no el orden contable crudo.
+export function cascadaChart(etq: string, modo: "acum" | "mes" = "acum") {
+  const c = contribucionPeriodo(etq, modo);
   const pasos: { label: string; tipo: "inc" | "dec" | "total"; valor: number }[] = [
-    { label: "Ingresos cobertura", tipo: "inc", valor: o.ingCob },
-    { label: "(−) Costo cobertura", tipo: "dec", valor: -o.costo },
-    { label: "Result. bruto cobertura", tipo: "total", valor: o.brutoCob },
-    { label: "(+) Otros ingresos", tipo: "inc", valor: o.otrosIng },
-    { label: "(−) Gastos admón.", tipo: "dec", valor: -o.gastosAdmin },
-    { label: "(−) Impuesto renta", tipo: "dec", valor: -o.impuesto },
-    { label: "Utilidad neta", tipo: "total", valor: o.utilNeta },
+    { label: "Ingresos por cobertura", tipo: "inc", valor: c.ingCob },
+    { label: "(−) Costo de cobertura", tipo: "dec", valor: -c.costoCob },
+    { label: "= Aporte de cobertura", tipo: "total", valor: c.contribCob },
+    { label: "(+) Ingresos por inversiones", tipo: "inc", valor: c.contribInv },
+    { label: "(+) Otros ingresos netos", tipo: "inc", valor: c.otrosNetos },
+    { label: "(−) Gastos de administración", tipo: "dec", valor: -c.gastosAdmin },
+    { label: "= Utilidad antes de impuestos", tipo: "total", valor: c.utilAntesImp },
+    { label: "(−) Impuesto de renta", tipo: "dec", valor: -c.impuesto },
+    { label: "= Utilidad neta", tipo: "total", valor: c.utilNeta },
   ];
   let run = 0;
   return pasos.map((s) => {
@@ -252,6 +260,107 @@ export function gastosAdminDetalle(etq: string) {
     .map((g) => ({ codigo: g.codigo, name: g.nombre, value: D.ytd(etq, g.codigo) }))
     .filter((x) => x.value > 0)
     .sort((a, b) => b.value - a.value);
+}
+
+/** Contribución en modo "acum" (año corrido) o "mes" (solo el mes seleccionado),
+ *  para el toggle del Resumen. En modo mes el impuesto es la estimación proporcional. */
+export function contribucionPeriodo(etq: string, modo: "acum" | "mes") {
+  if (modo === "acum") return contribucion(etq);
+  const v = (c: string) => D.fact(etq, c);
+  const ingCob = v(ING_COBERTURA), costoCob = v(COSTO_COBERTURA);
+  const contribCob = ingCob - costoCob;
+  const contribInv = v(ING_FINANCIERO);
+  const contribTotal = contribCob + contribInv;
+  const gastosAdmin = v("51") - costoCob;
+  const utilAntesImp = v("4") - v("5");
+  const otrosNetos = utilAntesImp - (contribTotal - gastosAdmin);
+  const tasa = D.paramNum("tasa_imporenta", 0.35);
+  const impuesto = Math.max(utilAntesImp, 0) * tasa;
+  return {
+    ingCob, costoCob, contribCob, contribInv, contribTotal, gastosAdmin, otrosNetos,
+    utilAntesImp, impuesto, utilNeta: utilAntesImp - impuesto,
+    pctCob: contribTotal ? contribCob / contribTotal : 0,
+    pctInv: contribTotal ? contribInv / contribTotal : 0,
+  };
+}
+
+/** Serie COMPLETA de ingresos/gastos por mes, para el explorador con
+ *  multi-selección de años y meses (solo ese gráfico). */
+export function trendCompleto() {
+  return D.periodos.map((q) => ({
+    anio: q.anio, mesNum: q.mes,
+    mes: `${mesCorto[q.mes]} ${String(q.anio).slice(2)}`,
+    ingresos: D.fact(q.etiqueta, "4"),
+    gastos: D.fact(q.etiqueta, "5"),
+  }));
+}
+
+/** Composición del patrimonio TOTAL (incluye la utilidad estimada del ejercicio),
+ *  para que la participación sume el patrimonio con el que cuadra la ecuación. */
+export function patrimonioComposicion(etq: string) {
+  const pr = provisionRenta(etq);
+  const partes = D.children("3")
+    .map((g) => ({ name: g.nombre, value: D.fact(etq, g.codigo) }))
+    .filter((x) => Math.abs(x.value) > 0.5);
+  partes.push({ name: "Utilidad del ejercicio (estimada)", value: pr.neto });
+  const total = partes.reduce((s, x) => s + x.value, 0);
+  return { partes: partes.sort((a, b) => Math.abs(b.value) - Math.abs(a.value)), total };
+}
+
+/** Análisis vertical/horizontal multi-mes, con la misma vista de árbol × meses.
+ *  Vertical: participación % de cada cuenta sobre la base DE ESE MES.
+ *  Horizontal: variación % de cada mes contra el MISMO MES del año anterior
+ *  (null cuando no existe el comparativo → se imprime raya).                 */
+export type NodoPct = {
+  codigo: string; nombre: string; depth: number;
+  vals: (number | null)[]; hijos: NodoPct[];
+};
+
+function nodoPct(
+  codigo: string, meses: string[], depth: number,
+  calc: (etq: string, codigo: string) => number | null,
+): NodoPct | null {
+  const c = D.cuentaByCodigo.get(codigo);
+  if (!c) return null;
+  const hijos = D.children(codigo)
+    .map((ch) => nodoPct(ch.codigo, meses, depth + 1, calc))
+    .filter((x): x is NodoPct => x !== null);
+  const vals = meses.map((m) => calc(m, codigo));
+  if (vals.every((v) => v === null || v === 0) && hijos.length === 0) return null;
+  return { codigo, nombre: c.nombre, depth, vals, hijos };
+}
+
+export function analisisMatriz(
+  estado: "esf" | "er", modo: "vertical" | "horizontal",
+  meses: { etiqueta: string; anio: number; mes: number }[],
+) {
+  const etqs = meses.map((m) => m.etiqueta);
+  const flujo = estado === "er";
+  const val = (e: string, c: string) => (flujo ? D.fact(e, c) : D.fact(e, c)); // ambos: valor del mes
+  const calc: (e: string, c: string) => number | null =
+    modo === "vertical"
+      ? (e, c) => {
+          const base = flujo ? D.fact(e, "4") : D.fact(e, "1");
+          return base ? (val(e, c) / base) * 100 : null;
+        }
+      : (e, c) => {
+          const py = D.sameMonthPrevYear(e)?.etiqueta;
+          if (!py) return null;
+          const prev = val(py, c);
+          if (!prev) return null;
+          return ((val(e, c) - prev) / Math.abs(prev)) * 100;
+        };
+  const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
+  const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
+  return {
+    labels: meses.map(mesLabel),
+    secciones: raices.map((r) => ({
+      titulo: titulos[r],
+      arbol: nodoPct(r, etqs, -1, calc)?.hijos ?? [],
+      totalVals: etqs.map((m) => calc(m, r)),
+    })),
+    base: modo === "vertical" ? (flujo ? "los ingresos del mes" : "el total de activos del mes") : "el mismo mes del año anterior",
+  };
 }
 
 /** Serie mensual de la contribución de cada motor, para ver cómo se mueve la mezcla. */
