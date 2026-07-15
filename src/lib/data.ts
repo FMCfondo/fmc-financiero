@@ -94,11 +94,16 @@ async function cargarInversiones(sql: any): Promise<void> {
     const inv = await sql`select id, tipo, entidad, cuentas, tasa_ea, fecha_apertura, fecha_vencimiento,
                                  calificacion, renovar, observaciones, activa
                             from inversion order by id`;
+    // Las fechas pueden llegar como Date (driver serverless) o como texto ISO
+    // (driver pg local). String(Date) da "Wed Nov 21..." y recortarlo pierde el
+    // año → JavaScript lo leía como 2001 y salían "vencidos hace 9.000 días".
+    const fecha = (v: unknown): string | null =>
+      !v ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
     inversiones = (inv as any[]).map((r) => ({
       id: r.id, tipo: r.tipo, entidad: r.entidad, cuentas: r.cuentas ?? [],
       tasaEa: Number(r.tasa_ea) || 0,
-      fechaApertura: r.fecha_apertura ? String(r.fecha_apertura).slice(0, 10) : null,
-      fechaVencimiento: r.fecha_vencimiento ? String(r.fecha_vencimiento).slice(0, 10) : null,
+      fechaApertura: fecha(r.fecha_apertura),
+      fechaVencimiento: fecha(r.fecha_vencimiento),
       calificacion: r.calificacion ?? null, renovar: r.renovar ?? null,
       observaciones: r.observaciones ?? null, activa: !!r.activa,
     }));

@@ -284,6 +284,40 @@ export function contribucionPeriodo(etq: string, modo: "acum" | "mes") {
   };
 }
 
+// ---------- Panel de Resultados del Dashboard ----------
+// Cuentas de gastos que no son plata (para el EBITDA): depreciaciones y amortizaciones.
+const CTA_DEPRECIACIONES = "5160";
+const CTA_AMORTIZACIONES = "5165";
+
+/** KPIs del panel de Resultados, en modo acumulado del año o solo el mes. */
+export function resultadosPanel(etq: string, modo: "acum" | "mes") {
+  const v = (c: string) => (modo === "acum" ? D.ytd(etq, c) : D.fact(etq, c));
+  const ingTotal = v("4"), gasTotal = v("5");
+  const utilAntes = ingTotal - gasTotal;
+  const depAmort = v(CTA_DEPRECIACIONES) + v(CTA_AMORTIZACIONES);
+  const ebitda = utilAntes + depAmort;
+  const c = contribucionPeriodo(etq, modo);
+  return {
+    ingCob: c.ingCob, contribCob: c.contribCob, contribInv: c.contribInv,
+    gastosAdmin: c.gastosAdmin, ingTotal, utilAntes,
+    ebitda, margenEbitda: ingTotal ? ebitda / ingTotal : 0,
+    utilNeta: c.utilNeta, margenNeto: ingTotal ? c.utilNeta / ingTotal : 0,
+  };
+}
+
+/** Serie mensual de EBITDA y utilidad neta (12 meses), para los gráficos del panel. */
+export function serieResultados(etq: string, n = 12) {
+  const tasa = D.paramNum("tasa_imporenta", 0.35);
+  return D.ultimosPeriodos(etq, n).map((q) => {
+    const res = D.fact(q.etiqueta, "4") - D.fact(q.etiqueta, "5");
+    return {
+      mes: mesLabel(q),
+      ebitda: res + D.fact(q.etiqueta, CTA_DEPRECIACIONES) + D.fact(q.etiqueta, CTA_AMORTIZACIONES),
+      utilNeta: res > 0 ? res * (1 - tasa) : res,
+    };
+  });
+}
+
 /** Serie COMPLETA de ingresos/gastos por mes, para el explorador con
  *  multi-selección de años y meses (solo ese gráfico). */
 export function trendCompleto() {

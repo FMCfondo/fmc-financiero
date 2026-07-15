@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Gauge, Landmark, TrendingUp, Droplets, Calculator, LineChart } from "lucide-react";
+import { Gauge, Landmark, TrendingUp, Calculator, LineChart } from "lucide-react";
 
+// El Flujo de Efectivo salió del Dashboard (decisión del analista):
+// vive solo en Estados Financieros, donde tiene su detalle completo.
 export const SECCIONES = [
   { id: "resumen", label: "Resumen", icon: Gauge },
   { id: "situacion", label: "Situación Financiera", icon: Landmark },
   { id: "resultados", label: "Resultados", icon: TrendingUp },
-  { id: "flujo", label: "Flujo de Efectivo", icon: Droplets },
   { id: "indicadores", label: "Indicadores", icon: Calculator },
   { id: "tendencias", label: "Tendencias", icon: LineChart },
 ] as const;

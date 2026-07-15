@@ -1,6 +1,6 @@
 import {
   dashboard, cascadaChart, kpisResumen, esfCharts, contribucion, contribucionPeriodo, contribucionTrend,
-  gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, provisionRenta, trendCompleto,
+  gastosAdminDetalle, esfAnalisis, erAnalisis, provisionRenta, trendCompleto, resultadosPanel, serieResultados,
   patrimonioComposicion, type LineaAnalisis,
 } from "@/lib/statements";
 import { indicadoresMatriz } from "@/lib/indicadores";
@@ -10,7 +10,7 @@ import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCompact, fmtPct, fmtMillones, fmtCont, fmtPctCont } from "@/lib/format";
 import {
   TrendChart, ResultBars, WaterfallChart, DualLine, HBars, PctBars, VarBars,
-  Sparkline, ContribBars,
+  Sparkline, ContribBars, MesBars,
 } from "@/components/Charts";
 import TrendExplorer from "@/components/TrendExplorer";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
@@ -34,8 +34,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <p className="text-sm text-muted">{etqNombre(etq)} · cifras en pesos colombianos</p>
       {current === "resumen" && <Resumen etq={etq} modo={modo === "mes" ? "mes" : "acum"} />}
       {current === "situacion" && <Situacion etq={etq} />}
-      {current === "resultados" && <Resultados etq={etq} />}
-      {current === "flujo" && <Flujo etq={etq} />}
+      {current === "resultados" && <Resultados etq={etq} modo={modo === "mes" ? "mes" : "acum"} />}
       {current === "indicadores" && <Indicadores etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "tendencias" && <Tendencias etq={etq} />}
     </div>
@@ -168,86 +167,61 @@ function Situacion({ etq }: { etq: string }) {
   );
 }
 
-/* ================= RESULTADOS ================= */
-function Resultados({ etq }: { etq: string }) {
-  const c = contribucion(etq);
-  const d = dashboard(etq);
+/* ================= RESULTADOS — el corazón del análisis ================= */
+// Rediseño (revisión del analista): KPIs con EBITDA y utilidad neta, cascada,
+// las series mensuales de EBITDA y utilidad neta, y toggle acumulado/mes.
+function Resultados({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
+  const r = resultadosPanel(etq, modo);
+  const serie = serieResultados(etq);
   const gastos = gastosAdminDetalle(etq);
   const a = erAnalisis(etq);
+  const tag = modo === "mes" ? "del mes" : "acumulado del año";
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Cifra label="Ingresos por cobertura de créditos" value={fmtCOP(c.ingCob)} sub={`aporte neto tras costo: ${fmtCompact(c.contribCob)}`} />
-        <Cifra label="Ingresos por inversiones" value={fmtCOP(c.contribInv)} sub={`${fmtPct(c.pctInv)} de la contribución`} />
-        <Cifra label="Gastos de administración" value={fmtCOP(c.gastosAdmin)} />
-        <Cifra label="Utilidad neta (año)" value={fmtCOP(c.utilNeta)} tone={c.utilNeta >= 0 ? "pos" : "neg"} />
+      <ModoToggle modo={modo} sec="resultados" />
+
+      {/* 1. Las cinco cifras que cuentan la historia */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <Cifra label={`Ingresos por cobertura (${tag})`} value={fmtCOP(r.ingCob)} sub={`aporte neto tras costo: ${fmtCompact(r.contribCob)}`} />
+        <Cifra label={`Ingresos por inversiones (${tag})`} value={fmtCOP(r.contribInv)} />
+        <Cifra label={`EBITDA (${tag})`} value={fmtCOP(r.ebitda)} sub={`margen EBITDA: ${fmtPct(r.margenEbitda)}`} tone={r.ebitda >= 0 ? "pos" : "neg"} />
+        <Cifra label={`Utilidad neta (${tag})`} value={fmtCOP(r.utilNeta)} sub={`margen neto: ${fmtPct(r.margenNeto)}`} tone={r.utilNeta >= 0 ? "pos" : "neg"} />
+        <Cifra label={`Gastos de administración (${tag})`} value={fmtCOP(r.gastosAdmin)} />
       </div>
 
-      <Card titulo="De los ingresos a la utilidad" sub="Acumulado del año">
-        <WaterfallChart data={cascadaChart(etq)} />
+      {/* 2. De los ingresos a la utilidad */}
+      <Card titulo="De los ingresos a la utilidad" sub={tag}>
+        <WaterfallChart data={cascadaChart(etq, modo)} />
       </Card>
 
+      {/* 3. EBITDA y utilidad neta, mes a mes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card titulo="EBITDA mensual" sub="utilidad + depreciaciones y amortizaciones · 12 meses">
+          <MesBars data={serie.map((x) => ({ mes: x.mes, valor: x.ebitda }))} nombre="EBITDA del mes" />
+        </Card>
+        <Card titulo="Utilidad neta mensual" sub="después de la provisión de renta · 12 meses">
+          <MesBars data={serie.map((x) => ({ mes: x.mes, valor: x.utilNeta }))} nombre="Utilidad neta del mes" color="#1B7A3D" />
+        </Card>
+      </div>
+
+      {/* 4. Las dos vías + explorador */}
       <Card titulo="Las dos vías de ingreso, mes a mes" sub="Cobertura de créditos e inversiones (aporte neto)">
         <ContribBars data={contribucionTrend(etq)} />
       </Card>
+      <Card titulo="Ingresos vs Gastos" sub="elige años y meses">
+        <TrendExplorer data={trendCompleto()} />
+      </Card>
 
+      {/* 5. En qué se va y de dónde viene */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <Card titulo="Gastos de administración por categoría" sub="Sin el costo de cobertura">
+        <Card titulo="Gastos de administración por categoría" sub="acumulado del año, sin el costo de cobertura">
           <HBars data={gastos.slice(0, 8)} />
-          <p className="text-xs text-faint mt-2">
-            El costo de cobertura ({fmtCOP(c.costoCob)}) se excluye a propósito: vive en la cuenta 5199 y es el 84% de
-            la clase 51. Incluirlo taparía todo lo demás bajo una barra llamada &ldquo;Otros gastos&rdquo;.
-          </p>
         </Card>
-        <Card titulo="Ingresos vs Gastos" sub="elige años y meses">
-          <TrendExplorer data={trendCompleto()} />
+        <Card titulo="Participación de los ingresos" sub="% sobre ingresos totales, acumulado">
+          <PctBars data={pctData(a.ingresos)} />
         </Card>
       </div>
-
-      <Card titulo="Participación de los ingresos" sub="% sobre ingresos totales">
-        <PctBars data={pctData(a.ingresos)} />
-      </Card>
-    </div>
-  );
-}
-
-/* ================= FLUJO DE EFECTIVO ================= */
-function Flujo({ etq }: { etq: string }) {
-  const f = flujoEfectivo(etq);
-  if (!f) return <Vacio texto="No hay período anterior para calcular el flujo de este corte." />;
-  const serie = ultimosPeriodos(etq, 12).map((q) => ({ name: q.etiqueta, value: fact(q.etiqueta, "11") }));
-  const cascada = [
-    { name: "Efectivo inicial", base: 0, value: f.dispIni, tipo: "total", signo: 1 },
-    { name: "Operación", base: Math.min(f.dispIni, f.dispIni + f.flujoOp), value: Math.abs(f.flujoOp), tipo: f.flujoOp >= 0 ? "inc" : "dec", signo: Math.sign(f.flujoOp) },
-    { name: "Inversión", base: Math.min(f.dispIni + f.flujoOp, f.dispIni + f.flujoOp + f.flujoInv), value: Math.abs(f.flujoInv), tipo: f.flujoInv >= 0 ? "inc" : "dec", signo: Math.sign(f.flujoInv) },
-    { name: "Financiación", base: Math.min(f.dispIni + f.flujoOp + f.flujoInv, f.dispFin), value: Math.abs(f.flujoFin), tipo: f.flujoFin >= 0 ? "inc" : "dec", signo: Math.sign(f.flujoFin) },
-    { name: "Efectivo final", base: 0, value: f.dispFin, tipo: "total", signo: 1 },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Cifra label="Flujo de operación" value={fmtCOP(f.flujoOp)} tone={f.flujoOp >= 0 ? "pos" : "neg"} />
-        <Cifra label="Flujo de inversión" value={fmtCOP(f.flujoInv)} tone={f.flujoInv >= 0 ? "pos" : "neg"} />
-        <Cifra label="Flujo de financiación" value={fmtCOP(f.flujoFin)} tone={f.flujoFin >= 0 ? "pos" : "neg"} />
-        <Cifra label="Variación neta del efectivo" value={fmtCOP(f.neto)} tone={f.neto >= 0 ? "pos" : "neg"} />
-      </div>
-
-      <Card titulo="De dónde vino y a dónde fue el efectivo" sub="Movimiento del mes">
-        <WaterfallChart data={cascada} />
-      </Card>
-
-      <Card titulo="Evolución del efectivo" sub="12 meses">
-        <HBars data={serie} />
-      </Card>
-
-      {Math.abs(f.ajuste) > 1 && (
-        <Aviso>
-          Hay {fmtCOP(Math.abs(f.ajuste))} de partidas no monetarias y ajustes que se absorben en el flujo de operación
-          para que el estado cuadre exactamente contra el efectivo real.
-        </Aviso>
-      )}
     </div>
   );
 }
@@ -401,7 +375,7 @@ function BarraMezcla({ pctCob, pctInv, cob, inv }: { pctCob: number; pctInv: num
     </div>
   );
 }
-function ModoToggle({ modo }: { modo: "acum" | "mes" }) {
+function ModoToggle({ modo, sec = "resumen" }: { modo: "acum" | "mes"; sec?: string }) {
   const chip = (active: boolean) =>
     `px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
       active ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"
@@ -409,8 +383,8 @@ function ModoToggle({ modo }: { modo: "acum" | "mes" }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-xs font-medium text-fg mr-1">Ver:</span>
-      <Link href="?sec=resumen" className={chip(modo === "acum")}>Acumulado del año</Link>
-      <Link href="?sec=resumen&modo=mes" className={chip(modo === "mes")}>Mes seleccionado</Link>
+      <Link href={`?sec=${sec}`} className={chip(modo === "acum")}>Acumulado del año</Link>
+      <Link href={`?sec=${sec}&modo=mes`} className={chip(modo === "mes")}>Mes seleccionado</Link>
     </div>
   );
 }
