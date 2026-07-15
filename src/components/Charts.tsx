@@ -112,6 +112,31 @@ export function TrendChart({ data, etiquetas = "todas" }: {
   );
 }
 
+/** Barras mensuales de una sola medida (EBITDA, utilidad neta…): positivo en el
+ *  color dado, negativo SIEMPRE en rojo. */
+export function MesBars({ data, nombre, color = C.principal }: {
+  data: { mes: string; valor: number }[]; nombre: string; color?: string;
+}) {
+  return (
+    <div>
+      <Leyenda items={[{ color, label: nombre }, ...(data.some((d) => d.valor < 0) ? [{ color: C.malo, label: `${nombre} negativo` }] : [])]} />
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={data} margin={{ top: 26, right: 8, left: 8, bottom: 4 }}>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
+          <YAxis hide />
+          <Bar dataKey="valor" name={nombre} radius={[4, 4, 0, 0]} barSize={30}>
+            <LabelList dataKey="valor" position="top" {...ETIQ} formatter={lblC} />
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.valor >= 0 ? color : C.malo} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function ResultBars({ data }: { data: { mes: string; resultado: number }[] }) {
   return (
     <div>
