@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { esfMatrizArbol, analisisMatriz } from "@/lib/statements";
-import { ensureLoaded, mesesVista } from "@/lib/data";
+import { ensureLoaded, mesesVista, mesesInteranual, periodo } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
@@ -8,15 +8,18 @@ import AnalisisTabs from "@/components/AnalisisTabs";
 import MesesSelector from "@/components/MesesSelector";
 import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
+import MesUnicoSelector from "@/components/MesUnicoSelector";
 import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
 
-export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string }> }) {
-  const { p, vista, meses, anio } = await searchParams;
+export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; mes?: string; contra?: string; ver?: string }> }) {
+  const { p, vista, meses, anio, mes, contra, ver } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
   const current = vista || "estado";
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   const nAnio = anio ? parseInt(anio) : undefined;
+  const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
+  const mesUnico = mes ? Math.min(Math.max(parseInt(mes) || 1, 1), 12) : periodo(etq).mes;
 
   return (
     <div className="space-y-5">
@@ -26,7 +29,8 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
       </div>
       {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
-      {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} />}
+      {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
+      {current === "interanual" && <VistaInteranual mes={mesUnico} ver={ver || "cifras"} />}
       {(current === "ejec-acum" || current === "ejec-mes") && <Pendiente />}
     </div>
   );
@@ -77,15 +81,22 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
 }
 
 /* ---------- Análisis Vertical / Horizontal: misma vista de árbol × meses ---------- */
-function VistaAnalisis({ modo, etq, nMeses, anio }: { modo: "vertical" | "horizontal"; etq: string; nMeses: number; anio?: number }) {
+function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "vertical" | "horizontal"; etq: string; nMeses: number; anio?: number; contra?: "anio" | "mes" }) {
   const meses = mesesVista(etq, anio, nMeses);
   if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
-  const a = analisisMatriz("esf", modo, meses);
+  const a = analisisMatriz("esf", modo, meses, contra);
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-5 flex-wrap">
         <AnioSelector current={anio} />
         {!anio && <MesesSelector current={nMeses} />}
+        {modo === "horizontal" && (
+          <span className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-fg mr-1">Comparar contra:</span>
+            <Link href="?vista=horizontal" className={`px-2.5 py-1 rounded-md text-xs font-medium border ${contra === "anio" ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"}`}>Mismo mes, año anterior</Link>
+            <Link href="?vista=horizontal&contra=mes" className={`px-2.5 py-1 rounded-md text-xs font-medium border ${contra === "mes" ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"}`}>Mes anterior</Link>
+          </span>
+        )}
       </div>
       <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
       <p className="text-xs text-muted">
@@ -95,6 +106,54 @@ function VistaAnalisis({ modo, etq, nMeses, anio }: { modo: "vertical" | "horizo
       </p>
     </div>
   );
+}
+
+/* ---------- Comparación interanual: el mismo mes en todos los años ---------- */
+function VistaInteranual({ mes, ver }: { mes: number; ver: string }) {
+  const meses = mesesInteranual(mes);
+  if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese mes.</div>;
+  const m = esfMatrizArbol(meses);
+  const chips = [
+    { id: "cifras", label: "Cifras" },
+    { id: "vertical", label: "Análisis Vertical" },
+    { id: "horizontal", label: "Análisis Horizontal" },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-5 flex-wrap">
+        <MesUnicoSelector current={mes} />
+        <span className="flex items-center gap-1.5">
+          {chips.map((c) => (
+            <Link key={c.id} href={`?vista=interanual&mes=${mes}&ver=${c.id}`}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border ${ver === c.id ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"}`}>
+              {c.label}
+            </Link>
+          ))}
+        </span>
+      </div>
+      {ver === "cifras" && (
+        <StatementMatrix
+          labels={m.labels}
+          conAcum={false}
+          secciones={[
+            { titulo: "Activo", tono: "bg-royal", arbol: m.activo, totalLabel: "Total activos", totalVals: m.totalActivo },
+            { titulo: "Pasivo", tono: "bg-gold", arbol: m.pasivo, extra: [{ nombre: "Provisión impuesto de renta (estimada)", vals: m.provision }], totalLabel: "Total pasivos", totalVals: m.totalPasivo },
+            { titulo: "Patrimonio", tono: "bg-pos", arbol: m.patrimonio, extra: [{ nombre: "Utilidad del ejercicio (estimada)", vals: m.utilidad }], totalLabel: "Total patrimonio", totalVals: m.totalPatrim },
+          ]}
+        />
+      )}
+      {ver === "vertical" && <InteranualAnalisis modo="vertical" meses={meses} />}
+      {ver === "horizontal" && <InteranualAnalisis modo="horizontal" meses={meses} />}
+      <p className="text-xs text-muted">
+        Columnas: el mismo mes en cada año de funcionamiento. En el horizontal, cada año se compara contra el mismo mes
+        del año anterior; en el vertical, cada columna es la participación dentro de su propio mes.
+      </p>
+    </div>
+  );
+}
+function InteranualAnalisis({ modo, meses }: { modo: "vertical" | "horizontal"; meses: { etiqueta: string; anio: number; mes: number }[] }) {
+  const a = analisisMatriz("esf", modo, meses, "anio");
+  return <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />;
 }
 
 function Pendiente() {

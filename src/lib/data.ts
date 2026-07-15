@@ -143,6 +143,12 @@ export function mesesVista(etq: string, anio?: number, n = 4): Periodo[] {
   return ultimosPeriodos(etq, n);
 }
 
+/** Comparación interanual: el MISMO mes en todos los años de funcionamiento
+ *  (p. ej. Mayo 2023, 2024, 2025, 2026). */
+export function mesesInteranual(mes: number): Periodo[] {
+  return periodos.filter((p) => p.mes === mes);
+}
+
 // Comparativos: mes anterior y mismo mes del año anterior (variaciones y flujo de efectivo).
 export function prevPeriodo(etq: string): Periodo | null {
   const idx = periodos.findIndex((p) => p.etiqueta === etq);

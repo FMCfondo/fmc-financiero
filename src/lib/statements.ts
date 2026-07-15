@@ -330,13 +330,18 @@ function nodoPct(
   return { codigo, nombre: c.nombre, depth, vals, hijos };
 }
 
+/** `contra` (solo horizontal): "anio" = mismo mes del año anterior;
+ *  "mes" = mes inmediatamente anterior. En la comparación interanual las
+ *  columnas son el mismo mes de años consecutivos, así que "anio" compara
+ *  cada columna contra la anterior de forma natural. */
 export function analisisMatriz(
   estado: "esf" | "er", modo: "vertical" | "horizontal",
   meses: { etiqueta: string; anio: number; mes: number }[],
+  contra: "anio" | "mes" = "anio",
 ) {
   const etqs = meses.map((m) => m.etiqueta);
   const flujo = estado === "er";
-  const val = (e: string, c: string) => (flujo ? D.fact(e, c) : D.fact(e, c)); // ambos: valor del mes
+  const val = (e: string, c: string) => D.fact(e, c); // valor del mes (ER: movimiento; ESF: saldo)
   const calc: (e: string, c: string) => number | null =
     modo === "vertical"
       ? (e, c) => {
@@ -344,9 +349,9 @@ export function analisisMatriz(
           return base ? (val(e, c) / base) * 100 : null;
         }
       : (e, c) => {
-          const py = D.sameMonthPrevYear(e)?.etiqueta;
-          if (!py) return null;
-          const prev = val(py, c);
+          const ref = contra === "anio" ? D.sameMonthPrevYear(e)?.etiqueta : D.prevPeriodo(e)?.etiqueta;
+          if (!ref) return null;
+          const prev = val(ref, c);
           if (!prev) return null;
           return ((val(e, c) - prev) / Math.abs(prev)) * 100;
         };
@@ -359,7 +364,9 @@ export function analisisMatriz(
       arbol: nodoPct(r, etqs, -1, calc)?.hijos ?? [],
       totalVals: etqs.map((m) => calc(m, r)),
     })),
-    base: modo === "vertical" ? (flujo ? "los ingresos del mes" : "el total de activos del mes") : "el mismo mes del año anterior",
+    base: modo === "vertical"
+      ? (flujo ? "los ingresos del mes" : "el total de activos del mes")
+      : (contra === "anio" ? "el mismo mes del año anterior" : "el mes anterior"),
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 
 /* Análisis vertical / horizontal con la misma vista del Estado:
    árbol de cuentas en filas, meses en columnas, valores en %.
@@ -30,7 +30,16 @@ export default function AnalisisMatrix({
   /** true en horizontal: verde crece / rojo cae. En vertical no se colorea. */
   colorear?: boolean;
 }) {
+  const [senal, setSenal] = useState<{ v: number; abierto: boolean }>({ v: 0, abierto: true });
   return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setSenal((s) => ({ v: s.v + 1, abierto: !s.abierto }))}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-xs font-medium text-muted hover:text-fg hover:bg-card2 transition-colors"
+      >
+        {senal.abierto ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+        {senal.abierto ? "Contraer grupos" : "Expandir grupos"}
+      </button>
     <div className="card overflow-auto">
       <table className="text-sm border-collapse w-max min-w-full">
         <thead>
@@ -43,24 +52,25 @@ export default function AnalisisMatrix({
         </thead>
         <tbody>
           {secciones.map((s) => (
-            <Seccion key={s.titulo} s={s} nCols={labels.length} colorear={colorear} />
+            <Seccion key={s.titulo} s={s} nCols={labels.length} colorear={colorear} senal={senal} />
           ))}
         </tbody>
       </table>
     </div>
+    </div>
   );
 }
 
-function Seccion({ s, nCols, colorear }: {
+function Seccion({ s, nCols, colorear, senal }: {
   s: { titulo: string; arbol: NodoPct[]; totalVals: (number | null)[] };
-  nCols: number; colorear?: boolean;
+  nCols: number; colorear?: boolean; senal: { v: number; abierto: boolean };
 }) {
   return (
     <>
       <tr>
         <td colSpan={nCols + 1} className="px-5 py-2.5 bg-card2 border-y border-line font-semibold">{s.titulo}</td>
       </tr>
-      {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} />)}
+      {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} senal={senal} />)}
       <tr className="bg-card2 font-semibold">
         <td className="sticky left-0 z-10 bg-card2 px-5 py-2.5 border-b border-line uppercase text-[13px] tracking-wide">Total {s.titulo.toLowerCase()}</td>
         {s.totalVals.map((v, i) => (
@@ -73,8 +83,12 @@ function Seccion({ s, nCols, colorear }: {
   );
 }
 
-function Fila({ n, colorear }: { n: NodoPct; colorear?: boolean }) {
+function Fila({ n, colorear, senal }: { n: NodoPct; colorear?: boolean; senal: { v: number; abierto: boolean } }) {
   const [open, setOpen] = useState(n.depth < 1);
+  useEffect(() => {
+    if (n.depth === 0) setOpen(senal.abierto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [senal.v]);
   const has = n.hijos.length > 0;
   const esGrupo = n.depth === 0;
   const sangria = Math.min(n.depth, MAX_SANGRIA) * 14;
@@ -103,7 +117,7 @@ function Fila({ n, colorear }: { n: NodoPct; colorear?: boolean }) {
           <td key={i} className={`${CELL} border-b border-line-soft ${esGrupo ? "font-medium" : ""} ${tono(v)}`}>{fmt(v)}</td>
         ))}
       </tr>
-      {open && has && n.hijos.map((h) => <Fila key={h.codigo} n={h} colorear={colorear} />)}
+      {open && has && n.hijos.map((h) => <Fila key={h.codigo} n={h} colorear={colorear} senal={senal} />)}
     </>
   );
 }
