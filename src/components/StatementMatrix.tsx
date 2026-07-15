@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { fmtCont } from "@/lib/format";
 
 /* Estado financiero multi-mes: árbol de cuentas en filas, meses en columnas.
@@ -12,7 +12,7 @@ import { fmtCont } from "@/lib/format";
 
 export type NodoM = {
   codigo: string; nombre: string; depth: number;
-  vals: number[]; acum: number | null; hijos: NodoM[];
+  vals: (number | null)[]; acum: number | null; hijos: NodoM[];
 };
 
 const MAX_SANGRIA = 4;
@@ -21,15 +21,28 @@ const ACUM = "border-l-2 border-line bg-card2/70";
 
 export type FilaPlano = { nombre: string; vals: (number | null)[]; acum?: number | null; tipo?: "linea" | "sub" | "total" };
 
+type Senal = { v: number; abierto: boolean };
+
 export default function StatementMatrix({
   labels, secciones, conAcum, filasFinales = [],
 }: {
   labels: string[];
-  secciones: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: number[]; totalAcum?: number | null }[];
+  secciones: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: (number | null)[]; totalAcum?: number | null }[];
   conAcum: boolean;
   filasFinales?: FilaPlano[];
 }) {
+  // Expandir/contraer TODOS los grupos de 2 dígitos a la vez (el clic manual
+  // por fila sigue funcionando: la señal solo empuja un cambio puntual).
+  const [senal, setSenal] = useState<Senal>({ v: 0, abierto: true });
   return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setSenal((s) => ({ v: s.v + 1, abierto: !s.abierto }))}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-xs font-medium text-muted hover:text-fg hover:bg-card2 transition-colors"
+      >
+        {senal.abierto ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+        {senal.abierto ? "Contraer grupos" : "Expandir grupos"}
+      </button>
     <div className="card overflow-auto">
       <table className="text-sm border-collapse w-max min-w-full">
         <thead>
@@ -43,7 +56,7 @@ export default function StatementMatrix({
         </thead>
         <tbody>
           {secciones.map((s) => (
-            <Seccion key={s.titulo} s={s} conAcum={conAcum} nCols={labels.length} />
+            <Seccion key={s.titulo} s={s} conAcum={conAcum} nCols={labels.length} senal={senal} />
           ))}
           {filasFinales.map((f) => (
             <FilaPlana key={f.nombre} f={f} conAcum={conAcum} />
@@ -51,12 +64,13 @@ export default function StatementMatrix({
         </tbody>
       </table>
     </div>
+    </div>
   );
 }
 
-function Seccion({ s, conAcum, nCols }: {
-  s: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: number[]; totalAcum?: number | null };
-  conAcum: boolean; nCols: number;
+function Seccion({ s, conAcum, nCols, senal }: {
+  s: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: (number | null)[]; totalAcum?: number | null };
+  conAcum: boolean; nCols: number; senal: Senal;
 }) {
   return (
     <>
@@ -68,15 +82,20 @@ function Seccion({ s, conAcum, nCols }: {
           </span>
         </td>
       </tr>
-      {s.arbol.map((n) => <Fila key={n.codigo} n={n} conAcum={conAcum} />)}
+      {s.arbol.map((n) => <Fila key={n.codigo} n={n} conAcum={conAcum} senal={senal} />)}
       {(s.extra ?? []).map((f) => <FilaPlana key={f.nombre} f={f} conAcum={conAcum} italica />)}
       <FilaPlana f={{ nombre: s.totalLabel, vals: s.totalVals, acum: s.totalAcum, tipo: "total" }} conAcum={conAcum} />
     </>
   );
 }
 
-function Fila({ n, conAcum }: { n: NodoM; conAcum: boolean }) {
+function Fila({ n, conAcum, senal }: { n: NodoM; conAcum: boolean; senal: Senal }) {
   const [open, setOpen] = useState(n.depth < 1);
+  // La señal global solo mueve los grupos de primer nivel (los de 2 dígitos).
+  useEffect(() => {
+    if (n.depth === 0) setOpen(senal.abierto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [senal.v]);
   const has = n.hijos.length > 0;
   const esGrupo = n.depth === 0;
   const sangria = Math.min(n.depth, MAX_SANGRIA) * 14;
@@ -100,11 +119,11 @@ function Fila({ n, conAcum }: { n: NodoM; conAcum: boolean }) {
           </button>
         </td>
         {n.vals.map((v, i) => (
-          <td key={i} className={`${CELL} border-b border-line-soft ${esGrupo ? "font-medium" : "text-fg/90"}`}>{fmtCont(v)}</td>
+          <td key={i} className={`${CELL} border-b border-line-soft ${esGrupo ? "font-medium" : "text-fg/90"}`}>{v === null ? "—" : fmtCont(v)}</td>
         ))}
         {conAcum && <td className={`${CELL} border-b border-line-soft font-medium ${ACUM}`}>{fmtCont(n.acum ?? 0)}</td>}
       </tr>
-      {open && has && n.hijos.map((h) => <Fila key={h.codigo} n={h} conAcum={conAcum} />)}
+      {open && has && n.hijos.map((h) => <Fila key={h.codigo} n={h} conAcum={conAcum} senal={senal} />)}
     </>
   );
 }

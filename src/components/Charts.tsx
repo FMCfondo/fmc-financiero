@@ -53,12 +53,44 @@ export function Leyenda({ items }: { items: { color: string; label: string }[] }
   );
 }
 
-export function TrendChart({ data }: { data: { mes: string; ingresos: number; gastos: number }[] }) {
+export type ModoEtiquetas = "todas" | "picos" | "ocultas";
+
+/** Picos y valles notables de una serie (extremos locales + primero y último). */
+function extremos(vals: number[]): Set<number> {
+  const out = new Set<number>();
+  for (let i = 1; i < vals.length - 1; i++) {
+    const a = vals[i - 1], v = vals[i], b = vals[i + 1];
+    if ((v >= a && v >= b && (v > a || v > b)) || (v <= a && v <= b && (v < a || v < b))) out.add(i);
+  }
+  if (vals.length) { out.add(0); out.add(vals.length - 1); }
+  return out;
+}
+
+const lblSerie = (fill: string, dy: number, mostrar: (i: number) => boolean) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function EtiquetaSerie(p: any) {
+    if (p?.index === undefined || !mostrar(p.index) || p?.value === undefined) return null;
+    return (
+      <text x={Number(p.x ?? 0)} y={Number(p.y ?? 0) + dy} textAnchor="middle" fontSize={12} fontWeight={600} fill={fill} style={HALO}>
+        {fmtCompact(Number(p.value))}
+      </text>
+    );
+  };
+
+export function TrendChart({ data, etiquetas = "todas" }: {
+  data: { mes: string; ingresos: number; gastos: number }[];
+  etiquetas?: ModoEtiquetas;
+}) {
+  // "picos": solo máximos y mínimos notables, para que no tapen las líneas.
+  const extIng = extremos(data.map((d) => d.ingresos));
+  const extGas = extremos(data.map((d) => d.gastos));
+  const muestra = (ext: Set<number>) => (i: number) =>
+    etiquetas === "todas" ? true : etiquetas === "picos" ? ext.has(i) : false;
   return (
     <div>
       <Leyenda items={[{ color: C.principal, label: "Ingresos" }, { color: C.acento, label: "Gastos" }]} />
-      <ResponsiveContainer width="100%" height={290}>
-        <AreaChart data={data} margin={{ top: 26, right: 26, left: 8, bottom: 4 }}>
+      <ResponsiveContainer width="100%" height={300}>
+        <AreaChart data={data} margin={{ top: 30, right: 28, left: 10, bottom: 10 }}>
           <defs>
             <linearGradient id="gIng" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={C.principal} stopOpacity={0.18} />
@@ -70,10 +102,10 @@ export function TrendChart({ data }: { data: { mes: string; ingresos: number; ga
           <YAxis hide />
           <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke={C.principal} strokeWidth={2.5} fill="url(#gIng)"
             dot={{ r: 3, fill: C.principal, strokeWidth: 0 }}
-            label={{ position: "top", dy: -6, ...ETIQ, fill: C.principal, formatter: lblC }} />
+            label={lblSerie(C.principal, -12, muestra(extIng))} />
           <Area type="monotone" dataKey="gastos" name="Gastos" stroke={C.acento} strokeWidth={2.5} fill="transparent"
             dot={{ r: 3, fill: C.acento, strokeWidth: 0 }}
-            label={{ position: "bottom", dy: 8, ...ETIQ, fill: "#8A6A1D", formatter: lblC }} />
+            label={lblSerie("#8A6A1D", 20, muestra(extGas))} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -133,7 +165,20 @@ export function Sparkline({ data, color = C.principal, height = 30 }: { data: nu
   );
 }
 
-/** Los dos motores de utilidad, mes a mes. */
+/** Los dos motores de utilidad, mes a mes: total arriba y, dentro de cada
+ *  barra, cuánto puso cada fuente (se omite si el segmento es muy bajito). */
+const lblDentro = (fill: string) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function EtiquetaDentro(p: any) {
+    if (!p?.value || Number(p.height ?? 0) < 16) return null;
+    return (
+      <text x={Number(p.x ?? 0) + Number(p.width ?? 0) / 2} y={Number(p.y ?? 0) + Number(p.height ?? 0) / 2 + 4}
+        textAnchor="middle" fontSize={11} fontWeight={600} fill={fill}>
+        {fmtCompact(Number(p.value))}
+      </text>
+    );
+  };
+
 export function ContribBars({ data }: { data: { mes: string; cobertura: number; inversiones: number }[] }) {
   return (
     <div>
@@ -141,13 +186,16 @@ export function ContribBars({ data }: { data: { mes: string; cobertura: number; 
         { color: C.principal, label: "Ingresos por cobertura de créditos (netos)" },
         { color: C.acento, label: "Ingresos por inversiones" },
       ]} />
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={310}>
         <BarChart data={data} margin={{ top: 28, right: 8, left: 8, bottom: 4 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
           <YAxis hide />
-          <Bar dataKey="cobertura" name="Cobertura de créditos" stackId="c" fill={C.principal} barSize={34} />
-          <Bar dataKey="inversiones" name="Inversiones" stackId="c" fill={C.acento} barSize={34} radius={[3, 3, 0, 0]}>
+          <Bar dataKey="cobertura" name="Cobertura de créditos" stackId="c" fill={C.principal} barSize={38}>
+            <LabelList dataKey="cobertura" content={lblDentro("#ffffff")} />
+          </Bar>
+          <Bar dataKey="inversiones" name="Inversiones" stackId="c" fill={C.acento} barSize={38} radius={[3, 3, 0, 0]}>
+            <LabelList dataKey="inversiones" content={lblDentro("#13286E")} />
             <LabelList {...ETIQ} position="top"
               valueAccessor={(e: any) => (e?.payload ? e.payload.cobertura + e.payload.inversiones : null)}
               formatter={lblC} />
@@ -158,37 +206,41 @@ export function ContribBars({ data }: { data: { mes: string; cobertura: number; 
   );
 }
 
-/** Análisis vertical: participación de cada línea sobre la base, en %. */
+/** Análisis vertical: participación sobre la base — la etiqueta muestra
+ *  PORCENTAJE y CIFRA: "89,6% · 1.490,7 M". */
 export function PctBars({ data, grueso }: { data: { name: string; pct: number; valor: number }[]; grueso?: boolean }) {
   const alto = grueso ? 60 : 44;
+  const d = data.map((x) => ({ ...x, lbl: `${x.pct}% · ${fmtCompact(x.valor)}` }));
   return (
-    <ResponsiveContainer width="100%" height={Math.max(150, data.length * alto)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 72, left: 4, bottom: 4 }}>
+    <ResponsiveContainer width="100%" height={Math.max(150, d.length * alto)}>
+      <BarChart data={d} layout="vertical" margin={{ top: 4, right: 150, left: 4, bottom: 4 }}>
         <XAxis type="number" hide />
         <YAxis type="category" dataKey="name" stroke={AX}
           tick={{ fontSize: grueso ? 13.5 : 12.5, fill: AX, fontWeight: grueso ? 700 : 500 }}
           width={grueso ? 200 : 175} tickLine={false} axisLine={false} />
         <Bar dataKey="pct" name="Participación" radius={[0, 5, 5, 0]} barSize={grueso ? 32 : 22}>
-          <LabelList dataKey="pct" position="right" {...(grueso ? ETIQ_LG : ETIQ)} formatter={lblPct} />
-          {data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+          <LabelList dataKey="lbl" position="right" {...(grueso ? ETIQ_LG : ETIQ)} />
+          {d.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
-/** Análisis horizontal: variación % vs. año anterior (verde/rojo). */
+/** Análisis horizontal: variación % vs. año anterior — la etiqueta muestra
+ *  variación Y cifra actual: "▲ 91,4% · 1.664,2 M". */
 export function VarBars({ data }: { data: { name: string; varPct: number; valor: number }[] }) {
+  const d = data.map((x) => ({ ...x, lbl: `${x.varPct >= 0 ? "▲" : "▼"} ${Math.abs(x.varPct)}% · ${fmtCompact(x.valor)}` }));
   return (
     <div>
       <Leyenda items={[{ color: C.bueno, label: "Crece vs. año anterior" }, { color: C.malo, label: "Cae vs. año anterior" }]} />
-      <ResponsiveContainer width="100%" height={Math.max(150, data.length * 44)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 72, left: 12, bottom: 4 }}>
+      <ResponsiveContainer width="100%" height={Math.max(150, d.length * 44)}>
+        <BarChart data={d} layout="vertical" margin={{ top: 4, right: 160, left: 12, bottom: 4 }}>
           <XAxis type="number" hide />
           <YAxis type="category" dataKey="name" stroke={AX} tick={{ fontSize: 12.5, fill: AX, fontWeight: 500 }} width={175} tickLine={false} axisLine={false} />
           <Bar dataKey="varPct" name="Variación" radius={[0, 5, 5, 0]} barSize={22}>
-            <LabelList dataKey="varPct" {...ETIQ} formatter={lblPct} position="right" />
-            {data.map((d, i) => <Cell key={i} fill={d.varPct >= 0 ? C.bueno : C.malo} />)}
+            <LabelList dataKey="lbl" {...ETIQ} position="right" />
+            {d.map((x, i) => <Cell key={i} fill={x.varPct >= 0 ? C.bueno : C.malo} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

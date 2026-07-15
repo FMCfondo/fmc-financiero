@@ -3,7 +3,7 @@ import {
   gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, provisionRenta, trendCompleto,
   patrimonioComposicion, type LineaAnalisis,
 } from "@/lib/statements";
-import { indicadoresMatriz, type Nivel } from "@/lib/indicadores";
+import { indicadoresMatriz } from "@/lib/indicadores";
 import Link from "next/link";
 import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
@@ -13,6 +13,7 @@ import {
   Sparkline, ContribBars,
 } from "@/components/Charts";
 import TrendExplorer from "@/components/TrendExplorer";
+import IndicadoresTabla from "@/components/IndicadoresTabla";
 import SeccionesTabs from "@/components/SeccionesTabs";
 import MesesSelector from "@/components/MesesSelector";
 import AnioSelector from "@/components/AnioSelector";
@@ -269,91 +270,12 @@ function Indicadores({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
           <span>· pasa el mouse por un indicador para ver qué es y cómo leerlo</span>
         </span>
       </div>
-
-      <div className="card overflow-auto">
-        <table className="text-sm border-collapse w-max min-w-full">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted">
-              <th className="sticky left-0 z-20 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Indicador</th>
-              {labels.map((l) => (
-                <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[104px]">{l}</th>
-              ))}
-              <th className="text-right font-semibold px-4 py-2.5 border-b border-line min-w-[128px] bg-card2 border-l-2 border-l-line">Acumulado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cats.map((cat) => (
-              <CatRows key={cat.id} cat={cat} nCols={labels.length} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <IndicadoresTabla labels={labels} cats={cats} />
       <p className="text-xs text-muted">
         Los indicadores de ingresos muestran el valor de cada mes y su acumulado del año; los de saldo y las razones
         muestran su valor al cierre de cada mes (la última columna es el cierre del último mes visible).
       </p>
     </div>
-  );
-}
-
-type FilaInd = {
-  id: string; nombre: string; formato: string; formula: string; explica: string; rango: string;
-  nota?: string; vals: number[]; acum: number; niveles: Nivel[] | null; nivelAcum: Nivel | null;
-};
-
-const NIVEL_BG: Record<Nivel, string> = {
-  bien: "bg-pos/10 text-pos",
-  regular: "bg-gold/15 text-[#8A6A1D]",
-  mal: "bg-neg/10 text-neg",
-};
-
-function fmtIndVal(v: number, formato: string) {
-  return formato === "pct" ? fmtPctCont(v) : formato === "veces" ? (v ? v.toFixed(2) + "x" : "—") : fmtCont(v);
-}
-
-function CatRows({ cat, nCols }: {
-  cat: { id: string; nombre: string; desc: string; filas: FilaInd[] };
-  nCols: number;
-}) {
-  return (
-    <>
-      <tr>
-        <td colSpan={nCols + 2} className="px-5 py-2.5 bg-card2 border-y border-line">
-          <span className="font-semibold">{cat.nombre}</span>
-          <span className="text-xs text-muted ml-3">{cat.desc}</span>
-        </td>
-      </tr>
-      {cat.filas.map((f) => (
-        <tr key={f.id} className="hover:bg-card2/60">
-          <td className="sticky left-0 z-10 bg-card px-5 py-2 border-b border-line-soft">
-            <span className="group relative flex items-center gap-1.5 pl-3 cursor-help">
-              <span className="text-fg font-medium text-[13px]">{f.nombre}</span>
-              {f.nota && <AlertTriangle size={12} className="text-gold shrink-0" />}
-              {/* Tarjeta emergente: qué es, cómo se calcula y cómo leerlo */}
-              <span className="pointer-events-none invisible group-hover:visible absolute left-2 top-full z-50 mt-1 w-[380px] rounded-xl border border-line bg-panel shadow-2xl p-4 text-left whitespace-normal">
-                <span className="block text-sm font-semibold text-fg mb-1.5">{f.nombre}</span>
-                <span className="block text-xs text-muted leading-relaxed mb-2">{f.explica}</span>
-                <span className="block text-[11px] text-faint mb-2"><b className="text-muted">Fórmula:</b> {f.formula}</span>
-                <span className="block text-[11px] leading-relaxed rounded-lg bg-card2 p-2"><b>Cómo leerlo:</b> {f.rango}</span>
-                {f.nota && <span className="mt-2 block text-[11px] leading-relaxed text-[#8A6A1D] border-l-2 border-gold/50 pl-2">{f.nota}</span>}
-              </span>
-            </span>
-          </td>
-          {f.vals.map((v, i) => (
-            <td key={i} className="text-right px-1.5 py-1 border-b border-line-soft whitespace-nowrap">
-              <span className={`inline-block w-full rounded-md px-1.5 py-1 tnum tabular-nums ${f.niveles ? NIVEL_BG[f.niveles[i]] : "text-fg"}`}>
-                {fmtIndVal(v, f.formato)}
-              </span>
-            </td>
-          ))}
-          <td className="text-right px-2.5 py-1 border-b border-line-soft whitespace-nowrap bg-card2 border-l-2 border-l-line">
-            <span className={`inline-block w-full rounded-md px-1.5 py-1 tnum tabular-nums font-semibold ${f.nivelAcum ? NIVEL_BG[f.nivelAcum] : "text-fg"}`}>
-              {fmtIndVal(f.acum, f.formato)}
-            </span>
-          </td>
-        </tr>
-      ))}
-    </>
   );
 }
 
