@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { TrendChart, Leyenda, C } from "@/components/Charts";
+import { TrendChart, Leyenda, C, type ModoEtiquetas } from "@/components/Charts";
 
 /* Explorador de Ingresos vs Gastos — el único gráfico con su propia
    segmentación (pedido del analista): multi-selección de AÑOS y de MESES.
@@ -14,6 +14,8 @@ export default function TrendExplorer({ data }: { data: PuntoTrend[] }) {
   // Por defecto: el año en curso y el anterior, todos los meses.
   const [selAnios, setSelAnios] = useState<number[]>(anios.slice(-2));
   const [selMeses, setSelMeses] = useState<number[]>(MESES.map((_, i) => i + 1));
+  // Por defecto solo picos y valles: con varios años, etiquetar todo tapa las líneas.
+  const [etiquetas, setEtiquetas] = useState<ModoEtiquetas>("picos");
 
   const toggle = (arr: number[], v: number, set: (x: number[]) => void, min = 1) => {
     const next = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v].sort((a, b) => a - b);
@@ -39,6 +41,12 @@ export default function TrendExplorer({ data }: { data: PuntoTrend[] }) {
         ))}
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs font-medium text-fg mr-1">Etiquetas:</span>
+        {([["todas", "Todas"], ["picos", "Solo picos y valles"], ["ocultas", "Ocultas"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setEtiquetas(id)} className={chip(etiquetas === id)}>{label}</button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-xs font-medium text-fg mr-1">Meses:</span>
         <button
           onClick={() => setSelMeses(selMeses.length === 12 ? [1] : MESES.map((_, i) => i + 1))}
@@ -51,7 +59,7 @@ export default function TrendExplorer({ data }: { data: PuntoTrend[] }) {
         ))}
       </div>
       {filtrado.length ? (
-        <TrendChart data={filtrado} />
+        <TrendChart data={filtrado} etiquetas={etiquetas} />
       ) : (
         <div className="py-10 text-center text-sm text-muted">Sin meses para esa combinación.</div>
       )}

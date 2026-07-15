@@ -370,6 +370,129 @@ export function analisisMatriz(
   };
 }
 
+// ---------- Comparación interanual: un período comparado a través de los años ----------
+// Unidad elegible (mes, bimestre, trimestre, cuatrimestre, semestre, año) e índice
+// dentro del año (T1, S2...). Las columnas son SIEMPRE todos los años de
+// funcionamiento: si un año no tiene datos para ese período se muestra raya (—),
+// y si los tiene incompletos (p. ej. S1 de 2026 con datos hasta mayo) se marca *.
+export type UnidadPeriodo = "mes" | "bimestre" | "trimestre" | "cuatrimestre" | "semestre" | "anio";
+export const TAM_UNIDAD: Record<UnidadPeriodo, number> = { mes: 1, bimestre: 2, trimestre: 3, cuatrimestre: 4, semestre: 6, anio: 12 };
+
+export type ColAnio = {
+  anio: number; label: string; parcial: boolean;
+  meses: { etiqueta: string; anio: number; mes: number }[];
+  finEtq: string | null; // último mes con datos dentro del período (para saldos)
+};
+
+export function interanualCols(unidad: UnidadPeriodo, indice: number): ColAnio[] {
+  const tam = TAM_UNIDAD[unidad];
+  const ini = (indice - 1) * tam + 1;
+  const fin = ini + tam - 1;
+  const anios = [...new Set(D.periodos.map((p) => p.anio))].sort();
+  return anios.map((anio) => {
+    const meses = D.periodos.filter((p) => p.anio === anio && p.mes >= ini && p.mes <= fin);
+    const parcial = meses.length > 0 && meses.length < tam;
+    return {
+      anio, meses, parcial,
+      finEtq: meses.length ? meses[meses.length - 1].etiqueta : null,
+      label: `${anio}${parcial ? "*" : ""}`,
+    };
+  });
+}
+
+type NodoNull = { codigo: string; nombre: string; depth: number; vals: (number | null)[]; acum: number | null; hijos: NodoNull[] };
+
+function nodoCols(codigo: string, cols: ColAnio[], depth: number, valFn: (col: ColAnio, codigo: string) => number | null): NodoNull | null {
+  const c = D.cuentaByCodigo.get(codigo);
+  if (!c) return null;
+  const hijos = D.children(codigo)
+    .map((ch) => nodoCols(ch.codigo, cols, depth + 1, valFn))
+    .filter((x): x is NodoNull => x !== null);
+  const vals = cols.map((col) => valFn(col, codigo));
+  if (vals.every((v) => v === null || v === 0) && hijos.length === 0) return null;
+  return { codigo, nombre: c.nombre, depth, vals, acum: null, hijos };
+}
+
+export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indice: number) {
+  const cols = interanualCols(unidad, indice);
+  const flujo = estado === "er";
+  // ER (flujo): SUMA de los meses del período. ESF (saldo): saldo al CIERRE del período.
+  const val = (col: ColAnio, codigo: string): number | null => {
+    if (!col.meses.length) return null;
+    return flujo
+      ? col.meses.reduce((sum, m) => sum + D.fact(m.etiqueta, codigo), 0)
+      : D.fact(col.finEtq as string, codigo);
+  };
+  const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
+  const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
+
+  const cifras = raices.map((r) => ({
+    titulo: titulos[r],
+    arbol: nodoCols(r, cols, -1, val)?.hijos ?? [],
+    totalVals: cols.map((c) => val(c, r)),
+  }));
+
+  // Horizontal: cada año contra el año anterior CON DATOS del mismo período.
+  const horiz = (codigo: string): (number | null)[] =>
+    cols.map((c, i) => {
+      const v = val(c, codigo);
+      if (v === null) return null;
+      for (let j = i - 1; j >= 0; j--) {
+        const prev = val(cols[j], codigo);
+        if (prev === null) continue;
+        return prev === 0 ? null : ((v - prev) / Math.abs(prev)) * 100;
+      }
+      return null;
+    });
+  // Vertical: participación dentro de su propia columna.
+  const vert = (codigo: string): (number | null)[] =>
+    cols.map((c) => {
+      const v = val(c, codigo);
+      const base = val(c, flujo ? "4" : "1");
+      return v === null || !base ? null : (v / base) * 100;
+    });
+  const analitico = (calc: (codigo: string) => (number | null)[]) =>
+    raices.map((r) => ({
+      titulo: titulos[r],
+      arbol: nodoCols(r, cols, -1, (col, codigo) => calc(codigo)[cols.indexOf(col)])?.hijos ?? [],
+      totalVals: calc(r),
+    }));
+
+  // Utilidad del período por columna (solo flujo).
+  const utilPeriodo: (number | null)[] = flujo
+    ? cols.map((c) => {
+        const ing = val(c, "4"), gas = val(c, "5");
+        return ing === null || gas === null ? null : ing - gas;
+      })
+    : [];
+
+  // Resumen del período (solo flujo): los dos motores + gastos + utilidad.
+  const menos = (x: number | null) => (x === null ? null : -x);
+  const resumen = flujo
+    ? [
+        { nombre: "Ingresos por cobertura de créditos", vals: cols.map((c) => val(c, ING_COBERTURA)) },
+        { nombre: "(−) Costo de cobertura", vals: cols.map((c) => menos(val(c, COSTO_COBERTURA))) },
+        { nombre: "Ingresos por inversiones", vals: cols.map((c) => val(c, ING_FINANCIERO)) },
+        { nombre: "(−) Gastos totales (sin costo de cobertura)", vals: cols.map((c) => { const g = val(c, "5"), cc = val(c, COSTO_COBERTURA); return g === null || cc === null ? null : -(g - cc); }) },
+        { nombre: "(=) Utilidad del período (antes de impuestos)", vals: utilPeriodo },
+      ]
+    : [];
+
+  // Indicadores al cierre de cada período (solo columnas con datos).
+  const periodosCierre = cols
+    .filter((c) => c.finEtq)
+    .map((c) => ({ etiqueta: c.finEtq as string, anio: c.anio, mes: c.meses[c.meses.length - 1].mes }));
+
+  return {
+    labels: cols.map((c) => c.label),
+    finEtqs: cols.map((c) => c.finEtq),
+    algunParcial: cols.some((c) => c.parcial),
+    cifras, horizontal: analitico(horiz), vertical: analitico(vert),
+    utilPeriodo, resumen, periodosCierre,
+    labelsCierre: cols.filter((c) => c.finEtq).map((c) => c.label),
+  };
+}
+
 /** Serie mensual de la contribución de cada motor, para ver cómo se mueve la mezcla. */
 export function contribucionTrend(etq: string, n = 12) {
   return D.ultimosPeriodos(etq, n).map((q) => ({

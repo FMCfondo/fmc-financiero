@@ -12,7 +12,7 @@ import { fmtCont } from "@/lib/format";
 
 export type NodoM = {
   codigo: string; nombre: string; depth: number;
-  vals: number[]; acum: number | null; hijos: NodoM[];
+  vals: (number | null)[]; acum: number | null; hijos: NodoM[];
 };
 
 const MAX_SANGRIA = 4;
@@ -27,7 +27,7 @@ export default function StatementMatrix({
   labels, secciones, conAcum, filasFinales = [],
 }: {
   labels: string[];
-  secciones: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: number[]; totalAcum?: number | null }[];
+  secciones: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: (number | null)[]; totalAcum?: number | null }[];
   conAcum: boolean;
   filasFinales?: FilaPlano[];
 }) {
@@ -69,7 +69,7 @@ export default function StatementMatrix({
 }
 
 function Seccion({ s, conAcum, nCols, senal }: {
-  s: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: number[]; totalAcum?: number | null };
+  s: { titulo: string; tono?: string; arbol: NodoM[]; extra?: FilaPlano[]; totalLabel: string; totalVals: (number | null)[]; totalAcum?: number | null };
   conAcum: boolean; nCols: number; senal: Senal;
 }) {
   return (
@@ -119,7 +119,7 @@ function Fila({ n, conAcum, senal }: { n: NodoM; conAcum: boolean; senal: Senal 
           </button>
         </td>
         {n.vals.map((v, i) => (
-          <td key={i} className={`${CELL} border-b border-line-soft ${esGrupo ? "font-medium" : "text-fg/90"}`}>{fmtCont(v)}</td>
+          <td key={i} className={`${CELL} border-b border-line-soft ${esGrupo ? "font-medium" : "text-fg/90"}`}>{v === null ? "—" : fmtCont(v)}</td>
         ))}
         {conAcum && <td className={`${CELL} border-b border-line-soft font-medium ${ACUM}`}>{fmtCont(n.acum ?? 0)}</td>}
       </tr>
