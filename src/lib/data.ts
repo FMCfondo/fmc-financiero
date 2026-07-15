@@ -25,6 +25,17 @@ export let parametros: Record<string, number> = {};
 export const paramNum = (clave: string, def = 0): number =>
   Number.isFinite(parametros[clave]) ? parametros[clave] : def;
 
+/* Portafolio de inversiones (tabla `inversion`): los datos MANUALES de cada
+   posición (tasa EA, fechas, observaciones) + su mapeo a auxiliares del PUC.
+   El monto NUNCA se guarda: se calcula desde el balance del mes seleccionado. */
+export type Inversion = {
+  id: string; tipo: string; entidad: string; cuentas: string[];
+  tasaEa: number; fechaApertura: string | null; fechaVencimiento: string | null;
+  calificacion: string | null; renovar: string | null; observaciones: string | null;
+  activa: boolean;
+};
+export let inversiones: Inversion[] = [];
+
 let childrenMap = new Map<string, Cuenta[]>();
 let facts: Record<string, Record<string, number>> = {};
 let ready: Promise<void> | null = null;
@@ -73,6 +84,27 @@ async function loadFromNeon() {
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
+  await cargarInversiones(sql);
+}
+
+/* La tabla `inversion` puede no existir aún (migración pendiente): en ese caso
+   el portafolio queda vacío y la página lo indica, sin tumbar el resto de la app. */
+async function cargarInversiones(sql: any): Promise<void> {
+  try {
+    const inv = await sql`select id, tipo, entidad, cuentas, tasa_ea, fecha_apertura, fecha_vencimiento,
+                                 calificacion, renovar, observaciones, activa
+                            from inversion order by id`;
+    inversiones = (inv as any[]).map((r) => ({
+      id: r.id, tipo: r.tipo, entidad: r.entidad, cuentas: r.cuentas ?? [],
+      tasaEa: Number(r.tasa_ea) || 0,
+      fechaApertura: r.fecha_apertura ? String(r.fecha_apertura).slice(0, 10) : null,
+      fechaVencimiento: r.fecha_vencimiento ? String(r.fecha_vencimiento).slice(0, 10) : null,
+      calificacion: r.calificacion ?? null, renovar: r.renovar ?? null,
+      observaciones: r.observaciones ?? null, activa: !!r.activa,
+    }));
+  } catch {
+    inversiones = [];
+  }
 }
 
 /* Los parámetros de la provisión se refrescan en cada request (consulta mínima):
@@ -92,6 +124,7 @@ async function refreshParametros(): Promise<void> {
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
+  await cargarInversiones(sql); // también editables desde la app → misma frescura
   ultimaCargaParams = Date.now();
 }
 
@@ -101,6 +134,23 @@ export function ensureLoaded(): Promise<void> {
     return ready;
   }
   return ready.then(refreshParametros);
+}
+
+/** Crea o actualiza una inversión en Neon (y en memoria). Valida en la acción. */
+export async function guardarInversionDb(inv: Inversion): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  await sql`insert into inversion (id, tipo, entidad, cuentas, tasa_ea, fecha_apertura, fecha_vencimiento, calificacion, renovar, observaciones, activa)
+            values (${inv.id}, ${inv.tipo}, ${inv.entidad}, ${inv.cuentas}, ${inv.tasaEa}, ${inv.fechaApertura}, ${inv.fechaVencimiento},
+                    ${inv.calificacion}, ${inv.renovar}, ${inv.observaciones}, ${inv.activa})
+            on conflict (id) do update set tipo=excluded.tipo, entidad=excluded.entidad, cuentas=excluded.cuentas,
+              tasa_ea=excluded.tasa_ea, fecha_apertura=excluded.fecha_apertura, fecha_vencimiento=excluded.fecha_vencimiento,
+              calificacion=excluded.calificacion, renovar=excluded.renovar, observaciones=excluded.observaciones, activa=excluded.activa`;
+  const idx = inversiones.findIndex((x) => x.id === inv.id);
+  if (idx >= 0) inversiones[idx] = inv;
+  else inversiones = [...inversiones, inv].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /** Guarda parámetros en Neon y actualiza la copia en memoria de esta instancia. */
