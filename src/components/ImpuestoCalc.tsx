@@ -19,15 +19,17 @@ import { Info, Save, CheckCircle2 } from "lucide-react";
 
 type Props = {
   utilidad: number;
-  defaults: { tasaPct: number; gmf: number; otrosND: number; anticipoRet: number; anticipoSig: number };
+  /** 50% del GMF (cuenta 53152001) acumulado al mes seleccionado — automático, no editable. */
+  gmfAuto: number;
+  defaults: { tasaPct: number; otrosND: number; anticipoRet: number; anticipoSig: number };
 };
 
-export default function ImpuestoCalc({ utilidad, defaults }: Props) {
+export default function ImpuestoCalc({ utilidad, gmfAuto, defaults }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [guardado, setGuardado] = useState(false);
   const [tasaPct, setTasaPct] = useState(defaults.tasaPct);
-  const [gmf, setGmf] = useState(defaults.gmf);
+  const gmf = gmfAuto;
   const [otrosND, setOtrosND] = useState(defaults.otrosND);
   const [anticipoRet, setAnticipoRet] = useState(defaults.anticipoRet);
   const [anticipoSig, setAnticipoSig] = useState(defaults.anticipoSig);
@@ -39,7 +41,7 @@ export default function ImpuestoCalc({ utilidad, defaults }: Props) {
 
   const guardar = () =>
     startTransition(async () => {
-      await guardarProvision({ tasaPct, gmf, otrosND, anticipoRet, anticipoSig });
+      await guardarProvision({ tasaPct, otrosND, anticipoRet, anticipoSig });
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
       router.refresh();
@@ -64,7 +66,13 @@ export default function ImpuestoCalc({ utilidad, defaults }: Props) {
             ))}
           </div>
         </div>
-        <Campo label="(+) Gravamen al movimiento financiero 50%" value={gmf} onChange={setGmf} />
+        <div>
+          <label className="text-sm text-muted block mb-1">(+) Gravamen al movimiento financiero 50%</label>
+          <div className="w-full bg-card2/60 border border-dashed border-line rounded-lg px-3 py-2 text-sm tnum text-right text-muted">
+            {fmtCOP(gmf)} <span className="text-[10px] uppercase tracking-wide ml-1">automático</span>
+          </div>
+          <p className="text-[11px] text-faint mt-1">50% de la cuenta 53152001 (GMF), acumulada al mes seleccionado. No se edita: sale de la contabilidad.</p>
+        </div>
         <Campo label="(+) Otros gastos no deducibles" value={otrosND} onChange={setOtrosND} />
         <Campo label="(−) Anticipos (retención en la fuente)" value={anticipoRet} onChange={setAnticipoRet} />
         <Campo label="(+) Anticipo para el siguiente año" value={anticipoSig} onChange={setAnticipoSig} />

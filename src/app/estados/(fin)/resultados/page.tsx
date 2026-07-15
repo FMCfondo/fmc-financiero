@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { erAnalisis, erMatrizArbol } from "@/lib/statements";
+import { erMatrizArbol, analisisMatriz } from "@/lib/statements";
 import { ensureLoaded, mesesVista } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
-import AnalisisTree, { type NodoA } from "@/components/AnalisisTree";
 import MesesSelector from "@/components/MesesSelector";
+import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
 import { Info } from "lucide-react";
 
@@ -25,8 +25,8 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
         <AnalisisTabs current={current} />
       </div>
       {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
-      {current === "vertical" && <VistaVertical etq={etq} />}
-      {current === "horizontal" && <VistaHorizontal etq={etq} />}
+      {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
+      {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {(current === "ejec-acum" || current === "ejec-mes") && <Pendiente />}
     </div>
   );
@@ -65,25 +65,23 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
   );
 }
 
-/* ---------- Vertical / Horizontal ---------- */
-function VistaVertical({ etq }: { etq: string }) {
-  const a = erAnalisis(etq);
+/* ---------- Análisis Vertical / Horizontal: misma vista de árbol × meses ---------- */
+function VistaAnalisis({ modo, etq, nMeses, anio }: { modo: "vertical" | "horizontal"; etq: string; nMeses: number; anio?: number }) {
+  const meses = mesesVista(etq, anio, nMeses);
+  if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
+  const a = analisisMatriz("er", modo, meses);
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted">Cada línea como <b>% de los ingresos totales</b> (base = {fmtCOP(a.ingYTD)}), acumulado del año.</p>
-      <div className="card overflow-hidden"><div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">Ingresos</h2></div><AnalisisTree lineas={a.ingresos as NodoA[]} modo="vertical" /></div>
-      <div className="card overflow-hidden"><div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">Gastos</h2></div><AnalisisTree lineas={a.gastos as NodoA[]} modo="vertical" /></div>
-    </div>
-  );
-}
-function VistaHorizontal({ etq }: { etq: string }) {
-  const a = erAnalisis(etq);
-  if (!a.py) return <div className="card p-6 text-sm text-muted">No hay período del año anterior para comparar.</div>;
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted">Acumulado del año vs. el mismo período del año anterior.</p>
-      <div className="card overflow-hidden"><div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">Ingresos</h2></div><AnalisisTree lineas={a.ingresos as NodoA[]} modo="horizontal" /></div>
-      <div className="card overflow-hidden"><div className="px-4 py-3 border-b border-line"><h2 className="font-semibold">Gastos</h2></div><AnalisisTree lineas={a.gastos as NodoA[]} modo="horizontal" /></div>
+    <div className="space-y-3">
+      <div className="flex items-center gap-5 flex-wrap">
+        <AnioSelector current={anio} />
+        {!anio && <MesesSelector current={nMeses} />}
+      </div>
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
+      <p className="text-xs text-muted">
+        {modo === "vertical"
+          ? `Cada celda es la participación de la cuenta sobre ${a.base}.`
+          : `Cada celda es la variación del mes contra ${a.base}; la raya (—) indica que no existe comparativo.`}
+      </p>
     </div>
   );
 }

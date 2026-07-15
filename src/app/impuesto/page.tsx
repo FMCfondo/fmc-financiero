@@ -19,9 +19,9 @@ export default async function ImpuestoPage({ searchParams }: { searchParams: Pro
       </div>
       <ImpuestoCalc
         utilidad={r.utilidad}
+        gmfAuto={r.gmf}
         defaults={{
           tasaPct: Math.round(r.tasa * 1000) / 10,
-          gmf: paramNum("prov_gmf", 0),
           otrosND: paramNum("prov_otros_nd", 0),
           anticipoRet: paramNum("prov_anticipo_ret", 0),
           anticipoSig: paramNum("prov_anticipo_sig", 0),

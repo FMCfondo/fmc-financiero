@@ -1,17 +1,22 @@
 "use client";
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar, Cell, LabelList,
 } from "recharts";
-import { fmtCompact, fmtNum, fmtPct } from "@/lib/format";
+import { fmtCompact } from "@/lib/format";
 
-/* Paleta financiera clásica (elegida por el analista, 2026-07):
-   el color SIEMPRE significa algo — nada decorativo.
+/* Paleta financiera clásica: el color SIEMPRE significa algo.
      · azul rey profundo = el dato actual / principal
-     · gris medio        = comparativos y secundarios
-     · verde / rojo      = RESERVADOS para variaciones buenas / malas
-     · dorado            = único acento (el segundo motor: inversiones)
-   Texto de ejes y etiquetas: oscuro (#334155) y 12px — legible sin esfuerzo. */
+     · gris medio        = comparativos
+     · verde / rojo      = RESERVADOS para bueno / malo
+     · dorado            = único acento (inversiones)
+   Reglas de esta revisión (pedidas por el analista):
+     · etiquetas SIEMPRE visibles, 12px, seminegrita, con halo blanco (legibles
+       aunque caigan sobre una línea u otra barra)
+     · leyenda visible en todo gráfico con más de una serie
+     · SIN tooltips (la etiqueta ya está visible), SIN eje Y ni líneas de ejes
+       (el valor va en la etiqueta); se conserva el eje X (los meses)
+     · barras más gruesas                                                     */
 export const C = {
   principal: "#13286E",
   secundario: "#3B5BD9",
@@ -23,24 +28,26 @@ export const C = {
 export const PALETTE = ["#13286E", "#3B5BD9", "#C99A2E", "#7C93E8", "#8A94A6", "#5E718D", "#B58A2A", "#94A3B8"];
 
 const AX = "#334155";
-const GRID = "#dbe3f0";
-const TICK = { fontSize: 12, fill: AX } as const;
-const ETIQ = { fontSize: 11, fill: AX } as const;
+const GRID = "#e3e9f4";
+const TICK = { fontSize: 12, fill: AX, fontWeight: 500 } as const;
+/* Halo blanco: el texto se pinta con borde blanco por debajo del relleno
+   (paintOrder: stroke), así la etiqueta se lee sobre cualquier fondo. */
+const HALO = { paintOrder: "stroke" as const, stroke: "#ffffff", strokeWidth: 3.5 };
+const ETIQ = { fontSize: 12, fontWeight: 600, fill: AX, style: HALO } as const;
+const ETIQ_LG = { fontSize: 13, fontWeight: 700, fill: AX, style: HALO } as const;
 const lblC = (v: unknown) => fmtCompact(Number(v ?? 0));
 const lblPct = (v: unknown) => `${v ?? 0}%`;
 const lblCM = (v: unknown) => fmtCompact(Number(v ?? 0) * 1e6);
 
-function TT({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
+/** Leyenda visible: punto de color + concepto, texto oscuro. */
+export function Leyenda({ items }: { items: { color: string; label: string }[] }) {
   return (
-    <div className="rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
-      {label && <div className="mb-1 font-medium text-fg">{label}</div>}
-      {payload.map((p: any) => (
-        <div key={p.dataKey ?? p.name} className="flex items-center gap-2 text-muted">
-          <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.payload?.fill }} />
-          <span>{p.name}:</span>
-          <span className="tnum text-fg">{fmtNum(p.value)}</span>
-        </div>
+    <div className="flex items-center gap-5 flex-wrap mb-1">
+      {items.map((it) => (
+        <span key={it.label} className="flex items-center gap-2 text-[13px] font-medium text-fg">
+          <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: it.color }} />
+          {it.label}
+        </span>
       ))}
     </div>
   );
@@ -48,67 +55,70 @@ function TT({ active, payload, label }: any) {
 
 export function TrendChart({ data }: { data: { mes: string; ingresos: number; gastos: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={data} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
-        <defs>
-          <linearGradient id="gIng" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={C.principal} stopOpacity={0.22} />
-            <stop offset="100%" stopColor={C.principal} stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="gGas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={C.acento} stopOpacity={0.22} />
-            <stop offset="100%" stopColor={C.acento} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
-        <YAxis stroke={AX} tick={TICK} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={58} />
-        <Tooltip content={<TT />} />
-        <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke={C.principal} strokeWidth={2.5} fill="url(#gIng)"
-          label={{ position: "top", ...ETIQ, fill: C.principal, formatter: lblC }} />
-        <Area type="monotone" dataKey="gastos" name="Gastos" stroke={C.acento} strokeWidth={2.5} fill="url(#gGas)"
-          label={{ position: "bottom", ...ETIQ, fill: "#8A6A1D", formatter: lblC }} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div>
+      <Leyenda items={[{ color: C.principal, label: "Ingresos" }, { color: C.acento, label: "Gastos" }]} />
+      <ResponsiveContainer width="100%" height={290}>
+        <AreaChart data={data} margin={{ top: 26, right: 26, left: 8, bottom: 4 }}>
+          <defs>
+            <linearGradient id="gIng" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={C.principal} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={C.principal} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
+          <YAxis hide />
+          <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke={C.principal} strokeWidth={2.5} fill="url(#gIng)"
+            dot={{ r: 3, fill: C.principal, strokeWidth: 0 }}
+            label={{ position: "top", dy: -6, ...ETIQ, fill: C.principal, formatter: lblC }} />
+          <Area type="monotone" dataKey="gastos" name="Gastos" stroke={C.acento} strokeWidth={2.5} fill="transparent"
+            dot={{ r: 3, fill: C.acento, strokeWidth: 0 }}
+            label={{ position: "bottom", dy: 8, ...ETIQ, fill: "#8A6A1D", formatter: lblC }} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
 export function ResultBars({ data }: { data: { mes: string; resultado: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data} margin={{ top: 22, right: 8, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
-        <YAxis stroke={AX} tick={TICK} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={58} />
-        <Tooltip content={<TT />} cursor={{ fill: "#13286E0d" }} />
-        <Bar dataKey="resultado" name="Resultado" radius={[4, 4, 0, 0]}>
-          <LabelList dataKey="resultado" position="top" {...ETIQ} formatter={lblC} />
-          {data.map((d, i) => (
-            <Cell key={i} fill={d.resultado >= 0 ? C.bueno : C.malo} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div>
+      <Leyenda items={[{ color: C.bueno, label: "Utilidad del mes" }, { color: C.malo, label: "Pérdida del mes" }]} />
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data} margin={{ top: 26, right: 8, left: 8, bottom: 4 }}>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
+          <YAxis hide />
+          <Bar dataKey="resultado" name="Resultado" radius={[4, 4, 0, 0]} barSize={30}>
+            <LabelList dataKey="resultado" position="top" {...ETIQ} formatter={lblC} />
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.resultado >= 0 ? C.bueno : C.malo} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
-export function HBars({ data }: { data: { name: string; value: number }[] }) {
+export function HBars({ data, grueso }: { data: { name: string; value: number }[]; grueso?: boolean }) {
+  const alto = grueso ? 64 : 48;
   return (
-    <ResponsiveContainer width="100%" height={Math.max(170, data.length * 44)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 74, left: 4, bottom: 4 }}>
-        <XAxis type="number" stroke={AX} tick={TICK} tickFormatter={fmtCompact} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" stroke={AX} tick={TICK} width={170} tickLine={false} axisLine={false} />
-        <Tooltip content={<TT />} cursor={{ fill: "#13286E0d" }} />
-        <Bar dataKey="value" name="Valor" radius={[0, 4, 4, 0]} fill={C.principal} barSize={18}>
-          <LabelList dataKey="value" position="right" {...ETIQ} formatter={lblC} />
+    <ResponsiveContainer width="100%" height={Math.max(150, data.length * alto)}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 86, left: 4, bottom: 4 }}>
+        <XAxis type="number" hide />
+        <YAxis type="category" dataKey="name" stroke={AX}
+          tick={{ fontSize: grueso ? 13.5 : 12.5, fill: AX, fontWeight: grueso ? 700 : 500 }}
+          width={grueso ? 200 : 175} tickLine={false} axisLine={false} />
+        <Bar dataKey="value" name="Valor" radius={[0, 5, 5, 0]} fill={C.principal} barSize={grueso ? 34 : 24}>
+          <LabelList dataKey="value" position="right" {...(grueso ? ETIQ_LG : ETIQ)} formatter={lblC} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
-/** Sparkline: contexto histórico junto a la cifra. Sin ejes ni etiquetas — no se
- *  leen valores, se lee la forma. */
+/** Sparkline: contexto histórico junto a la cifra. */
 export function Sparkline({ data, color = C.principal, height = 30 }: { data: number[]; color?: string; height?: number }) {
   if (data.length < 2) return <div style={{ height }} />;
   const min = Math.min(...data), max = Math.max(...data);
@@ -123,48 +133,43 @@ export function Sparkline({ data, color = C.principal, height = 30 }: { data: nu
   );
 }
 
-/** Los dos motores de utilidad, mes a mes. Azul rey = cobertura, dorado = inversiones. */
+/** Los dos motores de utilidad, mes a mes. */
 export function ContribBars({ data }: { data: { mes: string; cobertura: number; inversiones: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={290}>
-      <BarChart data={data} margin={{ top: 24, right: 8, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
-        <YAxis stroke={AX} tick={TICK} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={58} />
-        <Tooltip content={<TT />} cursor={{ fill: "#13286E0d" }} />
-        <Bar dataKey="cobertura" name="Cobertura de créditos" stackId="c" fill={C.principal} />
-        <Bar dataKey="inversiones" name="Inversiones" stackId="c" fill={C.acento} radius={[3, 3, 0, 0]}>
-          <LabelList {...ETIQ} position="top"
-            valueAccessor={(e: any) => (e?.payload ? e.payload.cobertura + e.payload.inversiones : null)}
-            formatter={lblC} />
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function TTPct({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const p = payload[0];
-  return (
-    <div className="rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
-      <div className="mb-0.5 font-medium text-fg">{label}</div>
-      <div className="tnum text-fg">{fmtPct(p.value / 100)}</div>
-      {p.payload?.valor !== undefined && <div className="tnum text-muted">{fmtNum(p.payload.valor)}</div>}
+    <div>
+      <Leyenda items={[
+        { color: C.principal, label: "Ingresos por cobertura de créditos (netos)" },
+        { color: C.acento, label: "Ingresos por inversiones" },
+      ]} />
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data} margin={{ top: 28, right: 8, left: 8, bottom: 4 }}>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
+          <YAxis hide />
+          <Bar dataKey="cobertura" name="Cobertura de créditos" stackId="c" fill={C.principal} barSize={34} />
+          <Bar dataKey="inversiones" name="Inversiones" stackId="c" fill={C.acento} barSize={34} radius={[3, 3, 0, 0]}>
+            <LabelList {...ETIQ} position="top"
+              valueAccessor={(e: any) => (e?.payload ? e.payload.cobertura + e.payload.inversiones : null)}
+              formatter={lblC} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
 /** Análisis vertical: participación de cada línea sobre la base, en %. */
-export function PctBars({ data }: { data: { name: string; pct: number; valor: number }[] }) {
+export function PctBars({ data, grueso }: { data: { name: string; pct: number; valor: number }[]; grueso?: boolean }) {
+  const alto = grueso ? 60 : 44;
   return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 38)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 56, left: 4, bottom: 4 }}>
-        <XAxis type="number" stroke={AX} tick={TICK} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" stroke={AX} tick={TICK} width={175} tickLine={false} axisLine={false} />
-        <Tooltip content={<TTPct />} cursor={{ fill: "#13286E0d" }} />
-        <Bar dataKey="pct" name="Participación" radius={[0, 4, 4, 0]} barSize={16}>
-          <LabelList dataKey="pct" position="right" {...ETIQ} formatter={lblPct} />
+    <ResponsiveContainer width="100%" height={Math.max(150, data.length * alto)}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 72, left: 4, bottom: 4 }}>
+        <XAxis type="number" hide />
+        <YAxis type="category" dataKey="name" stroke={AX}
+          tick={{ fontSize: grueso ? 13.5 : 12.5, fill: AX, fontWeight: grueso ? 700 : 500 }}
+          width={grueso ? 200 : 175} tickLine={false} axisLine={false} />
+        <Bar dataKey="pct" name="Participación" radius={[0, 5, 5, 0]} barSize={grueso ? 32 : 22}>
+          <LabelList dataKey="pct" position="right" {...(grueso ? ETIQ_LG : ETIQ)} formatter={lblPct} />
           {data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
         </Bar>
       </BarChart>
@@ -172,31 +177,21 @@ export function PctBars({ data }: { data: { name: string; pct: number; valor: nu
   );
 }
 
-/** Análisis horizontal: variación % vs. año anterior (divergente, verde/rojo). */
+/** Análisis horizontal: variación % vs. año anterior (verde/rojo). */
 export function VarBars({ data }: { data: { name: string; varPct: number; valor: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 38)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 56, left: 12, bottom: 4 }}>
-        <XAxis type="number" stroke={AX} tick={TICK} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" stroke={AX} tick={TICK} width={175} tickLine={false} axisLine={false} />
-        <Tooltip content={<TTPct />} cursor={{ fill: "#13286E0d" }} />
-        <Bar dataKey="varPct" name="Variación" radius={[0, 4, 4, 0]} barSize={16}>
-          <LabelList dataKey="varPct" {...ETIQ} formatter={lblPct}
-            position="right" />
-          {data.map((d, i) => <Cell key={i} fill={d.varPct >= 0 ? C.bueno : C.malo} />)}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function WaterfallTT({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const v = payload.find((p: any) => p.dataKey === "value");
-  return (
-    <div className="rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
-      <div className="mb-0.5 font-medium text-fg">{label}</div>
-      <div className="tnum text-fg">{fmtNum((v?.value ?? 0) * 1e6)}</div>
+    <div>
+      <Leyenda items={[{ color: C.bueno, label: "Crece vs. año anterior" }, { color: C.malo, label: "Cae vs. año anterior" }]} />
+      <ResponsiveContainer width="100%" height={Math.max(150, data.length * 44)}>
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 72, left: 12, bottom: 4 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="name" stroke={AX} tick={{ fontSize: 12.5, fill: AX, fontWeight: 500 }} width={175} tickLine={false} axisLine={false} />
+          <Bar dataKey="varPct" name="Variación" radius={[0, 5, 5, 0]} barSize={22}>
+            <LabelList dataKey="varPct" {...ETIQ} formatter={lblPct} position="right" />
+            {data.map((d, i) => <Cell key={i} fill={d.varPct >= 0 ? C.bueno : C.malo} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -206,49 +201,57 @@ export function WaterfallChart({ data }: { data: { name: string; base: number; v
   const color = (x: { tipo: string; signo: number }) =>
     x.tipo === "total" ? (x.signo >= 0 ? C.principal : C.malo) : x.tipo === "inc" ? C.bueno : C.malo;
   return (
-    <ResponsiveContainer width="100%" height={330}>
-      <BarChart data={d} margin={{ top: 24, right: 8, left: 4, bottom: 26 }}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="name" stroke={AX} tick={{ fontSize: 11.5, fill: AX }} interval={0} tickLine={false} axisLine={false} angle={-20} textAnchor="end" height={54} />
-        <YAxis stroke={AX} tick={TICK} tickFormatter={(v) => fmtCompact(v * 1e6)} tickLine={false} axisLine={false} width={58} />
-        <Tooltip content={<WaterfallTT />} cursor={{ fill: "#13286E10" }} />
-        <Bar dataKey="base" stackId="a" fill="transparent" />
-        <Bar dataKey="value" stackId="a" radius={[3, 3, 0, 0]}>
-          <LabelList {...ETIQ} position="top"
-            valueAccessor={(e: any) => (e?.payload ? e.payload.signo * e.payload.value : null)}
-            formatter={lblCM} />
-          {d.map((x, i) => (
-            <Cell key={i} fill={color(x)} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div>
+      <Leyenda items={[
+        { color: C.bueno, label: "Suma" },
+        { color: C.malo, label: "Resta" },
+        { color: C.principal, label: "Subtotal / resultado" },
+      ]} />
+      <ResponsiveContainer width="100%" height={360}>
+        <BarChart data={d} margin={{ top: 26, right: 8, left: 8, bottom: 40 }}>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="name" stroke={AX} tick={{ fontSize: 11.5, fill: AX, fontWeight: 500 }} interval={0} tickLine={false} axisLine={false} angle={-26} textAnchor="end" height={72} />
+          <YAxis hide />
+          <Bar dataKey="base" stackId="a" fill="transparent" />
+          <Bar dataKey="value" stackId="a" radius={[3, 3, 0, 0]} barSize={44}>
+            <LabelList {...ETIQ} position="top"
+              valueAccessor={(e: any) => (e?.payload ? e.payload.signo * e.payload.value : null)}
+              formatter={lblCM} />
+            {d.map((x, i) => (
+              <Cell key={i} fill={color(x)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
 export function DualLine({ data }: { data: { mes: string; activo: number; pasivo: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={data} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
-        <defs>
-          <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.principal} stopOpacity={0.2} /><stop offset="100%" stopColor={C.principal} stopOpacity={0} /></linearGradient>
-          <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.acento} stopOpacity={0.2} /><stop offset="100%" stopColor={C.acento} stopOpacity={0} /></linearGradient>
-        </defs>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
-        <YAxis stroke={AX} tick={TICK} tickFormatter={fmtCompact} tickLine={false} axisLine={false} width={58} />
-        <Tooltip content={<TT />} />
-        <Area type="monotone" dataKey="activo" name="Activo" stroke={C.principal} strokeWidth={2.5} fill="url(#gA)"
-          label={{ position: "top", ...ETIQ, fill: C.principal, formatter: lblC }} />
-        <Area type="monotone" dataKey="pasivo" name="Pasivo" stroke={C.acento} strokeWidth={2.5} fill="url(#gP)"
-          label={{ position: "bottom", ...ETIQ, fill: "#8A6A1D", formatter: lblC }} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div>
+      <Leyenda items={[{ color: C.principal, label: "Activo" }, { color: C.acento, label: "Pasivo" }]} />
+      <ResponsiveContainer width="100%" height={290}>
+        <AreaChart data={data} margin={{ top: 26, right: 26, left: 8, bottom: 4 }}>
+          <defs>
+            <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.principal} stopOpacity={0.16} /><stop offset="100%" stopColor={C.principal} stopOpacity={0} /></linearGradient>
+          </defs>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="mes" stroke={AX} tick={TICK} tickLine={false} axisLine={false} />
+          <YAxis hide />
+          <Area type="monotone" dataKey="activo" name="Activo" stroke={C.principal} strokeWidth={2.5} fill="url(#gA)"
+            dot={{ r: 3, fill: C.principal, strokeWidth: 0 }}
+            label={{ position: "top", dy: -6, ...ETIQ, fill: C.principal, formatter: lblC }} />
+          <Area type="monotone" dataKey="pasivo" name="Pasivo" stroke={C.acento} strokeWidth={2.5} fill="transparent"
+            dot={{ r: 3, fill: C.acento, strokeWidth: 0 }}
+            label={{ position: "bottom", dy: 8, ...ETIQ, fill: "#8A6A1D", formatter: lblC }} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
-/** Composición como donut eliminada (Few/Power BI: parte-todo = barras). Se
- *  mantiene el nombre exportado por compatibilidad, renderizando barras. */
+/** Composición como donut eliminada (parte-todo = barras). */
 export function DonutComposition({ data }: { data: { name: string; value: number }[] }) {
   return <HBars data={data} />;
 }
