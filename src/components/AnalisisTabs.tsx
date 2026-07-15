@@ -2,10 +2,9 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export default function AnalisisTabs({ current, mensual }: { current: string; mensual?: boolean }) {
+export default function AnalisisTabs({ current }: { current: string }) {
   const VISTAS = [
     { id: "estado", label: "Estado", soon: false },
-    ...(mensual ? [{ id: "mensual", label: "Por meses", soon: false }] : []),
     { id: "vertical", label: "Análisis Vertical", soon: false },
     { id: "horizontal", label: "Análisis Horizontal", soon: false },
     { id: "ejec-acum", label: "Ejecución Acum.", soon: true },
@@ -13,11 +12,11 @@ export default function AnalisisTabs({ current, mensual }: { current: string; me
   ];
   const pathname = usePathname();
   const sp = useSearchParams();
-  const p = sp.get("p");
   const href = (id: string) => {
-    const params = new URLSearchParams();
-    if (p) params.set("p", p);
-    if (id !== "estado") params.set("vista", id);
+    // Conserva los demás segmentadores (p, anio, meses) al cambiar de vista.
+    const params = new URLSearchParams(sp.toString());
+    if (id === "estado") params.delete("vista");
+    else params.set("vista", id);
     const q = params.toString();
     return pathname + (q ? "?" + q : "");
   };

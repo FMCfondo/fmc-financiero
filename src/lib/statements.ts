@@ -20,6 +20,32 @@ function nodo(codigo: string, etq: string, depth: number, conYtd: boolean): Line
   return { codigo, nombre: c.nombre, nivel: c.longitud, depth, valor, valorYtd, hijos };
 }
 
+// ---------- Provisión de impuesto de renta (estructura del analista) ----------
+// Utilidad del ejercicio
+//   (+) Gravamen al movimiento financiero 50% (no deducible)
+//   (+) Otros gastos no deducibles
+//   (=) Renta líquida gravable
+//   (=) Impuesto (tasa%)  → ESTA es la provisión que va al pasivo y resta al patrimonio
+//   (−) Anticipos (retención en la fuente)
+//   (+) Anticipo para el siguiente año
+//   (=) Impuesto de renta por pagar (saldo con la DIAN, informativo)
+// Los parámetros viven en la tabla `parametro` y se editan en /impuesto:
+// cambiarlos recalcula TODA la app porque todos los estados llaman aquí.
+export function provisionRenta(etq: string) {
+  const ingYTD = D.ytd(etq, "4"), gasYTD = D.ytd(etq, "5");
+  const utilidad = ingYTD - gasYTD;
+  const gmf = D.paramNum("prov_gmf", 0);
+  const otrosND = D.paramNum("prov_otros_nd", 0);
+  const rentaLiquida = utilidad + gmf + otrosND;
+  const tasa = D.paramNum("tasa_imporenta", 0.35);
+  const provision = Math.max(rentaLiquida, 0) * tasa;
+  const anticipoRet = D.paramNum("prov_anticipo_ret", 0);
+  const anticipoSig = D.paramNum("prov_anticipo_sig", 0);
+  const porPagar = provision - anticipoRet + anticipoSig;
+  const neto = utilidad - provision;
+  return { ingYTD, gasYTD, utilidad, gmf, otrosND, rentaLiquida, tasa, provision, anticipoRet, anticipoSig, porPagar, neto };
+}
+
 // ---------- Estado de Situación Financiera ----------
 export function esf(etq: string) {
   const activo = nodo("1", etq, -1, false);
@@ -28,12 +54,11 @@ export function esf(etq: string) {
   const totalActivo = D.fact(etq, "1");
   const pasivoBase = D.fact(etq, "2");
   const patrimBase = D.fact(etq, "3");
-  const ingYTD = D.ytd(etq, "4");
-  const gasYTD = D.ytd(etq, "5");
-  const preTax = ingYTD - gasYTD;
-  const tasa = D.tasaImpuesto;
-  const impuesto = Math.max(preTax, 0) * tasa;
-  const neto = preTax - impuesto;
+  const pr = provisionRenta(etq);
+  const preTax = pr.utilidad;
+  const tasa = pr.tasa;
+  const impuesto = pr.provision;
+  const neto = pr.neto;
   const totalPasivo = pasivoBase + impuesto;
   const totalPatrim = patrimBase + neto;
   const descuadre = totalActivo - (totalPasivo + totalPatrim);
@@ -47,19 +72,12 @@ export function er(etq: string) {
   const ingMes = D.fact(etq, "4"), gasMes = D.fact(etq, "5");
   const ingYTD = D.ytd(etq, "4"), gasYTD = D.ytd(etq, "5");
   const resMes = ingMes - gasMes, resYTD = ingYTD - gasYTD;
-  const tasa = D.tasaImpuesto;
+  const pr = provisionRenta(etq);
+  const tasa = pr.tasa;
+  // El mes lleva una estimación proporcional; el acumulado lleva la provisión completa.
   const impuestoMes = Math.max(resMes, 0) * tasa, netoMes = resMes - impuestoMes;
-  const impuestoYTD = Math.max(resYTD, 0) * tasa, netoYTD = resYTD - impuestoYTD;
+  const impuestoYTD = pr.provision, netoYTD = pr.neto;
   return { ingresos, gastos, ingMes, gasMes, ingYTD, gasYTD, resMes, resYTD, tasa, impuestoMes, netoMes, impuestoYTD, netoYTD };
-}
-
-// ---------- Provisión de impuesto (con tasa configurable) ----------
-export function impuesto(etq: string, tasa: number) {
-  const ingYTD = D.ytd(etq, "4"), gasYTD = D.ytd(etq, "5");
-  const preTax = ingYTD - gasYTD;
-  const prov = Math.max(preTax, 0) * tasa;
-  const neto = preTax - prov;
-  return { ingYTD, gasYTD, preTax, tasa, prov, neto };
 }
 
 // ---------- Dashboard ----------
@@ -121,10 +139,8 @@ export function operacion(etq: string) {
   const gastoTotal = D.ytd(etq, "5");
   const gastosAdmin = gastoTotal - costo;
   const utilAntesImp = ingTotal - gastoTotal;
-  const tasa = D.tasaImpuesto;
-  const impuesto = Math.max(utilAntesImp, 0) * tasa;
-  const utilNeta = utilAntesImp - impuesto;
-  return { ingCob, costo, brutoCob, otrosIng, ingTotal, gastosAdmin, gastoTotal, utilAntesImp, impuesto, utilNeta, tasa };
+  const pr = provisionRenta(etq);
+  return { ingCob, costo, brutoCob, otrosIng, ingTotal, gastosAdmin, gastoTotal, utilAntesImp, impuesto: pr.provision, utilNeta: pr.neto, tasa: pr.tasa };
 }
 
 // Cascada (waterfall) lista para el gráfico: base transparente + valor visible.
@@ -183,17 +199,19 @@ export function areaDetalle(etq: string, clase: number) {
 }
 
 // KPIs del resumen con comparativo interanual (mismo mes del año anterior).
+// Usa los TOTALES del estado (pasivo + provisión, patrimonio + utilidad) para que
+// en el Dashboard se cumpla la ecuación A = P + K, igual que en el Balance.
 export function kpisResumen(etq: string) {
   const py = D.sameMonthPrevYear(etq)?.etiqueta ?? null;
-  const activo = D.fact(etq, "1"), pasivo = D.fact(etq, "2"), patrim = D.fact(etq, "3");
-  const o = operacion(etq);
-  const oPy = py ? operacion(py) : null;
+  const s = esf(etq);
+  const sPy = py ? esf(py) : null;
   return {
-    activo, pasivo, patrim, utilNeta: o.utilNeta, utilMes: D.fact(etq, "4") - D.fact(etq, "5"),
-    activoYoY: py ? variacion(activo, D.fact(py, "1")).pct : null,
-    pasivoYoY: py ? variacion(pasivo, D.fact(py, "2")).pct : null,
-    patrimYoY: py ? variacion(patrim, D.fact(py, "3")).pct : null,
-    utilYoY: oPy ? variacion(o.utilNeta, oPy.utilNeta).pct : null,
+    activo: s.totalActivo, pasivo: s.totalPasivo, patrim: s.totalPatrim,
+    utilNeta: s.neto, utilMes: D.fact(etq, "4") - D.fact(etq, "5"),
+    activoYoY: sPy ? variacion(s.totalActivo, sPy.totalActivo).pct : null,
+    pasivoYoY: sPy ? variacion(s.totalPasivo, sPy.totalPasivo).pct : null,
+    patrimYoY: sPy ? variacion(s.totalPatrim, sPy.totalPatrim).pct : null,
+    utilYoY: sPy ? variacion(s.neto, sPy.neto).pct : null,
   };
 }
 
@@ -215,11 +233,10 @@ export function contribucion(etq: string) {
   // Todo lo demás (otros ingresos/gastos, devoluciones) va a un residuo explícito
   // para que la descomposición cuadre exactamente contra clase 4 − clase 5.
   const otrosNetos = utilAntesImp - (contribTotal - gastosAdmin);
-  const tasa = D.tasaImpuesto;
-  const impuesto = Math.max(utilAntesImp, 0) * tasa;
+  const pr = provisionRenta(etq);
   return {
     ingCob, costoCob, contribCob, contribInv, contribTotal, gastosAdmin, otrosNetos,
-    utilAntesImp, impuesto, utilNeta: utilAntesImp - impuesto,
+    utilAntesImp, impuesto: pr.provision, utilNeta: pr.neto,
     pctCob: contribTotal ? contribCob / contribTotal : 0,
     pctInv: contribTotal ? contribInv / contribTotal : 0,
   };
@@ -363,25 +380,85 @@ export function esfCharts(etq: string) {
   return { trend, compActivo: comp("1"), compInversiones: comp("12") };
 }
 
-// ---------- ER multi-mes: cada mes en una columna + acumulado del año ----------
-export function erMatriz(etq: string, nMeses: number) {
-  const meses = D.ultimosPeriodos(etq, nMeses).map((p) => ({ etq: p.etiqueta, label: `${mesCorto[p.mes]} ${String(p.anio).slice(2)}` }));
-  const fila = (codigo: string, nombre: string) => ({
-    codigo, nombre,
-    vals: meses.map((m) => D.fact(m.etq, codigo)),
-    acum: D.ytd(etq, codigo),
-  });
-  const noCero = (f: { vals: number[]; acum: number }) => f.acum !== 0 || f.vals.some((v) => v !== 0);
+// ---------- Estados multi-mes: árbol de cuentas × columnas de meses ----------
+// La vista "Estado" muestra los meses de izquierda a derecha (segmentadores de
+// meses y de año). El ER lleva además una columna de Acumulado separada; el ESF
+// no la necesita porque cada saldo ya es acumulado por naturaleza.
+export type NodoM = {
+  codigo: string; nombre: string; depth: number;
+  vals: number[]; acum: number | null; hijos: NodoM[];
+};
+
+const mesLabel = (p: { anio: number; mes: number }) => `${mesCorto[p.mes]} ${String(p.anio).slice(2)}`;
+
+function nodoM(codigo: string, meses: string[], depth: number, flujo: boolean, etqAcum: string): NodoM | null {
+  const c = D.cuentaByCodigo.get(codigo);
+  if (!c) return null;
+  const hijos = D.children(codigo)
+    .map((ch) => nodoM(ch.codigo, meses, depth + 1, flujo, etqAcum))
+    .filter((x): x is NodoM => x !== null);
+  const vals = meses.map((m) => D.fact(m, codigo));
+  const acum = flujo ? D.ytd(etqAcum, codigo) : null;
+  if (vals.every((v) => v === 0) && !acum && hijos.length === 0) return null;
+  return { codigo, nombre: c.nombre, depth, vals, acum, hijos };
+}
+
+/** ER multi-mes con árbol completo. `meses` viene de D.mesesVista(). */
+export function erMatrizArbol(meses: { etiqueta: string; anio: number; mes: number }[]) {
+  const etqs = meses.map((m) => m.etiqueta);
+  const ultimo = etqs[etqs.length - 1];
+  const fila = (codigo: string) => ({ vals: etqs.map((m) => D.fact(m, codigo)), acum: D.ytd(ultimo, codigo) });
+  const ing = fila("4"), gas = fila("5");
+  const prs = etqs.map((m) => provisionRenta(m));
+  const prUlt = prs[prs.length - 1];
   return {
-    meses,
-    ingresos: D.children("4").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
-    totalIng: fila("4", "TOTAL INGRESOS"),
-    gastos: D.children("5").map((g) => fila(g.codigo, g.nombre)).filter(noCero),
-    totalGas: fila("5", "TOTAL GASTOS"),
-    utilidad: {
-      codigo: "", nombre: "UTILIDAD ANTES DE IMPUESTOS",
-      vals: meses.map((m) => D.fact(m.etq, "4") - D.fact(m.etq, "5")),
-      acum: D.ytd(etq, "4") - D.ytd(etq, "5"),
-    },
+    labels: meses.map(mesLabel),
+    ingresos: nodoM("4", etqs, -1, true, ultimo)?.hijos ?? [],
+    gastos: nodoM("5", etqs, -1, true, ultimo)?.hijos ?? [],
+    totalIng: ing, totalGas: gas,
+    utilAntes: { vals: etqs.map((m, i) => ing.vals[i] - gas.vals[i]), acum: ing.acum - gas.acum },
+    impuesto: { vals: etqs.map((m, i) => Math.max(ing.vals[i] - gas.vals[i], 0) * prs[i].tasa), acum: prUlt.provision },
+    utilNeta: { vals: etqs.map((m, i) => (ing.vals[i] - gas.vals[i]) * (ing.vals[i] - gas.vals[i] > 0 ? 1 - prs[i].tasa : 1)), acum: prUlt.neto },
+    tasa: prUlt.tasa,
+  };
+}
+
+/** ESF multi-mes: saldos por mes (ya acumulados por naturaleza, sin columna extra).
+ *  Incluye la provisión y la utilidad por mes para que A = P + K cuadre en cada columna. */
+export function esfMatrizArbol(meses: { etiqueta: string; anio: number; mes: number }[]) {
+  const etqs = meses.map((m) => m.etiqueta);
+  const prs = etqs.map((m) => provisionRenta(m));
+  const activoVals = etqs.map((m) => D.fact(m, "1"));
+  const pasivoVals = etqs.map((m, i) => D.fact(m, "2") + prs[i].provision);
+  const patrimVals = etqs.map((m, i) => D.fact(m, "3") + prs[i].neto);
+  return {
+    labels: meses.map(mesLabel),
+    activo: nodoM("1", etqs, -1, false, etqs[etqs.length - 1])?.hijos ?? [],
+    pasivo: nodoM("2", etqs, -1, false, etqs[etqs.length - 1])?.hijos ?? [],
+    patrimonio: nodoM("3", etqs, -1, false, etqs[etqs.length - 1])?.hijos ?? [],
+    provision: etqs.map((_, i) => prs[i].provision),
+    utilidad: etqs.map((_, i) => prs[i].neto),
+    totalActivo: activoVals, totalPasivo: pasivoVals, totalPatrim: patrimVals,
+    descuadre: etqs.map((_, i) => activoVals[i] - pasivoVals[i] - patrimVals[i]),
+  };
+}
+
+/** Flujo de efectivo multi-mes: las líneas principales, un mes por columna. */
+export function flujoMatriz(meses: { etiqueta: string; anio: number; mes: number }[]) {
+  const cols = meses.map((m) => ({ label: mesLabel(m), f: flujoEfectivo(m.etiqueta) }));
+  const pick = (fn: (f: NonNullable<ReturnType<typeof flujoEfectivo>>) => number) =>
+    cols.map((c) => (c.f ? fn(c.f) : null));
+  return {
+    labels: cols.map((c) => c.label),
+    filas: [
+      { id: "util", nombre: "Utilidad del período", vals: pick((f) => f.util) },
+      { id: "ajuste", nombre: "Partidas no monetarias y ajustes", vals: pick((f) => f.ajuste) },
+      { id: "op", nombre: "Flujo neto de operación", vals: pick((f) => f.flujoOp), sub: true },
+      { id: "inv", nombre: "Flujo neto de inversión", vals: pick((f) => f.flujoInv), sub: true },
+      { id: "fin", nombre: "Flujo neto de financiación", vals: pick((f) => f.flujoFin), sub: true },
+      { id: "neto", nombre: "Variación neta del efectivo", vals: pick((f) => f.neto), total: true },
+      { id: "ini", nombre: "Efectivo al inicio", vals: pick((f) => f.dispIni) },
+      { id: "fin2", nombre: "Efectivo al final", vals: pick((f) => f.dispFin), total: true },
+    ],
   };
 }

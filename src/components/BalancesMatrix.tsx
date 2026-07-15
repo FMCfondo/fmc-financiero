@@ -72,22 +72,43 @@ export default function BalancesMatrix({ periodos, rows }: { periodos: Col[]; ro
             </tr>
           </thead>
           <tbody>
-            {filas.slice(0, 700).map((r) => (
-              <tr key={r.codigo} className="group">
-                <td className="sticky left-0 z-10 bg-card group-hover:bg-card2 tnum text-faint text-[11px] px-3 py-1.5 border-b border-line-soft">{r.codigo}</td>
-                <td className="sticky left-[92px] z-10 bg-card group-hover:bg-card2 px-3 py-1.5 border-b border-line-soft border-r border-r-line truncate max-w-[240px]">
-                  <span style={{ paddingLeft: nivelIdx(r.longitud) * 12 }} className={r.longitud <= 2 ? "font-medium" : "text-muted"}>{r.nombre}</span>
-                </td>
-                {cols.map((c) => {
-                  const v = r.vals[c.i] ?? 0;
-                  return (
-                    <td key={c.etiqueta} className={`text-right tnum px-3 py-1.5 border-b border-line-soft ${v === 0 ? "text-faint/40" : v < 0 ? "text-neg" : "text-fg"}`}>
-                      {v === 0 ? "·" : fmtNum(v)}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {filas.slice(0, 700).map((r) => {
+              /* Identidad visual por nivel del plan de cuentas (pedida por el analista):
+                 la jerarquía se lee por color, del más fuerte al más suave.
+                   Clase (1 díg.)   → banda azul rey, texto blanco, negrita
+                   Grupo (2 díg.)   → banda azul suave, negrita
+                   Cuenta (4 díg.)  → fondo tenue, seminegrita
+                   Subcuenta y aux. → fondo blanco                                  */
+              const nivel = nivelIdx(r.longitud);
+              const fila =
+                nivel === 0 ? "brand-grad text-white font-semibold"
+                : nivel === 1 ? "bg-royal/15 font-semibold"
+                : nivel === 2 ? "bg-royal/5 font-medium"
+                : "";
+              const sticky =
+                nivel === 0 ? "bg-[#13286E] text-white group-hover:bg-[#13286E]"
+                : nivel === 1 ? "bg-[#e2e8f7] group-hover:bg-[#d6ddf2]"
+                : nivel === 2 ? "bg-[#f1f4fb] group-hover:bg-card2"
+                : "bg-card group-hover:bg-card2";
+              return (
+                <tr key={r.codigo} className={`group ${fila}`}>
+                  <td className={`sticky left-0 z-10 tnum text-[11px] px-3 py-1.5 border-b border-line-soft ${sticky} ${nivel === 0 ? "text-white/80" : "text-faint"}`}>{r.codigo}</td>
+                  <td className={`sticky left-[92px] z-10 px-3 py-1.5 border-b border-line-soft border-r border-r-line truncate max-w-[240px] ${sticky}`}>
+                    <span style={{ paddingLeft: nivelIdx(r.longitud) * 12 }} className={nivel <= 1 ? "" : nivel === 2 ? "text-fg" : "text-muted"}>{r.nombre}</span>
+                  </td>
+                  {cols.map((c) => {
+                    const v = r.vals[c.i] ?? 0;
+                    return (
+                      <td key={c.etiqueta} className={`text-right tnum tabular-nums px-3 py-1.5 border-b border-line-soft ${
+                        nivel === 0 ? "text-white" : v === 0 ? "text-faint/40" : v < 0 ? "text-neg" : "text-fg"
+                      }`}>
+                        {v === 0 ? "·" : fmtNum(v)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

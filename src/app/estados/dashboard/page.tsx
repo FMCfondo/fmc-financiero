@@ -1,22 +1,26 @@
 import {
   dashboard, cascadaChart, kpisResumen, esfCharts, contribucion, contribucionTrend,
-  gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, type LineaAnalisis,
+  gastosAdminDetalle, flujoEfectivo, esfAnalisis, erAnalisis, provisionRenta, type LineaAnalisis,
 } from "@/lib/statements";
-import { indicadoresPorCategoria, indicadoresClave, type Indicador } from "@/lib/indicadores";
-import { ensureLoaded, ultimosPeriodos, fact, ytd } from "@/lib/data";
+import { indicadoresMatriz } from "@/lib/indicadores";
+import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
-import { fmtCOP, fmtCompact, fmtPct, fmtNum } from "@/lib/format";
+import { fmtCOP, fmtCompact, fmtPct, fmtMillones, fmtCont, fmtPctCont } from "@/lib/format";
 import {
   TrendChart, ResultBars, WaterfallChart, DualLine, HBars, PctBars, VarBars,
   Sparkline, ContribBars,
 } from "@/components/Charts";
 import SeccionesTabs from "@/components/SeccionesTabs";
-import { ShieldCheck, TrendingUp, TrendingDown, Info, AlertTriangle } from "lucide-react";
+import MesesSelector from "@/components/MesesSelector";
+import AnioSelector from "@/components/AnioSelector";
+import { ShieldCheck, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle2, type LucideIcon } from "lucide-react";
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string }> }) {
-  const { p, sec } = await searchParams;
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string; meses?: string; anio?: string }> }) {
+  const { p, sec, meses, anio } = await searchParams;
   const etq = p || PERIODO_DEFAULT;
   const current = sec || "resumen";
+  const nMeses = Math.min(Math.max(parseInt(meses || "6") || 6, 1), 24);
+  const nAnio = anio ? parseInt(anio) : undefined;
   await ensureLoaded();
 
   return (
@@ -27,7 +31,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {current === "situacion" && <Situacion etq={etq} />}
       {current === "resultados" && <Resultados etq={etq} />}
       {current === "flujo" && <Flujo etq={etq} />}
-      {current === "indicadores" && <Indicadores etq={etq} />}
+      {current === "indicadores" && <Indicadores etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "tendencias" && <Tendencias etq={etq} />}
     </div>
   );
@@ -37,11 +41,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 function Resumen({ etq }: { etq: string }) {
   const c = contribucion(etq);
   const k = kpisResumen(etq);
-  const claves = indicadoresClave(etq);
-  const cob = claves.find((i) => i.id === "cobertura");
-  const exc = claves.find((i) => i.id === "excedente");
   const respaldo = fact(etq, "12") + fact(etq, "11");
   const oblig = fact(etq, "2640");
+  const cobertura = oblig ? respaldo / oblig : 0;
   const serieCob = ultimosPeriodos(etq, 12).map((q) => {
     const r = fact(q.etiqueta, "12") + fact(q.etiqueta, "11");
     const o = fact(q.etiqueta, "2640");
@@ -50,25 +52,26 @@ function Resumen({ etq }: { etq: string }) {
 
   return (
     <div className="space-y-5">
-      {/* Titular: la cobertura */}
+      {/* Titular: la cobertura. Cifras de reservas redondeadas a millones mientras
+          se concilia la contabilidad con el informe de gestión. */}
       <div className="card p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2 text-sm text-muted mb-1">
             <ShieldCheck size={16} className="text-pos" /> Razón de cobertura
           </div>
-          <div className={`text-5xl font-semibold tnum tracking-tight ${(cob?.valor ?? 0) >= 1 ? "text-pos" : "text-neg"}`}>
-            {fmtPct(cob?.valor ?? 0)}
+          <div className={`text-5xl font-semibold tnum tracking-tight ${cobertura >= 1 ? "text-pos" : "text-neg"}`}>
+            {fmtPct(cobertura)}
           </div>
           <p className="text-sm text-muted mt-2">
-            El respaldo cubre {fmtPct(cob?.valor ?? 0)} de las obligaciones de garantía.
+            El respaldo cubre {fmtPct(cobertura)} de las obligaciones de garantía.
           </p>
-          <div className="mt-3"><Sparkline data={serieCob} color="#16a34a" height={34} /></div>
+          <div className="mt-3"><Sparkline data={serieCob} color="#1B7A3D" height={34} /></div>
           <p className="text-[11px] text-faint mt-1">12 meses</p>
         </div>
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Cifra label="Respaldo (inversiones + efectivo)" value={fmtCOP(respaldo)} />
-          <Cifra label="Obligaciones de garantías" value={fmtCOP(oblig)} />
-          <Cifra label="Excedente de respaldo" value={fmtCOP(exc?.valor ?? 0)} tone={(exc?.valor ?? 0) >= 0 ? "pos" : "neg"} />
+          <Cifra label="Respaldo (inversiones + efectivo)" value={fmtMillones(respaldo)} />
+          <Cifra label="Obligaciones de garantías" value={fmtMillones(oblig)} />
+          <Cifra label="Excedente de respaldo" value={fmtMillones(respaldo - oblig)} tone={respaldo >= oblig ? "pos" : "neg"} />
         </div>
       </div>
 
@@ -76,11 +79,11 @@ function Resumen({ etq }: { etq: string }) {
       <div className="card p-5">
         <div className="flex items-baseline justify-between mb-1">
           <h2 className="font-medium">¿De dónde sale la utilidad?</h2>
-          <span className="text-xs text-faint">Contribución acumulada del año</span>
+          <span className="text-xs text-muted">Contribución acumulada del año</span>
         </div>
         <p className="text-sm text-muted mb-4">
-          Dos motores sobre una misma estructura administrativa. Los gastos de administración no se reparten
-          entre ellos porque son un costo conjunto.
+          Dos vías sobre una misma estructura administrativa. Los gastos de administración no se reparten
+          entre ellas porque son un costo conjunto.
         </p>
         <BarraMezcla pctCob={c.pctCob} pctInv={c.pctInv} cob={c.contribCob} inv={c.contribInv} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
@@ -98,7 +101,7 @@ function Resumen({ etq }: { etq: string }) {
         </div>
         <div className="space-y-4">
           <KpiMini label="Activos totales" value={fmtCOP(k.activo)} yoy={k.activoYoY} />
-          <KpiMini label="Patrimonio" value={fmtCOP(k.patrim)} yoy={k.patrimYoY} />
+          <KpiMini label="Patrimonio (incluida utilidad)" value={fmtCOP(k.patrim)} yoy={k.patrimYoY} />
           <KpiMini label="Utilidad neta (año)" value={fmtCOP(k.utilNeta)} yoy={k.utilYoY} tone={k.utilNeta >= 0 ? "pos" : "neg"} />
         </div>
       </div>
@@ -113,14 +116,23 @@ function Situacion({ etq }: { etq: string }) {
   const a = esfAnalisis(etq);
   const respaldo = fact(etq, "12") + fact(etq, "11");
   const oblig = fact(etq, "2640");
+  const cuadra = Math.abs(k.activo - (k.pasivo + k.patrim)) < 1;
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiMini label="Activos totales" value={fmtCOP(k.activo)} yoy={k.activoYoY} />
-        <KpiMini label="Pasivos totales" value={fmtCOP(k.pasivo)} yoy={k.pasivoYoY} inv />
-        <KpiMini label="Patrimonio" value={fmtCOP(k.patrim)} yoy={k.patrimYoY} />
-        <KpiMini label="Excedente de respaldo" value={fmtCOP(respaldo - oblig)} yoy={null} tone={respaldo >= oblig ? "pos" : "neg"} />
+        <KpiMini label="Pasivos totales (incluida provisión)" value={fmtCOP(k.pasivo)} yoy={k.pasivoYoY} inv />
+        <KpiMini label="Patrimonio (incluida utilidad)" value={fmtCOP(k.patrim)} yoy={k.patrimYoY} />
+        <div className={`card p-4 flex items-center gap-3 ${cuadra ? "" : "border-neg/50"}`}>
+          {cuadra ? <CheckCircle2 className="text-pos shrink-0" size={22} /> : <AlertTriangle className="text-neg shrink-0" size={22} />}
+          <div>
+            <div className="text-[13px] text-muted">Ecuación contable</div>
+            <div className={`text-sm font-medium ${cuadra ? "text-pos" : "text-neg"}`}>
+              {cuadra ? "Cuadra: A = P + K" : `Descuadre: ${fmtCont(k.activo - k.pasivo - k.patrim)}`}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="card p-5">
@@ -155,8 +167,8 @@ function Resultados({ etq }: { etq: string }) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Cifra label="Contribución de cobertura" value={fmtCOP(c.contribCob)} sub={fmtPct(c.pctCob) + " del total"} />
-        <Cifra label="Contribución de inversiones" value={fmtCOP(c.contribInv)} sub={fmtPct(c.pctInv) + " del total"} />
+        <Cifra label="Ingresos por cobertura de créditos" value={fmtCOP(c.ingCob)} sub={`aporte neto tras costo: ${fmtCompact(c.contribCob)}`} />
+        <Cifra label="Ingresos por inversiones" value={fmtCOP(c.contribInv)} sub={`${fmtPct(c.pctInv)} de la contribución`} />
         <Cifra label="Gastos de administración" value={fmtCOP(c.gastosAdmin)} />
         <Cifra label="Utilidad neta (año)" value={fmtCOP(c.utilNeta)} tone={c.utilNeta >= 0 ? "pos" : "neg"} />
       </div>
@@ -165,7 +177,7 @@ function Resultados({ etq }: { etq: string }) {
         <WaterfallChart data={cascadaChart(etq)} />
       </Card>
 
-      <Card titulo="Los dos motores, mes a mes" sub="Contribución de cobertura e inversiones">
+      <Card titulo="Las dos vías de ingreso, mes a mes" sub="Cobertura de créditos e inversiones (aporte neto)">
         <ContribBars data={contribucionTrend(etq)} />
       </Card>
 
@@ -193,7 +205,7 @@ function Resultados({ etq }: { etq: string }) {
 function Flujo({ etq }: { etq: string }) {
   const f = flujoEfectivo(etq);
   if (!f) return <Vacio texto="No hay período anterior para calcular el flujo de este corte." />;
-  const serie = ultimosPeriodos(etq, 12).map((q) => ({ mes: q.etiqueta, efectivo: fact(q.etiqueta, "11") }));
+  const serie = ultimosPeriodos(etq, 12).map((q) => ({ name: q.etiqueta, value: fact(q.etiqueta, "11") }));
   const cascada = [
     { name: "Efectivo inicial", base: 0, value: f.dispIni, tipo: "total", signo: 1 },
     { name: "Operación", base: Math.min(f.dispIni, f.dispIni + f.flujoOp), value: Math.abs(f.flujoOp), tipo: f.flujoOp >= 0 ? "inc" : "dec", signo: Math.sign(f.flujoOp) },
@@ -216,72 +228,96 @@ function Flujo({ etq }: { etq: string }) {
       </Card>
 
       <Card titulo="Evolución del efectivo" sub="12 meses">
-        <HBars data={serie.map((s) => ({ name: s.mes, value: s.efectivo }))} />
+        <HBars data={serie} />
       </Card>
 
       {Math.abs(f.ajuste) > 1 && (
         <Aviso>
           Hay {fmtCOP(Math.abs(f.ajuste))} de partidas no monetarias y ajustes que se absorben en el flujo de operación
-          para que el estado cuadre exactamente contra el efectivo real. Viene de los ajustes manuales de la hoja AJUSTADO.
+          para que el estado cuadre exactamente contra el efectivo real.
         </Aviso>
       )}
     </div>
   );
 }
 
-/* ================= INDICADORES ================= */
-function Indicadores({ etq }: { etq: string }) {
-  const cats = indicadoresPorCategoria(etq);
+/* ================= INDICADORES — filas por indicador, meses en columnas ================= */
+function Indicadores({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?: number }) {
+  const meses = mesesVista(etq, anio, nMeses);
+  if (!meses.length) return <Vacio texto="No hay datos para ese año." />;
+  const cats = indicadoresMatriz(meses);
+  const labels = meses.map((m) => `${["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m.mes]} ${String(m.anio).slice(2)}`);
+  const conNota = cats.flatMap((c) => c.filas).filter((f) => f.nota);
+
+  const fmtVal = (v: number, formato: string) =>
+    formato === "pct" ? fmtPctCont(v) : formato === "veces" ? (v ? v.toFixed(2) + "x" : "—") : fmtCont(v);
+
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-muted">
-        Agrupados por lo que responden. Los que llevan aviso no deben leerse solos — su valor literal engaña
-        sobre este negocio.
-      </p>
-      {cats.map((cat) => (
-        <div key={cat.id} className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-line flex items-baseline gap-3">
-            <h2 className="font-semibold">{cat.nombre}</h2>
-            <span className="text-xs text-muted">{cat.desc}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-line">
-            {cat.indicadores.map((i) => <IndCard key={i.id} i={i} />)}
-          </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-5 flex-wrap">
+        <AnioSelector current={anio} />
+        {!anio && <MesesSelector current={nMeses} />}
+      </div>
+
+      <div className="card overflow-auto">
+        <table className="text-sm border-collapse w-max min-w-full">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wider text-muted">
+              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Indicador</th>
+              {labels.map((l) => (
+                <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[104px]">{l}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {cats.map((cat) => (
+              <CatRows key={cat.id} cat={cat} nCols={labels.length} fmtVal={fmtVal} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {conNota.length > 0 && (
+        <div className="card p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-fg"><AlertTriangle size={14} className="text-gold" /> Léelos con contexto</div>
+          {conNota.map((f) => (
+            <p key={f.id} className="text-xs text-muted"><b className="text-fg">{f.nombre}:</b> {f.nota}</p>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function IndCard({ i }: { i: Indicador }) {
-  const val = i.formato === "pct" ? fmtPct(i.valor) : i.formato === "veces" ? i.valor.toFixed(2) + "x" : fmtCOP(i.valor);
-  const delta = i.prev !== null && i.prev !== 0 ? (i.valor - i.prev) / Math.abs(i.prev) : null;
-  // Dirección: verde/rojo según si el movimiento es BUENO, no si sube.
-  const bien = delta === null || !i.bueno ? null : i.bueno === "alto" ? delta >= 0 : delta <= 0;
+function CatRows({ cat, nCols, fmtVal }: {
+  cat: { id: string; nombre: string; desc: string; filas: { id: string; nombre: string; formato: string; nota?: string; formula: string; vals: number[] }[] };
+  nCols: number;
+  fmtVal: (v: number, formato: string) => string;
+}) {
   return (
-    <div className="bg-card p-4 flex flex-col gap-1.5">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[13px] text-muted leading-snug">{i.nombre}</span>
-        {i.nota && <AlertTriangle size={13} className="text-gold shrink-0 mt-0.5" />}
-      </div>
-      <div className={`text-xl font-semibold tnum ${i.nota ? "text-muted" : "text-fg"}`}>{val}</div>
-      <div className="flex items-center gap-1.5 text-xs">
-        {delta === null ? (
-          <span className="text-faint">sin comparativo</span>
-        ) : (
-          <>
-            <span className={bien === null ? "text-faint" : bien ? "text-pos" : "text-neg"}>
-              {delta >= 0 ? "▲" : "▼"} {Math.abs(delta * 100).toFixed(1)}%
+    <>
+      <tr>
+        <td colSpan={nCols + 1} className="px-5 py-2.5 bg-card2 border-y border-line">
+          <span className="font-semibold">{cat.nombre}</span>
+          <span className="text-xs text-muted ml-3">{cat.desc}</span>
+        </td>
+      </tr>
+      {cat.filas.map((f) => (
+        <tr key={f.id} className="hover:bg-card2/60">
+          <td className="sticky left-0 z-10 bg-card px-5 py-2 border-b border-line-soft" title={f.formula}>
+            <span className="flex items-center gap-1.5 pl-3">
+              <span className="text-muted">{f.nombre}</span>
+              {f.nota && <AlertTriangle size={12} className="text-gold shrink-0" />}
             </span>
-            <span className="text-faint">vs. año anterior</span>
-          </>
-        )}
-      </div>
-      <p className="text-[11px] text-faint mt-1 leading-snug">{i.formula}</p>
-      {i.nota && (
-        <p className="text-[11px] text-gold/90 leading-snug mt-1 border-l-2 border-gold/40 pl-2">{i.nota}</p>
-      )}
-    </div>
+          </td>
+          {f.vals.map((v, i) => (
+            <td key={i} className={`text-right tnum tabular-nums px-3 py-2 border-b border-line-soft whitespace-nowrap ${f.nota ? "text-muted" : "text-fg"}`}>
+              {fmtVal(v, f.formato)}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
 
@@ -292,16 +328,17 @@ function Tendencias({ etq }: { etq: string }) {
   const per = ultimosPeriodos(etq, 12);
   const serie = (cod: string, acum = false) =>
     per.map((q) => (acum ? ytd(q.etiqueta, cod) : fact(q.etiqueta, cod)));
+  const utilSerie = per.map((q) => provisionRenta(q.etiqueta).neto);
 
   const lineas = [
-    { label: "Activos", data: serie("1"), color: "#1e40af" },
-    { label: "Pasivos", data: serie("2"), color: "#c99a2e" },
-    { label: "Patrimonio", data: serie("3"), color: "#16a34a" },
-    { label: "Efectivo", data: serie("11"), color: "#45b6e8" },
-    { label: "Inversiones", data: serie("12"), color: "#5b6ee1" },
-    { label: "Obligaciones de garantías", data: serie("2640"), color: "#dc2626" },
-    { label: "Ingresos (mes)", data: serie("4"), color: "#3ddc97" },
-    { label: "Gastos (mes)", data: serie("5"), color: "#e0b94a" },
+    { label: "Activos", data: serie("1"), color: "#13286E" },
+    { label: "Pasivos", data: serie("2"), color: "#C99A2E" },
+    { label: "Patrimonio", data: serie("3"), color: "#1B7A3D" },
+    { label: "Efectivo", data: serie("11"), color: "#3B5BD9" },
+    { label: "Inversiones", data: serie("12"), color: "#5E718D" },
+    { label: "Obligaciones de garantías", data: serie("2640"), color: "#B3261E" },
+    { label: "Ingresos (mes)", data: serie("4"), color: "#1B7A3D" },
+    { label: "Utilidad neta (acum.)", data: utilSerie, color: "#13286E" },
   ];
 
   return (
@@ -321,7 +358,7 @@ function Tendencias({ etq }: { etq: string }) {
                 <div className="text-[13px] text-muted">{l.label}</div>
                 <div className="text-lg font-semibold tnum mt-0.5">{fmtCompact(ult)}</div>
                 <div className="my-2"><Sparkline data={l.data} color={l.color} /></div>
-                <div className="text-xs text-faint">
+                <div className="text-xs text-muted">
                   {var12 === null ? "—" : `${var12 >= 0 ? "▲" : "▼"} ${Math.abs(var12).toFixed(1)}% en 12 meses`}
                 </div>
               </div>
@@ -336,7 +373,7 @@ function Tendencias({ etq }: { etq: string }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card titulo="Resultado mensual" sub="12 meses"><ResultBars data={d.trend} /></Card>
-        <Card titulo="Los dos motores" sub="Contribución mensual"><ContribBars data={contribucionTrend(etq)} /></Card>
+        <Card titulo="Las dos vías de ingreso" sub="Aporte neto mensual"><ContribBars data={contribucionTrend(etq)} /></Card>
       </div>
     </div>
   );
@@ -354,7 +391,7 @@ function Card({ titulo, sub, children }: { titulo: string; sub?: string; childre
     <div className="card p-5">
       <div className="flex items-baseline justify-between mb-3 gap-3">
         <h2 className="font-medium">{titulo}</h2>
-        {sub && <span className="text-xs text-faint whitespace-nowrap">{sub}</span>}
+        {sub && <span className="text-xs text-muted whitespace-nowrap">{sub}</span>}
       </div>
       {children}
     </div>
@@ -365,7 +402,7 @@ function Cifra({ label, value, sub, tone }: { label: string; value: string; sub?
     <div className="card p-4">
       <div className="text-xs text-muted leading-snug">{label}</div>
       <div className={`text-lg font-semibold tnum mt-1 ${tone === "pos" ? "text-pos" : tone === "neg" ? "text-neg" : "text-fg"}`}>{value}</div>
-      {sub && <div className="text-[11px] text-faint mt-0.5">{sub}</div>}
+      {sub && <div className="text-[11px] text-muted mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -380,7 +417,7 @@ function KpiMini({ label, value, yoy, tone, inv }: { label: string; value: strin
         {yoy === null ? <span className="text-faint">sin comparativo</span> : (
           <>
             <span className={bien ? "text-pos" : "text-neg"}>{up ? "▲" : "▼"} {Math.abs(yoy).toFixed(1)}%</span>
-            <span className="text-faint"> vs. año anterior</span>
+            <span className="text-muted"> vs. año anterior</span>
           </>
         )}
       </div>
@@ -394,13 +431,13 @@ function BarraMezcla({ pctCob, pctInv, cob, inv }: { pctCob: number; pctInv: num
         <div className="bg-royal grid place-items-center text-white text-xs font-medium" style={{ width: `${pctCob * 100}%` }}>
           {fmtPct(pctCob)}
         </div>
-        <div className="bg-sky grid place-items-center text-royal text-xs font-medium" style={{ width: `${pctInv * 100}%` }}>
+        <div className="grid place-items-center text-white text-xs font-medium" style={{ width: `${pctInv * 100}%`, background: "#C99A2E" }}>
           {fmtPct(pctInv)}
         </div>
       </div>
       <div className="flex justify-between mt-2 text-xs">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /><span className="text-muted">Cobertura</span> <span className="tnum text-fg">{fmtCompact(cob)}</span></span>
-        <span className="flex items-center gap-1.5"><span className="tnum text-fg">{fmtCompact(inv)}</span> <span className="text-muted">Inversiones</span><span className="h-2.5 w-2.5 rounded-full bg-sky" /></span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /><span className="text-muted">Ingresos por cobertura de créditos (netos)</span> <span className="tnum text-fg">{fmtCompact(cob)}</span></span>
+        <span className="flex items-center gap-1.5"><span className="tnum text-fg">{fmtCompact(inv)}</span> <span className="text-muted">Ingresos por inversiones</span><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#C99A2E" }} /></span>
       </div>
     </div>
   );

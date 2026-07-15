@@ -1,19 +1,26 @@
 import { cambiosPatrimonio } from "@/lib/statements";
-import { ensureLoaded } from "@/lib/data";
+import { ensureLoaded, periodos } from "@/lib/data";
 import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
 import { fmtNum } from "@/lib/format";
+import AnioSelector from "@/components/AnioSelector";
 
-export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
+export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
+  const { p, anio } = await searchParams;
+  const nAnio = anio ? parseInt(anio) : undefined;
   await ensureLoaded();
+  // Con año seleccionado, el estado corre hasta el último mes disponible de ese año.
+  const delAnio = nAnio ? periodos.filter((q) => q.anio === nAnio) : [];
+  const etq = delAnio.length ? delAnio[delAnio.length - 1].etiqueta : p || PERIODO_DEFAULT;
   const c = cambiosPatrimonio(etq);
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">
-        {etqNombre(etq)} · acumulado del año{c.ini ? ` (desde ${etqNombre(c.ini)})` : ""} · pesos colombianos
-      </p>
+      <div className="flex items-center gap-5 flex-wrap">
+        <p className="text-sm text-muted">
+          {etqNombre(etq)} · acumulado del año{c.ini ? ` (desde ${etqNombre(c.ini)})` : ""} · pesos colombianos
+        </p>
+        <AnioSelector current={nAnio} />
+      </div>
 
       <div className="card overflow-auto">
         <table className="text-sm border-collapse w-max min-w-full">
