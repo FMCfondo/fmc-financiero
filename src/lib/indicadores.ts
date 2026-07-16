@@ -350,6 +350,47 @@ export function indicadoresClave(etq: string) {
   return indicadores(etq).filter((i) => i.clave);
 }
 
+/* Indicadores INTERPRETADOS para el Cockpit: no un número pelado, sino su
+   lectura (palabra + meta + tendencia vs. mes anterior). Curados a los que la
+   Junta necesita. Donde no hay umbral defendible, no se inventa un nivel: se
+   muestra solo la tendencia (honestidad > semáforo falso). */
+export type IndCockpit = {
+  id: string; nombre: string; valor: number; formato: Formato;
+  nivel: Nivel | null; palabra: string | null; meta: string | null;
+  deltaMes: number | null; bueno?: Direccion; nota?: string;
+};
+const META_CORTA: Record<string, string> = {
+  cobertura: "meta ≥ 100%",
+  razon_corriente: "meta ≥ 1,0",
+  margen_ebitda: "meta > 0%",
+  margen_neto: "meta > 0%",
+};
+const PALABRA: Record<Nivel, string> = { bien: "Adecuado", regular: "En vigilancia", mal: "Bajo umbral" };
+const PALABRA_ID: Record<string, Partial<Record<Nivel, string>>> = {
+  cobertura: { bien: "Saludable", regular: "Margen estrecho", mal: "Insuficiente" },
+  razon_corriente: { bien: "Holgada" },
+};
+export function indicadoresCockpit(etq: string): IndCockpit[] {
+  const ORDEN = ["cobertura", "margen_ebitda", "margen_neto", "razon_corriente", "roe", "endeud_real"];
+  const c = ctx(etq);
+  const pm = D.prevPeriodo(etq)?.etiqueta ?? null;
+  const cPrev = pm ? ctx(pm) : null;
+  const byId = new Map(DEFS.map((d) => [d.id, d]));
+  return ORDEN.flatMap((id) => {
+    const d = byId.get(id);
+    if (!d) return [];
+    const v = d.fn(c);
+    const nivel = d.evalua ? d.evalua(v) : null;
+    const palabra = nivel ? (PALABRA_ID[id]?.[nivel] ?? PALABRA[nivel]) : null;
+    return [{
+      id, nombre: d.nombre, valor: v, formato: d.formato,
+      nivel, palabra, meta: META_CORTA[id] ?? null,
+      deltaMes: cPrev ? v - d.fn(cPrev) : null,
+      bueno: d.bueno, nota: d.nota,
+    }];
+  });
+}
+
 /** Matriz para la vista por meses: indicador en fila, meses en columnas.
  *  - Los de flujo (ingresos) muestran el valor DEL MES y llevan Acumulado aparte.
  *  - Los de saldo/razón muestran su valor al cierre de cada mes; su columna

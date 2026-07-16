@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { ensureLoaded, mesesVista, resolverEtq } from "@/lib/data";
+import { ensureLoaded, resolverEtq } from "@/lib/data";
 import { construirInforme, type Base, type Modo, type Informe } from "@/lib/cockpit";
-import { indicadoresMatriz } from "@/lib/indicadores";
-import { fmtM, fmtCOP, fmtPct, mesCorto } from "@/lib/format";
-import { Sparkline, TrendChart, WaterfallChart } from "@/components/Charts";
+import { indicadoresCockpit, type IndCockpit } from "@/lib/indicadores";
+import { fmtM, fmtCOP, fmtPct } from "@/lib/format";
+import { Sparkline } from "@/components/Charts";
 import { DosLineas } from "@/components/CockpitCharts";
-import IndicadoresTabla from "@/components/IndicadoresTabla";
 import {
-  FileSpreadsheet, Landmark, Waves, Layers, Wallet, ArrowRight, CheckCircle2,
+  FileSpreadsheet, Landmark, Waves, Layers, Wallet, ArrowRight, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 
 /* Executive Financial Cockpit — la herramienta para CONDUCIR la reunión de Junta.
-   No es un dashboard: es la reunión, en orden. Cada sección responde la pregunta
-   que naturalmente sigue en la presentación, y el MISMO objeto `Informe` que se
-   renderiza aquí alimentará el informe PDF para la Junta (misma narrativa).
-   Todo sale de los motores validados — esta página no calcula nada contable. */
+   Principio rector: si un miembro de Junta necesita que le expliquen un gráfico,
+   el gráfico fracasó. Cada elemento se entiende en cinco segundos, con sus valores
+   a la vista (sin hover para comprender), en una paleta sobria: azul institucional,
+   gris para lo secundario, verde solo para lo positivo, rojo solo para lo importante.
+   El MISMO objeto `Informe` que se renderiza aquí alimentará el informe PDF. */
+
+const AZUL = "#13286E", GRIS = "#8A94A6", VERDE = "#1B7A3D";
 
 export default async function CockpitPage({ searchParams }: {
   searchParams: Promise<{ p?: string; modo?: string; base?: string }>;
@@ -25,6 +27,7 @@ export default async function CockpitPage({ searchParams }: {
   const modo: Modo = qModo === "mes" ? "mes" : "acum";
   const base: Base = qBase === "mes" || qBase === "anio" ? qBase : "ppto";
   const inf = construirInforme(etq, modo, base);
+  const indic = indicadoresCockpit(etq);
 
   return (
     <div className="space-y-7 max-w-[1200px]">
@@ -34,9 +37,9 @@ export default async function CockpitPage({ searchParams }: {
       <QueCambio inf={inf} />
       <PresupuestoReal inf={inf} />
       <Evolucion inf={inf} />
-      <Indicadores etq={etq} />
+      <Indicadores indic={indic} />
       <Portafolio inf={inf} />
-      <Atencion inf={inf} />
+      <Hallazgos inf={inf} />
       <Detalle p={p} />
     </div>
   );
@@ -84,21 +87,20 @@ function SecHead({ n, titulo, pregunta }: { n: number; titulo: string; pregunta:
 
 /* ---------- 1 · Resumen Ejecutivo — la apertura del gerente ---------- */
 function ResumenEjecutivo({ inf }: { inf: Informe }) {
-  const dot = inf.estado === "grave" ? "bg-neg" : inf.estado === "vigilar" ? "bg-gold" : "bg-pos";
+  const dot = inf.estado === "grave" ? "bg-neg" : inf.estado === "vigilar" ? "bg-royal" : "bg-pos";
   const estado = inf.estado === "grave" ? "Requiere atención" : inf.estado === "vigilar" ? "Sólida, con frentes a vigilar" : "Sólida";
-  // Dos párrafos: el resultado (R1–R3) y la salud del fondo (R4–R5).
   const p1 = inf.frases.filter((f) => ["R1", "R2", "R3"].includes(f.regla)).map((f) => f.texto).join(" ");
   const p2 = inf.frases.filter((f) => ["R4", "R5"].includes(f.regla)).map((f) => f.texto).join(" ");
   return (
     <section>
       <SecHead n={1} titulo="Resumen ejecutivo" pregunta="¿Qué ocurrió en el período?" />
       <div className="card p-6 flex gap-4 items-start">
-        <span className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${dot}`} style={{ boxShadow: "0 0 0 4px color-mix(in srgb, currentcolor 15%, transparent)" }} />
+        <span className={`h-3 w-3 rounded-full mt-1.5 shrink-0 ${dot}`} />
         <div className="space-y-2.5">
           <div className="text-[15px] font-semibold">{estado} · {inf.periodo.nombre}</div>
           {p1 && <p className="text-[14px] leading-relaxed text-fg/85">{p1}</p>}
           {p2 && <p className="text-[14px] leading-relaxed text-fg/85">{p2}</p>}
-          <p className="text-[11px] text-faint">Narrativa generada por reglas (R1–R5) sobre las cifras del motor — sin conclusiones inventadas. Comparación: {inf.baseLabel}.</p>
+          <p className="text-[11px] text-faint">Redactado por reglas sobre las cifras del motor — sin conclusiones inventadas. Comparación: {inf.baseLabel}.</p>
         </div>
       </div>
     </section>
@@ -115,11 +117,11 @@ function SignosVitales({ inf }: { inf: Informe }) {
         {inf.ejecGlobal && (
           <div className="card p-4">
             <div className="text-xs text-muted leading-snug">Ejecución del presupuesto</div>
-            <div className="mt-2 space-y-2">
-              <BarraEjec label="Ingresos de operación" pct={inf.ejecGlobal.ing} />
-              <BarraEjec label="Gastos de administración" pct={inf.ejecGlobal.gas} inverso />
+            <div className="mt-2.5 space-y-2.5">
+              <BarraEjec label="Ingresos de operación" pct={inf.ejecGlobal.ing} bueno={(inf.ejecGlobal.ing ?? 0) >= 95} />
+              <BarraEjec label="Gastos de administración" pct={inf.ejecGlobal.gas} bueno={(inf.ejecGlobal.gas ?? 999) <= 105} />
             </div>
-            <div className="text-[11px] text-faint mt-2">% del plan del tramo · detalle en la sección 4</div>
+            <div className="text-[11px] text-faint mt-2.5">% del plan del tramo · detalle en la sección 4</div>
           </div>
         )}
       </div>
@@ -130,31 +132,32 @@ function SignosVitales({ inf }: { inf: Informe }) {
 function KpiCard({ k }: { k: Informe["kpis"][number] }) {
   const valor = k.unidad === "pct" ? fmtPct(k.valor) : fmtM(k.valor);
   const title = k.unidad === "pct" ? undefined : fmtCOP(k.valor);
-  const dcolor = k.dir === "pos" ? "text-pos" : k.dir === "neg" ? "text-neg" : "text-muted";
-  const flecha = k.delta === null ? "" : k.delta >= 0 ? "▲" : "▼";
-  const f1 = (n: number) => Math.abs(n).toFixed(1).replace(".", ","); // decimal es-CO
-  const deltaTxt = k.delta === null ? "—" : k.deltaUnidad === "pts" ? `${f1(k.delta)} pts` : `${f1(k.delta)}%`;
+  // Paleta sobria: verde si mejora, gris si baja sin ser crítico, rojo solo lo importante.
+  const critico = (k.id === "cobertura" && k.valor < 1) || (k.id === "utilidad" && k.valor < 0);
+  const dcolor = critico ? "text-neg" : k.dir === "pos" ? "text-pos" : "text-muted";
+  const f1 = (n: number) => Math.abs(n).toFixed(1).replace(".", ",");
   return (
     <div className={`card p-4 ${k.ancla ? "border-royal/30" : ""}`}>
       <div className="text-xs text-muted leading-snug">{k.label}</div>
-      <div className="text-[22px] font-bold tnum tracking-tight mt-1" title={title}>{valor}</div>
+      <div className={`text-[22px] font-bold tnum tracking-tight mt-1 ${critico ? "text-neg" : ""}`} title={title}>{valor}</div>
       <div className="flex items-end justify-between gap-2 mt-1.5">
         <div className="min-w-0">
-          <div className={`text-xs font-semibold ${dcolor}`}>{flecha} {deltaTxt} <span className="text-faint font-normal">{k.deltaLabel}</span></div>
+          {k.delta === null
+            ? <div className="text-[11px] text-faint">{k.deltaLabel}</div>
+            : <div className={`text-xs font-semibold ${dcolor}`}>{k.delta >= 0 ? "▲" : "▼"} {k.deltaUnidad === "pts" ? `${f1(k.delta)} pts` : `${f1(k.delta)}%`} <span className="text-faint font-normal">{k.deltaLabel}</span></div>}
           {k.sub && <div className="text-[11px] text-faint mt-0.5 truncate">{k.sub}</div>}
         </div>
         {k.serie && k.serie.length > 2 && (
-          <div className="w-[72px] shrink-0"><Sparkline data={k.serie} color={k.dir === "neg" ? "#B3261E" : "#13286E"} height={26} /></div>
+          <div className="w-[72px] shrink-0"><Sparkline data={k.serie} color={critico ? "#B3261E" : AZUL} height={26} /></div>
         )}
       </div>
     </div>
   );
 }
 
-function BarraEjec({ label, pct, inverso }: { label: string; pct: number | null; inverso?: boolean }) {
+function BarraEjec({ label, pct, bueno }: { label: string; pct: number | null; bueno: boolean }) {
   if (pct === null) return null;
-  const bien = inverso ? pct <= 105 : pct >= 95;
-  const color = bien ? "var(--color-pos)" : "var(--color-neg)";
+  const color = bueno ? "var(--color-pos)" : GRIS;
   return (
     <div>
       <div className="flex justify-between text-[11px] mb-1"><span className="text-muted">{label}</span><b className="tnum">{pct.toFixed(0)}%</b></div>
@@ -163,45 +166,45 @@ function BarraEjec({ label, pct, inverso }: { label: string; pct: number | null;
   );
 }
 
-/* ---------- 3 · Qué cambió y por qué ---------- */
+/* ---------- 3 · Qué cambió — sin waterfall, solo lo evidente ---------- */
 function QueCambio({ inf }: { inf: Informe }) {
-  if (!inf.puente.length && !inf.variaciones.length) return null;
+  if (!inf.variaciones.length) {
+    return (
+      <section>
+        <SecHead n={3} titulo="Qué cambió" pregunta={`¿Qué se movió frente a ${inf.baseLabel}?`} />
+        <div className="card p-5 text-sm text-muted">Sin variaciones materiales frente a {inf.baseLabel} en el período.</div>
+      </section>
+    );
+  }
+  const maxD = Math.max(...inf.variaciones.map((x) => Math.abs(x.delta)));
   return (
     <section>
-      <SecHead n={3} titulo="Qué cambió y por qué" pregunta="¿Qué explica el resultado del período?" />
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5 items-start">
-        {inf.puente.length > 0 && (
-          <div className="card p-5 lg:col-span-3">
-            <h3 className="font-medium">Puente de la utilidad</h3>
-            <p className="text-xs text-muted mb-2">De la utilidad {inf.baseLabel === "lo presupuestado" ? "presupuestada" : `de ${inf.baseLabel}`} a la real — qué sumó y qué restó (cierra exacto)</p>
-            <WaterfallChart data={inf.puente} />
-          </div>
-        )}
-        <div className="card p-5 lg:col-span-2">
-          <h3 className="font-medium">Variaciones que explican el período</h3>
-          <p className="text-xs text-muted mb-3">Solo desvíos materiales (≥ 2% de los ingresos o ≥ COP 1 M) · vs. {inf.baseLabel}</p>
-          {inf.variaciones.length === 0 && <p className="text-sm text-faint">Sin desvíos materiales en el período.</p>}
-          <div>
-            {inf.variaciones.map((v) => {
-              const bien = v.impacto >= 0;
-              const maxD = Math.max(...inf.variaciones.map((x) => Math.abs(x.delta)));
-              return (
-                <div key={v.nombre} className="py-2 border-b border-line-soft last:border-0">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[13px] truncate">{v.nombre}</span>
-                    <span className={`text-[13px] font-bold tnum whitespace-nowrap ${bien ? "text-pos" : "text-neg"}`} title={fmtCOP(v.delta)}>
-                      {v.delta >= 0 ? "+" : "−"}{fmtM(Math.abs(v.delta)).replace("COP ", "")}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 mt-0.5">
-                    <span className="text-[11px] text-faint">{v.clase === "ingreso" ? "ingreso" : "gasto"} · real {fmtM(v.actual).replace("COP ", "")} / ref. {fmtM(v.ref).replace("COP ", "")}</span>
-                  </div>
-                  <div className="ejec-bar mt-1.5"><span style={{ width: `${(Math.abs(v.delta) / maxD) * 100}%`, background: bien ? "var(--color-pos)" : "var(--color-neg)" }} /></div>
+      <SecHead n={3} titulo="Qué cambió" pregunta={`Los mayores movimientos frente a ${inf.baseLabel} — el resto es estable`} />
+      <div className="card p-5 space-y-1">
+        {inf.variaciones.map((v) => {
+          const bien = v.impacto >= 0;
+          const color = bien ? "var(--color-pos)" : GRIS;
+          return (
+            <div key={v.nombre} className="grid grid-cols-[1fr_auto] items-center gap-x-4 py-2 border-b border-line-soft last:border-0">
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[13.5px] font-medium truncate">{v.nombre}</span>
+                  <span className="text-[11px] text-faint whitespace-nowrap">{v.clase === "ingreso" ? "ingreso" : "gasto"}</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div className="ejec-bar mt-1.5" style={{ maxWidth: 420 }}><span style={{ width: `${(Math.abs(v.delta) / maxD) * 100}%`, background: color }} /></div>
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <div className="text-[14px] font-bold tnum" style={{ color }} title={fmtCOP(v.delta)}>
+                  {v.delta >= 0 ? "+" : "−"}{fmtM(Math.abs(v.delta)).replace("COP ", "")}
+                </div>
+                <div className="text-[11px] text-faint tnum" title={`real ${fmtCOP(v.actual)} · ref. ${fmtCOP(v.ref)}`}>
+                  {fmtM(v.actual).replace("COP ", "")} vs. {fmtM(v.ref).replace("COP ", "")}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <p className="text-[11px] text-faint pt-2">Verde = mejora el resultado · gris = lo reduce. Solo se listan desvíos materiales (≥ 2% de los ingresos o ≥ COP 1 M).</p>
       </div>
     </section>
   );
@@ -216,13 +219,13 @@ function PresupuestoReal({ inf }: { inf: Informe }) {
       <div className="card p-5">
         <div>
           {inf.termometro.map((t) => {
-            const c = t.semaforo === "bueno" ? "var(--color-pos)" : t.semaforo === "malo" ? "var(--color-neg)" : "var(--color-gold)";
+            const c = t.semaforo === "bueno" ? "var(--color-pos)" : t.semaforo === "malo" ? "var(--color-neg)" : GRIS;
             return (
               <div key={t.etiqueta} className="grid grid-cols-[170px_1fr_150px] max-sm:grid-cols-[1fr_120px] items-center gap-4 py-2.5 border-b border-line-soft last:border-0">
-                <span className="text-[13px] font-medium truncate">{cap(t.etiqueta)}</span>
+                <span className="text-[13px] font-medium truncate">{t.etiqueta}</span>
                 <div className="ejec-bar max-sm:hidden" style={{ height: 8 }}>
                   <span style={{ width: `${Math.min(t.pct ?? 0, 140) / 1.4}%`, background: c }} />
-                  <span className="absolute top-[-3px] bottom-[-3px] w-[2px] bg-fg/50" style={{ left: `${100 / 1.4}%` }} />
+                  <span className="absolute top-[-3px] bottom-[-3px] w-[2px] bg-fg/45" style={{ left: `${100 / 1.4}%` }} />
                 </div>
                 <span className="text-right text-[13px] tnum">
                   <b style={{ color: c }}>{t.pct === null ? "—" : `${t.pct.toFixed(0)}%`}</b>
@@ -242,9 +245,8 @@ function PresupuestoReal({ inf }: { inf: Informe }) {
     </section>
   );
 }
-const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
-/* ---------- 5 · Evolución (las 4 tendencias estratégicas) ---------- */
+/* ---------- 5 · Evolución (4 tendencias, cada una con su cifra de cierre) ---------- */
 function Evolucion({ inf }: { inf: Informe }) {
   const e = inf.evolucion;
   return (
@@ -253,21 +255,22 @@ function Evolucion({ inf }: { inf: Informe }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <div className="card p-5">
           <h3 className="font-medium mb-1">Ingresos vs. Gastos</h3>
-          <TrendChart data={e.ingGas} etiquetas="picos" />
+          <p className="text-xs text-muted mb-1">que la línea azul (ingresos) se mantenga sobre la gris</p>
+          <DosLineas data={e.ingGas.map((x) => ({ mes: x.mes, a: x.ingresos, b: x.gastos }))} labelA="Ingresos" labelB="Gastos" colorA={AZUL} colorB={GRIS} />
         </div>
         <div className="card p-5">
           <h3 className="font-medium mb-1">EBITDA y Utilidad neta del mes</h3>
-          <DosLineas data={e.ebitdaUn.map((x) => ({ mes: x.mes, a: x.ebitda, b: x.utilNeta }))} labelA="EBITDA" labelB="Utilidad neta" colorA="#13286E" colorB="#C99A2E" />
+          <DosLineas data={e.ebitdaUn.map((x) => ({ mes: x.mes, a: x.ebitda, b: x.utilNeta }))} labelA="EBITDA" labelB="Utilidad neta" colorA={AZUL} colorB={VERDE} />
         </div>
         <div className="card p-5">
           <h3 className="font-medium mb-1">Respaldo vs. Obligaciones de garantía</h3>
           <p className="text-xs text-muted mb-1">la misión del fondo: que la línea azul siempre cubra la gris</p>
-          <DosLineas data={e.respaldo} labelA="Respaldo (efectivo + inversiones)" labelB="Obligaciones (2640)" colorA="#13286E" colorB="#8A94A6" />
+          <DosLineas data={e.respaldo} labelA="Respaldo (efectivo + inversiones)" labelB="Obligaciones" colorA={AZUL} colorB={GRIS} />
         </div>
         <div className="card p-5">
           <h3 className="font-medium mb-1">Patrimonio total</h3>
           <p className="text-xs text-muted mb-1">incluye la utilidad estimada del ejercicio</p>
-          <DosLineas data={e.patrimonio} labelA="Patrimonio" colorA="#1B7A3D" />
+          <DosLineas data={e.patrimonio} labelA="Patrimonio" colorA={AZUL} />
         </div>
       </div>
       <p className="text-[11px] text-faint mt-2">El análisis profundo de tendencias (multi-año, con filtros) vive en <Link href="/estados/dashboard?sec=tendencias" className="text-accent2 hover:underline">Análisis › Tendencias</Link>.</p>
@@ -275,16 +278,45 @@ function Evolucion({ inf }: { inf: Informe }) {
   );
 }
 
-/* ---------- 6 · Indicadores ---------- */
-async function Indicadores({ etq }: { etq: string }) {
-  const meses = mesesVista(etq, undefined, 6);
-  const cats = indicadoresMatriz(meses);
-  const labels = meses.map((m) => `${mesCorto[m.mes]} ${String(m.anio).slice(2)}`);
+/* ---------- 6 · Indicadores INTERPRETADOS (no números pelados) ---------- */
+function Indicadores({ indic }: { indic: IndCockpit[] }) {
   return (
     <section>
-      <SecHead n={6} titulo="Indicadores financieros" pregunta="¿La salud financiera se sostiene? · pasa el cursor por un indicador para ver qué es" />
-      <IndicadoresTabla labels={labels} cats={cats} />
+      <SecHead n={6} titulo="Indicadores financieros" pregunta="¿La salud financiera se sostiene?" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
+        {indic.map((i) => <IndCard key={i.id} i={i} />)}
+      </div>
     </section>
+  );
+}
+
+function fmtInd(v: number, formato: IndCockpit["formato"]): string {
+  if (formato === "pct") return fmtPct(v);
+  if (formato === "veces") return `${v.toFixed(2).replace(".", ",")}×`;
+  return fmtM(v);
+}
+function IndCard({ i }: { i: IndCockpit }) {
+  const chip = i.nivel === "bien" ? "bg-pos/12 text-pos" : i.nivel === "mal" ? "bg-neg/12 text-neg" : i.nivel === "regular" ? "bg-card2 text-muted" : "";
+  const sube = (i.deltaMes ?? 0) >= 0;
+  const favorable = i.deltaMes === null ? null : i.bueno === "bajo" ? !sube : sube;
+  const trendColor = favorable === null ? "text-faint" : favorable ? "text-pos" : "text-muted";
+  return (
+    <div className="card p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-[13px] text-muted">{i.nombre}</div>
+        {i.palabra && <span className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-full ${chip}`}>{i.palabra}</span>}
+      </div>
+      <div className="text-[22px] font-bold tnum mt-1" title={i.nota ?? undefined}>{fmtInd(i.valor, i.formato)}</div>
+      <div className="flex items-center gap-2 mt-1 text-[11.5px]">
+        {i.deltaMes !== null && Math.abs(i.deltaMes) > 1e-9 && (
+          <span className={`inline-flex items-center gap-0.5 font-medium ${trendColor}`}>
+            {sube ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+            {favorable ? "mejoró" : "bajó"}
+          </span>
+        )}
+        <span className="text-faint">{i.meta ?? (i.deltaMes !== null ? "vs. mes anterior" : "sin comparativo")}</span>
+      </div>
+    </div>
   );
 }
 
@@ -292,6 +324,7 @@ async function Indicadores({ etq }: { etq: string }) {
 function Portafolio({ inf }: { inf: Informe }) {
   const p = inf.portafolio;
   if (!p.hayDatos) return null;
+  const COLS = [AZUL, GRIS, VERDE, "#3B5BD9"];
   return (
     <section>
       <SecHead n={7} titulo="Portafolio" pregunta="¿Cómo rinde la tesorería? ¿Hay liquidez?" />
@@ -305,13 +338,13 @@ function Portafolio({ inf }: { inf: Informe }) {
         <div className="mt-4">
           <div className="flex h-2.5 rounded-full overflow-hidden border border-line">
             {p.porTipo.map((t, i) => (
-              <span key={t.tipo} title={`${t.tipo}: ${fmtPct(t.pct)}`} style={{ width: `${t.pct * 100}%`, background: ["#13286E", "#C99A2E", "#1B7A3D", "#8A94A6"][i % 4] }} />
+              <span key={t.tipo} title={`${t.tipo}: ${fmtPct(t.pct)}`} style={{ width: `${t.pct * 100}%`, background: COLS[i % COLS.length] }} />
             ))}
           </div>
           <div className="flex items-center gap-4 flex-wrap mt-2 text-[11.5px] text-muted">
             {p.porTipo.map((t, i) => (
               <span key={t.tipo} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full" style={{ background: ["#13286E", "#C99A2E", "#1B7A3D", "#8A94A6"][i % 4] }} />
+                <span className="h-2 w-2 rounded-full" style={{ background: COLS[i % COLS.length] }} />
                 {t.tipo} {fmtPct(t.pct)}
               </span>
             ))}
@@ -332,30 +365,61 @@ function Stat({ l, v, s, title }: { l: string; v: string; s?: string; title?: st
   );
 }
 
-/* ---------- 8 · Aspectos que requieren atención ---------- */
-function Atencion({ inf }: { inf: Informe }) {
+/* ---------- 8 · Hallazgos del período (reemplaza "aspectos que requieren atención") ---------- */
+function Hallazgos({ inf }: { inf: Informe }) {
+  const c = inf.comportamiento;
+  const maxV = Math.max(...c.map((m) => Math.abs(m.valor)), 1);
+  const f1 = (n: number) => Math.abs(n).toFixed(1).replace(".", ",");
   return (
     <section>
-      <SecHead n={8} titulo="Aspectos que requieren atención" pregunta="Solo situaciones relevantes, por reglas objetivas" />
-      {inf.atencion.length === 0 ? (
-        <div className="card p-5 flex items-center gap-3">
-          <CheckCircle2 size={18} className="text-pos shrink-0" />
-          <p className="text-sm text-muted">No hay aspectos que requieran atención especial en este período.</p>
+      <SecHead n={8} titulo="Hallazgos del período" pregunta="Lo que un gerente diría al abrir la reunión" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+        {/* Comportamiento: 4 magnitudes con su crecimiento, en barras claras */}
+        <div className="card p-5">
+          <h3 className="font-medium mb-3">Comportamiento financiero</h3>
+          <div className="space-y-3">
+            {c.map((m) => {
+              const dcol = m.delta === null ? "text-faint" : m.bueno ? "text-pos" : "text-muted";
+              return (
+                <div key={m.label} className="grid grid-cols-[1fr_auto] items-center gap-x-3">
+                  <div className="min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[13px] text-muted truncate">{m.label}</span>
+                      <span className="text-[13px] font-bold tnum" title={fmtCOP(m.valor)}>{fmtM(m.valor).replace("COP ", "")}</span>
+                    </div>
+                    <div className="ejec-bar mt-1.5"><span style={{ width: `${(Math.abs(m.valor) / maxV) * 100}%`, background: AZUL }} /></div>
+                  </div>
+                  <div className={`text-[12px] font-semibold whitespace-nowrap w-16 text-right ${dcol}`}>
+                    {m.delta === null ? "—" : `${m.delta >= 0 ? "↑" : "↓"} ${f1(m.delta)}%`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-faint mt-3">Crecimiento frente a {inf.baseLabel}.</p>
         </div>
-      ) : (
-        <div className="card overflow-hidden">
-          {inf.atencion.map((a, i) => (
-            <Link key={i} href={a.href} className="flex gap-3.5 px-5 py-3.5 border-b border-line-soft last:border-0 hover:bg-card2/70 transition-colors">
-              <span className={`w-1 rounded-full shrink-0 self-stretch ${a.sev === "alta" ? "bg-neg" : a.sev === "media" ? "bg-gold" : "bg-line"}`} />
-              <span className="flex-1">
-                <span className="block text-[13.5px] font-semibold">{a.titulo}</span>
-                <span className="block text-[12.5px] text-muted mt-0.5">{a.detalle}</span>
-              </span>
-              <ArrowRight size={14} className="text-faint self-center shrink-0" />
-            </Link>
-          ))}
+
+        {/* Hallazgos en prosa corta */}
+        <div className="card p-5">
+          <h3 className="font-medium mb-3">Durante el período</h3>
+          <ul className="space-y-2.5">
+            {inf.hallazgos.map((h, idx) => {
+              const dot = h.tono === "pos" ? "bg-pos" : h.tono === "neg" ? "bg-neg" : "bg-faint";
+              const cuerpo = (
+                <span className="flex gap-2.5">
+                  <span className={`h-1.5 w-1.5 rounded-full mt-1.5 shrink-0 ${dot}`} />
+                  <span className="text-[13px] text-fg/85 leading-relaxed">{h.texto}</span>
+                </span>
+              );
+              return (
+                <li key={idx}>
+                  {h.href ? <Link href={h.href} className="block hover:bg-card2/60 -mx-2 px-2 py-0.5 rounded-lg transition-colors">{cuerpo}</Link> : cuerpo}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      )}
+      </div>
     </section>
   );
 }
