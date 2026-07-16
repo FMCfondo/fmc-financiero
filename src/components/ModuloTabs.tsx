@@ -1,23 +1,21 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, FileSpreadsheet, Wallet } from "lucide-react";
+import { LineChart, FileSpreadsheet } from "lucide-react";
 
+// "Análisis" = la caja de herramientas profunda del analista (composiciones,
+// tendencias multi-año, indicadores mes a mes). La vista ejecutiva es /cockpit
+// y el Portafolio tiene su propio acceso en la barra lateral.
 const TABS = [
-  { id: "dashboard", href: "/estados/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "fin", href: "/estados/resultados", label: "Estados Financieros", icon: FileSpreadsheet },
-  { id: "inv", href: "/estados/inversiones", label: "Inversiones", icon: Wallet },
+  { id: "dashboard", href: "/estados/dashboard", label: "Análisis", icon: LineChart },
 ];
 
 export default function ModuloTabs() {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
-  const current = pathname.startsWith("/estados/dashboard")
-    ? "dashboard"
-    : pathname.startsWith("/estados/inversiones")
-      ? "inv"
-      : "fin";
+  const current = pathname.startsWith("/estados/dashboard") ? "dashboard" : "fin";
 
   return (
     <div className="flex gap-6 border-b border-line">

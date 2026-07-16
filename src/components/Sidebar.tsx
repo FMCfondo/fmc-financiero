@@ -2,17 +2,19 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Landmark, Table2, Target, Percent, Upload, ListTree, Wallet,
+  Gauge, Landmark, Table2, Percent, Upload, Wallet,
 } from "lucide-react";
 
+// Un lugar para cada cosa: el Cockpit conduce la reunión de Junta; los estados
+// llevan el detalle; Balances e Ingesta son el ciclo operativo mensual.
+// (Plan de Cuentas y la página vieja de Ejecución se retiraron: eran redundantes.)
 const NAV = [
-  { href: "/estados/dashboard", match: "/estados", label: "Estados Financieros", icon: Landmark },
-  { href: "/balances", match: "/balances", label: "Balances / Resumen", icon: Table2 },
-  { href: "/ejecucion", match: "/ejecucion", label: "Ejecución Presupuestal", icon: Target },
-  { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icon: Percent },
+  { href: "/cockpit", match: "/cockpit", label: "Cockpit Ejecutivo", icon: Gauge },
+  { href: "/estados/resultados", match: "/estados", label: "Estados Financieros", icon: Landmark },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icon: Wallet },
-  { href: "/cuentas", match: "/cuentas", label: "Plan de Cuentas", icon: ListTree },
+  { href: "/balances", match: "/balances", label: "Balances / Resumen", icon: Table2 },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icon: Upload },
+  { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icon: Percent },
 ];
 
 export default function Sidebar() {
@@ -58,7 +60,7 @@ export default function Sidebar() {
 
       <div className="h-10 flex items-center shrink-0 border-t border-white/10">
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-[11px] text-white/50 pl-4">
-          v1 · datos a MAY 2026
+          FMC Financiero · v1
         </span>
       </div>
     </aside>
