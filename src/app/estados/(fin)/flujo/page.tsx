@@ -4,6 +4,7 @@ import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCont } from "@/lib/format";
 import MesesSelector from "@/components/MesesSelector";
 import AnioSelector from "@/components/AnioSelector";
+import StatementMatrix from "@/components/StatementMatrix";
 import { CheckCircle2, Info } from "lucide-react";
 
 export default async function FlujoPage({ searchParams }: { searchParams: Promise<{ p?: string; meses?: string; anio?: string }> }) {
@@ -25,41 +26,23 @@ export default async function FlujoPage({ searchParams }: { searchParams: Promis
         {!nAnio && <MesesSelector current={nMeses} />}
       </div>
 
-      {/* Meses de izquierda a derecha */}
-      <div className="card overflow-auto">
-        <table className="text-sm border-collapse w-max min-w-full">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted">
-              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[260px]">Concepto</th>
-              {m.labels.map((l) => (
-                <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[122px]">{l}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {m.filas.map((fila) => (
-              <tr key={fila.id} className={fila.total ? "bg-card2 font-semibold" : fila.sub ? "bg-card2/50 font-medium" : ""}>
-                <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line-soft ${fila.total ? "bg-card2 uppercase text-[13px] tracking-wide" : fila.sub ? "bg-card2/70" : "bg-card"}`}>
-                  {fila.nombre}
-                </td>
-                {fila.vals.map((v, i) => (
-                  <td key={i} className="text-right tnum tabular-nums px-3 py-2.5 border-b border-line-soft whitespace-nowrap">
-                    <span className={fila.total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5 inline-block" : fila.sub ? "border-t border-fg/30 inline-block" : ""}>
-                      {v === null ? "—" : fmtCont(v, fila.total)}
-                    </span>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Meses de izquierda a derecha — mismo renderizador que los demás estados */}
+      <StatementMatrix
+        labels={m.labels}
+        conAcum={false}
+        col1Label="Concepto"
+        secciones={[]}
+        filasFinales={m.filas.map((fila) => ({
+          nombre: fila.nombre, vals: fila.vals,
+          tipo: fila.total ? "total" as const : fila.sub ? "sub" as const : "linea" as const,
+        }))}
+      />
 
       {/* Detalle del último mes visible */}
       {f && (
         <div className="card overflow-hidden max-w-3xl">
-          <div className="px-4 py-3 border-b border-line flex items-center justify-between">
-            <h2 className="font-semibold">Detalle del mes — {etqNombre(cols[cols.length - 1].etiqueta)}</h2>
+          <div className="px-5 py-3.5 border-b border-line flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="font-semibold">Detalle del mes · {etqNombre(cols[cols.length - 1].etiqueta)}</h2>
             <span className="flex items-center gap-1.5 text-xs text-pos"><CheckCircle2 size={14} /> cuadra con el disponible ({fmtCOP(f.dispReal)})</span>
           </div>
           <Linea label="Utilidad del período (antes de impuestos)" valor={f.util} bold />
@@ -93,23 +76,23 @@ export default async function FlujoPage({ searchParams }: { searchParams: Promis
 
 function Linea({ label, valor, bold }: { label: string; valor: number; bold?: boolean }) {
   return (
-    <div className={`flex items-center px-4 py-2 border-b border-line-soft text-sm ${bold ? "fila-total" : ""}`}>
-      <span className={`flex-1 ${bold ? "font-semibold" : "text-muted"}`}>{label}</span>
-      <span className={`w-44 text-right tnum tabular-nums ${bold ? "font-semibold" : "text-fg"}`}>{fmtCont(valor)}</span>
+    <div className={`flex items-center px-5 py-2 border-b border-line-soft text-sm ${bold ? "bg-[var(--stmt-tint)]" : ""}`}>
+      <span className={`flex-1 ${bold ? "font-semibold text-fg" : "text-muted"}`}>{label}</span>
+      <span className={`w-44 text-right tnum tabular-nums ${bold ? "font-semibold" : "text-fg/90"}`}>{fmtCont(valor)}</span>
     </div>
   );
 }
 function Header({ children }: { children: React.ReactNode }) {
-  return <div className="px-4 py-2 bg-card2 text-xs font-semibold uppercase tracking-wide text-accent2 border-b border-line">{children}</div>;
+  return <div className="px-5 pt-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-muted">{children}</div>;
 }
 function Subtotal({ label, valor }: { label: string; valor: number }) {
   return (
-    <div className="flex items-center px-4 py-2.5 border-b border-line text-sm bg-card2">
+    <div className="flex items-center px-5 py-2.5 border-b border-line text-sm bg-[var(--stmt-tint)]">
       <span className="flex-1 font-semibold">{label}</span>
-      <span className="w-44 text-right tnum tabular-nums font-semibold"><span className="border-t border-fg/30 inline-block">{fmtCont(valor)}</span></span>
+      <span className="w-44 text-right tnum tabular-nums font-semibold"><span className="border-t border-fg/25 inline-block">{fmtCont(valor)}</span></span>
     </div>
   );
 }
 function Vacia() {
-  return <div className="px-4 py-2 border-b border-line-soft text-sm text-faint italic">Sin movimientos en el período.</div>;
+  return <div className="px-5 py-2 border-b border-line-soft text-sm text-faint italic">Sin movimientos en el período.</div>;
 }

@@ -52,9 +52,98 @@ body {
   box-shadow: 0 1px 2px rgba(16, 42, 90, 0.04), 0 4px 14px rgba(16, 42, 90, 0.05);
 }
 .hairline { border-color: var(--color-line); }
-.fila-total { background: linear-gradient(90deg, rgba(69, 182, 232, 0.16), rgba(30, 64, 175, 0.05)); }
+.fila-total { background: var(--color-card2); }
 .brand-grad { background-image: linear-gradient(135deg, #1e40af, #13286e); }
 .text-grad {
   background: linear-gradient(120deg, #1e40af, #1b6ca8 55%, #45b6e8);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+
+/* ===================================================================
+   Sistema de Estados Financieros — un solo lenguaje visual para las
+   cinco vistas (Resultados, Situación, Flujo, Patrimonio, Ejecución).
+   Sobrio y ejecutivo: jerarquía por peso y tinte, no por color.
+   =================================================================== */
+
+/* Contenedor con scroll: la cabecera queda fija arriba y la 1ª columna a la izq. */
+.stmt {
+  --stmt-col1: 300px;         /* ancho de la columna de concepto */
+  --stmt-tint: #f6f9fd;       /* tinte de subtotal (navy muy tenue) */
+  --stmt-tint2: #eef3fb;      /* tinte de total */
+  overflow: auto;
+  border-radius: var(--radius-xl);
+}
+.stmt table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+.stmt th, .stmt td { white-space: nowrap; }
+
+/* Cabecera fija (sticky) con sombra sutil al hacer scroll */
+.stmt thead th {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--color-card);
+  font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--color-faint);
+  padding: 11px 16px 10px;
+  border-bottom: 1px solid var(--color-line);
+  box-shadow: 0 1px 0 var(--color-line);
+}
+.stmt thead th.num { text-align: right; }
+
+/* Primera columna fija (concepto), ancho mínimo consistente, con divisor sutil */
+.stmt .col1 { position: sticky; left: 0; z-index: 10; background: var(--color-card); min-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
+.stmt tbody td.col1 { padding: 7px 16px; }
+.stmt thead th.col1 { z-index: 30; text-align: left; padding: 11px 16px 10px; }
+
+/* Celdas numéricas: tabulares, alineadas, ancho parejo */
+.stmt .num {
+  text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  padding: 7px 16px; min-width: 128px;
+}
+.stmt .num-acc { border-left: 1px solid var(--color-line); background: var(--stmt-tint); }
+
+/* Filas: hover discreto, línea base tenue */
+.stmt tbody tr td { border-bottom: 1px solid var(--color-line-soft); }
+.stmt tbody tr.row:hover td { background: var(--color-card2); }
+.stmt tbody tr.row:hover .col1 { background: var(--color-card2); }
+
+/* Encabezado de sección (Ingresos / Activo…): limpio, sin barra de color llena */
+.stmt tr.section td {
+  padding: 14px 16px 7px; background: var(--color-card);
+  border-bottom: 1px solid var(--color-line); border-right: none;
+}
+.stmt tbody tr.section:first-child td { padding-top: 10px; }
+.stmt tr.section .sec-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted);
+}
+.stmt tr.section .sec-dot { width: 6px; height: 6px; border-radius: 999px; }
+
+/* Grupo (cuenta de nivel 0): peso medio, fondo apenas perceptible */
+.stmt tr.group > .col1, .stmt tr.group > td { background: #fafcff; }
+.stmt tr.group:hover > td, .stmt tr.group:hover > .col1 { background: var(--color-card2); }
+
+/* Subtotal y total: tinte sobrio + regla superior; total con doble regla */
+.stmt tr.subtotal td { background: var(--stmt-tint); font-weight: 600; }
+.stmt tr.subtotal .col1 { background: var(--stmt-tint); }
+.stmt tr.total td { background: var(--stmt-tint2); font-weight: 700; }
+.stmt tr.total .col1 { background: var(--stmt-tint2); text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; }
+
+/* Guías de indentación (jerarquía de cuentas) */
+.stmt .indent { position: relative; display: inline-flex; align-items: center; }
+.stmt .guide { display: inline-block; width: 14px; align-self: stretch; }
+.stmt .guide.line { box-shadow: inset 1px 0 0 var(--color-line); }
+
+/* Chevron de expandir/contraer con giro suave */
+.stmt .chev { transition: transform 0.18s ease; color: var(--color-faint); flex: none; }
+.stmt .chev.open { transform: rotate(90deg); }
+.stmt .code { font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: -0.01em; color: #9fb0c6; }
+
+/* Indicador de variación: discreto (triángulo + número tenue), nunca chillón */
+.delta { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.delta-pos { color: var(--color-pos); }
+.delta-neg { color: var(--color-neg); }
+.delta-flat { color: var(--color-faint); }
+.delta .tri { font-size: 9px; line-height: 1; opacity: 0.85; }
+
+/* Barra de % de ejecución (mini medidor sobrio) */
+.ejec-bar { position: relative; height: 5px; border-radius: 999px; background: var(--color-line); overflow: hidden; }
+.ejec-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; }

@@ -2,14 +2,17 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export default function AnalisisTabs({ current }: { current: string }) {
+export default function AnalisisTabs({ current, ejec = true }: { current: string; ejec?: boolean }) {
   const VISTAS = [
     { id: "estado", label: "Estado", soon: false },
     { id: "vertical", label: "Análisis Vertical", soon: false },
     { id: "horizontal", label: "Análisis Horizontal", soon: false },
     { id: "interanual", label: "Comparación interanual", soon: false },
-    { id: "ejec-acum", label: "Ejecución Acum.", soon: false },
-    { id: "ejec-mes", label: "Ejecución Mes", soon: false },
+    // La ejecución presupuestal solo aplica al Estado de Resultados.
+    ...(ejec ? [
+      { id: "ejec-acum", label: "Ejecución Acum.", soon: false },
+      { id: "ejec-mes", label: "Ejecución Mes", soon: false },
+    ] : []),
   ];
   const pathname = usePathname();
   const sp = useSearchParams();

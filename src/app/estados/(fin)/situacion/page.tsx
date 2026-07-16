@@ -11,7 +11,7 @@ import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
-import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
@@ -32,13 +32,12 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted">{etqNombre(etq)} · cifras en pesos colombianos</p>
-        <AnalisisTabs current={current} />
+        <AnalisisTabs current={current} ejec={false} />
       </div>
       {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
-      {(current === "ejec-acum" || current === "ejec-mes") && <Pendiente />}
     </div>
   );
 }
@@ -65,6 +64,7 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
       <StatementMatrix
         labels={m.labels}
         conAcum={false}
+        persistKey="esf-estado"
         secciones={[
           { titulo: "Activo", tono: "bg-royal", arbol: m.activo, totalLabel: "Total activos", totalVals: m.totalActivo },
           {
@@ -105,7 +105,7 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} persistKey={`esf-${modo}`} />
       <p className="text-xs text-muted">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}.`
@@ -180,15 +180,6 @@ function Recuadro({ titulo, sub, tono, children }: { titulo: string; sub?: strin
         {sub && <span className="text-xs text-muted">{sub}</span>}
       </div>
       {children}
-    </div>
-  );
-}
-
-function Pendiente() {
-  return (
-    <div className="card p-6 flex items-start gap-3 border-accent/25">
-      <Info size={18} className="text-accent2 mt-0.5 shrink-0" />
-      <p className="text-sm text-muted">La ejecución presupuestal se activa al migrar el <span className="text-fg">PPTO 2026</span> a la base de datos. La estructura ya está lista.</p>
     </div>
   );
 }

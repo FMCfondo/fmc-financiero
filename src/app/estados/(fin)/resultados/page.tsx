@@ -60,6 +60,7 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
       <StatementMatrix
         labels={m.labels}
         conAcum
+        persistKey="er-estado"
         secciones={[
           { titulo: "Ingresos", tono: "bg-pos", arbol: m.ingresos, totalLabel: "Total ingresos", totalVals: m.totalIng.vals, totalAcum: m.totalIng.acum },
           { titulo: "Gastos (sin depreciaciones ni amortizaciones)", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos operativos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
@@ -101,7 +102,7 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} persistKey={`er-${modo}`} />
       <p className="text-xs text-muted">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}. Los gastos van sin depreciaciones ni amortizaciones, que cierran la estructura EBITDA al pie.`
@@ -225,15 +226,15 @@ function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
           estructura EBITDA). Las líneas de detalle sin cuenta contable propia muestran solo el presupuesto (—).
         </p>
       </div>
-      <div className="card overflow-auto">
-        <table className="text-sm border-collapse w-max min-w-full">
+      <div className="stmt card">
+        <table>
           <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted">
-              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Concepto</th>
-              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Presupuesto</th>
-              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Real</th>
-              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Variación</th>
-              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[110px]">% Ejec.</th>
+            <tr>
+              <th className="col1">Concepto</th>
+              <th className="num">Presupuesto</th>
+              <th className="num">Real</th>
+              <th className="num">Variación</th>
+              <th className="num" style={{ minWidth: 150 }}>% Ejecución</th>
             </tr>
           </thead>
           <tbody>
@@ -241,7 +242,7 @@ function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center gap-4 text-[11px] text-muted flex-wrap">
+      <div className="flex items-center gap-x-5 gap-y-1.5 text-[11px] text-muted flex-wrap">
         <span className="flex items-center gap-1.5"><Dot s="bueno" /> dentro o mejor que el presupuesto</span>
         <span className="flex items-center gap-1.5"><Dot s="neutro" /> desvío hasta 5%</span>
         <span className="flex items-center gap-1.5"><Dot s="malo" /> desvío mayor al 5%</span>
@@ -253,29 +254,43 @@ function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
 
 function Dot({ s }: { s: FilaEjec["semaforo"] }) {
   const c = s === "bueno" ? "bg-pos" : s === "malo" ? "bg-neg" : s === "neutro" ? "bg-gold" : "bg-transparent";
-  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${c}`} />;
+  return <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${c}`} />;
+}
+
+/* Mini-medidor sobrio del % de ejecución (0–100 lleno; >100 marca sobre-ejecución). */
+function EjecBar({ pct, s }: { pct: number | null; s: FilaEjec["semaforo"] }) {
+  if (pct === null) return <span className="text-faint">—</span>;
+  const fill = s === "malo" ? "var(--color-neg)" : s === "neutro" ? "var(--color-gold)" : "var(--color-pos)";
+  return (
+    <span className="inline-flex items-center gap-2 justify-end w-full">
+      <span className="tnum text-muted w-11 text-right">{pct.toFixed(0)}%</span>
+      <span className="ejec-bar w-16"><span style={{ width: `${Math.min(pct, 100)}%`, background: fill }} /></span>
+    </span>
+  );
 }
 
 function FilaEjecucion({ f }: { f: FilaEjec }) {
   const total = f.tipo === "total";
+  const rule = total ? "border-t border-fg/45 border-b-[3px] border-double border-fg/45 py-0.5" : "";
   const num = (v: number | null, dbl = false) => (
-    <span className={`inline-block ${total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5" : ""}`}>
-      {v === null ? "—" : fmtCont(v, total && dbl)}
-    </span>
+    <span className={`inline-block ${rule}`}>{v === null ? "—" : fmtCont(v, total && dbl)}</span>
   );
-  const pct = f.pctEjec === null ? "—" : `${f.pctEjec.toFixed(0)}%`;
+  const dir = f.semaforo === "bueno" ? "pos" : f.semaforo === "malo" ? "neg" : f.semaforo === "neutro" ? "flat" : null;
   return (
-    <tr className={total ? "bg-card2 font-semibold" : "hover:bg-card2/60"}>
-      <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line-soft ${total ? "bg-card2 uppercase text-[13px] tracking-wide" : "bg-card"}`}>
-        <span className="flex items-center gap-2">
+    <tr className={total ? "total" : "row"}>
+      <td className="col1">
+        <span className="flex items-center gap-2.5">
           <Dot s={f.semaforo} />
           <span className={total ? "" : "text-muted"}>{f.etiqueta}</span>
         </span>
       </td>
-      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap">{num(f.ppto, true)}</td>
-      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap font-medium">{num(f.real, true)}</td>
-      <td className={`text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap ${f.semaforo === "bueno" ? "text-pos" : f.semaforo === "malo" ? "text-neg" : ""}`}>{num(f.variacion)}</td>
-      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap text-muted">{pct}</td>
+      <td className="num">{num(f.ppto, true)}</td>
+      <td className="num font-medium">{num(f.real, true)}</td>
+      <td className="num">
+        {f.variacion === null ? <span className="text-faint">—</span>
+          : <span className={`delta ${dir ? "delta-" + dir : ""} justify-end`}>{num(f.variacion)}</span>}
+      </td>
+      <td className="num"><EjecBar pct={f.pctEjec} s={f.semaforo} /></td>
     </tr>
   );
 }
