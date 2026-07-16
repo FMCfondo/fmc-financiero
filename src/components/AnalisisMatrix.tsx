@@ -22,13 +22,17 @@ const fmt = (v: number | null) => {
   return v < 0 ? `(${s})%` : `${s}%`;
 };
 
+export type FilaFinalPct = { nombre: string; vals: (number | null)[]; tipo?: "sub" | "total" };
+
 export default function AnalisisMatrix({
-  labels, secciones, colorear,
+  labels, secciones, colorear, filasFinales = [],
 }: {
   labels: string[];
   secciones: { titulo: string; arbol: NodoPct[]; totalVals: (number | null)[] }[];
   /** true en horizontal: verde crece / rojo cae. En vertical no se colorea. */
   colorear?: boolean;
+  /** Cierre EBITDA del ER (% vertical o variación horizontal). */
+  filasFinales?: FilaFinalPct[];
 }) {
   const [senal, setSenal] = useState<{ v: number; abierto: boolean }>({ v: 0, abierto: true });
   return (
@@ -53,6 +57,9 @@ export default function AnalisisMatrix({
         <tbody>
           {secciones.map((s) => (
             <Seccion key={s.titulo} s={s} nCols={labels.length} colorear={colorear} senal={senal} />
+          ))}
+          {filasFinales.map((f) => (
+            <FilaFinal key={f.nombre} f={f} colorear={colorear} />
           ))}
         </tbody>
       </table>
@@ -80,6 +87,24 @@ function Seccion({ s, nCols, colorear, senal }: {
         ))}
       </tr>
     </>
+  );
+}
+
+function FilaFinal({ f, colorear }: { f: FilaFinalPct; colorear?: boolean }) {
+  const total = f.tipo === "total";
+  const sub = f.tipo === "sub";
+  const tono = (v: number | null) => !colorear || v === null ? "" : v > 0 ? "text-pos" : v < 0 ? "text-neg" : "";
+  return (
+    <tr className={total ? "bg-card2 font-semibold" : sub ? "bg-card2/50 font-medium" : ""}>
+      <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line ${total ? "bg-card2 uppercase text-[13px] tracking-wide" : sub ? "bg-card2/70" : "bg-card"}`}>
+        {f.nombre}
+      </td>
+      {f.vals.map((v, i) => (
+        <td key={i} className={`${CELL} border-b border-line ${tono(v)}`}>
+          <span className={`inline-block ${total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5" : sub ? "border-t border-fg/30" : ""}`}>{fmt(v)}</span>
+        </td>
+      ))}
+    </tr>
   );
 }
 

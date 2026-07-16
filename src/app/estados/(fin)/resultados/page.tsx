@@ -60,17 +60,22 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
         conAcum
         secciones={[
           { titulo: "Ingresos", tono: "bg-pos", arbol: m.ingresos, totalLabel: "Total ingresos", totalVals: m.totalIng.vals, totalAcum: m.totalIng.acum },
-          { titulo: "Gastos", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
+          { titulo: "Gastos (sin depreciaciones ni amortizaciones)", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos operativos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
         ]}
         filasFinales={[
-          { nombre: "Utilidad antes de impuestos", vals: m.utilAntes.vals, acum: m.utilAntes.acum, tipo: "sub" },
+          { nombre: "(=) EBITDA", vals: m.ebitda.vals, acum: m.ebitda.acum, tipo: "sub" },
+          { nombre: "(−) Depreciaciones", vals: m.dep.vals, acum: m.dep.acum },
+          { nombre: "(−) Amortizaciones", vals: m.amort.vals, acum: m.amort.acum },
+          { nombre: "(=) Utilidad antes de impuestos", vals: m.utilAntes.vals, acum: m.utilAntes.acum, tipo: "sub" },
           { nombre: `(−) Impuesto de renta estimado (${fmtNum(m.tasa * 100)}%)`, vals: m.impuesto.vals, acum: m.impuesto.acum },
           { nombre: "(=) Utilidad neta", vals: m.utilNeta.vals, acum: m.utilNeta.acum, tipo: "total" },
         ]}
       />
       <p className="text-xs text-faint">
-        Cada columna es el movimiento del mes; el <b>Acumulado</b> del año va en el recuadro final. El impuesto acumulado usa la
-        provisión completa de <Link href={`/impuesto?p=${etq}`} className="text-accent2 hover:underline">Provisión de Impuesto</Link>.
+        Estructura EBITDA: los gastos se muestran sin depreciaciones ni amortizaciones, que bajan como líneas propias hasta la
+        utilidad antes de impuestos. Cada columna es el movimiento del mes y el <b>Acumulado</b> del año va en el recuadro final;
+        el impuesto de cada mes es la provisión marginal (los meses suman el acumulado, que usa la provisión completa de{" "}
+        <Link href={`/impuesto?p=${etq}`} className="text-accent2 hover:underline">Provisión de Impuesto</Link>).
       </p>
     </div>
   );
@@ -94,11 +99,11 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} />
       <p className="text-xs text-muted">
         {modo === "vertical"
-          ? `Cada celda es la participación de la cuenta sobre ${a.base}.`
-          : `Cada celda es la variación del mes contra ${a.base}; la raya (—) indica que no existe comparativo.`}
+          ? `Cada celda es la participación de la cuenta sobre ${a.base}. Los gastos van sin depreciaciones ni amortizaciones, que cierran la estructura EBITDA al pie.`
+          : `Cada celda es la variación del mes contra ${a.base}; la raya (—) indica que no existe comparativo. El cierre EBITDA va al pie.`}
       </p>
     </div>
   );
@@ -123,16 +128,16 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
               conAcum={false}
               secciones={[
                 { titulo: "Ingresos", tono: "bg-pos", arbol: d.cifras[0].arbol, totalLabel: "Total ingresos", totalVals: d.cifras[0].totalVals },
-                { titulo: "Gastos", tono: "bg-gold", arbol: d.cifras[1].arbol, totalLabel: "Total gastos", totalVals: d.cifras[1].totalVals },
+                { titulo: "Gastos (sin dep. ni amort.)", tono: "bg-gold", arbol: d.cifras[1].arbol, totalLabel: "Total gastos operativos", totalVals: d.cifras[1].totalVals },
               ]}
-              filasFinales={[{ nombre: "Utilidad del período (antes de impuestos)", vals: d.utilPeriodo, tipo: "total" }]}
+              filasFinales={d.finalesCifras}
             />
           </Recuadro>
           <Recuadro titulo="Análisis Horizontal" sub="cada año contra el año anterior con datos" tono="bg-gold">
-            <AnalisisMatrix labels={d.labels} secciones={d.horizontal} colorear />
+            <AnalisisMatrix labels={d.labels} secciones={d.horizontal} filasFinales={d.finalesHorizontal} colorear />
           </Recuadro>
           <Recuadro titulo="Análisis Vertical" sub="participación dentro de su propio período" tono="bg-pos">
-            <AnalisisMatrix labels={d.labels} secciones={d.vertical} />
+            <AnalisisMatrix labels={d.labels} secciones={d.vertical} filasFinales={d.finalesVertical} />
           </Recuadro>
         </div>
       </div>
