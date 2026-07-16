@@ -36,6 +36,17 @@ export type Inversion = {
 };
 export let inversiones: Inversion[] = [];
 
+/* Presupuesto (tabla `ppto`): el Estado de Resultados presupuestado, cargado TAL
+   CUAL de la hoja PPTO del Excel. `cuentas`/`formula` mapean cada línea al real
+   para la ejecución presupuestal. `meses` = 12 valores ENE..DIC. */
+export type PptoLinea = {
+  anio: number; orden: number; etiqueta: string;
+  tipo: "detalle" | "total"; clase: "ingreso" | "gasto" | "resultado";
+  nota: string | null; meses: number[]; total: number;
+  cuentas: string[]; formula: string | null;
+};
+export let presupuesto: PptoLinea[] = [];
+
 let childrenMap = new Map<string, Cuenta[]>();
 let facts: Record<string, Record<string, number>> = {};
 let ready: Promise<void> | null = null;
@@ -103,7 +114,25 @@ async function loadFromNeon() {
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
   await cargarInversiones(sql);
+  await cargarPresupuesto(sql);
   marcaDatos = await leerMarca(sql);
+}
+
+/* La tabla `ppto` puede no existir aún (migración pendiente): en ese caso el
+   presupuesto queda vacío y la ejecución muestra el aviso, sin tumbar la app. */
+async function cargarPresupuesto(sql: any): Promise<void> {
+  try {
+    const ps = await sql`select anio, orden, etiqueta, tipo, clase, nota, meses, total, cuentas, formula
+                           from ppto order by anio, orden`;
+    presupuesto = (ps as any[]).map((r) => ({
+      anio: Number(r.anio), orden: Number(r.orden), etiqueta: r.etiqueta,
+      tipo: r.tipo, clase: r.clase, nota: r.nota ?? null,
+      meses: (r.meses ?? []).map((v: any) => Number(v)), total: Number(r.total),
+      cuentas: r.cuentas ?? [], formula: r.formula ?? null,
+    }));
+  } catch {
+    presupuesto = [];
+  }
 }
 
 /* La tabla `inversion` puede no existir aún (migración pendiente): en ese caso

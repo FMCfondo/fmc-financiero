@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
+import { ejecucion, type FilaEjec } from "@/lib/ejecucion";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { etqNombre } from "@/lib/periodos";
@@ -38,7 +39,8 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
-      {(current === "ejec-acum" || current === "ejec-mes") && <Pendiente />}
+      {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" />}
+      {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" />}
     </div>
   );
 }
@@ -198,6 +200,82 @@ function Recuadro({ titulo, sub, tono, children }: { titulo: string; sub?: strin
   );
 }
 
-function Pendiente() {
-  return <div className="card p-6 flex items-start gap-3 border-accent/25"><Info size={18} className="text-accent2 mt-0.5 shrink-0" /><p className="text-sm text-muted">La ejecución presupuestal se activa al migrar el <span className="text-fg">PPTO 2026</span> a la base de datos.</p></div>;
+/* ---------- Ejecución presupuestal: Presupuesto 2026 vs. ER real ---------- */
+function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
+  const ANIO = 2026;
+  const per = periodo(etq);
+  const mesHasta = per.anio === ANIO ? per.mes : 12;
+  const e = ejecucion(ANIO, mesHasta, modo);
+
+  if (!e.filas.length)
+    return <div className="card p-6 flex items-start gap-3 border-accent/25"><Info size={18} className="text-accent2 mt-0.5 shrink-0" /><p className="text-sm text-muted">El Presupuesto {ANIO} aún no está cargado en la base de datos.</p></div>;
+  if (!e.hayReal)
+    return <div className="card p-6 text-sm text-muted">Aún no hay datos reales de {ANIO} para comparar.</div>;
+
+  const per2026 = etqNombre(e.etq as string);
+  return (
+    <div className="space-y-3">
+      <div className="card p-4 flex items-start gap-3 border-accent/20">
+        <Info size={16} className="text-accent2 mt-0.5 shrink-0" />
+        <p className="text-xs text-muted">
+          {modo === "acum"
+            ? <>Real <b>acumulado</b> de enero a {per2026} contra el mismo tramo del presupuesto.</>
+            : <>Real <b>solo del mes</b> de {per2026} contra el presupuesto de ese mes.</>}{" "}
+          El presupuesto se carga tal cual del Excel de la Junta; el real sale del ER (cuentas PUC mapeadas y los subtotales de la
+          estructura EBITDA). Las líneas de detalle sin cuenta contable propia muestran solo el presupuesto (—).
+        </p>
+      </div>
+      <div className="card overflow-auto">
+        <table className="text-sm border-collapse w-max min-w-full">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wider text-muted">
+              <th className="sticky left-0 z-10 bg-card text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Concepto</th>
+              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Presupuesto</th>
+              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Real</th>
+              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">Variación</th>
+              <th className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[110px]">% Ejec.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {e.filas.map((f) => <FilaEjecucion key={f.orden} f={f} />)}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-4 text-[11px] text-muted flex-wrap">
+        <span className="flex items-center gap-1.5"><Dot s="bueno" /> dentro o mejor que el presupuesto</span>
+        <span className="flex items-center gap-1.5"><Dot s="neutro" /> desvío hasta 5%</span>
+        <span className="flex items-center gap-1.5"><Dot s="malo" /> desvío mayor al 5%</span>
+        <span>La <b>Variación</b> es Real − Presupuesto; en gastos, negativa = ahorro.</span>
+      </div>
+    </div>
+  );
+}
+
+function Dot({ s }: { s: FilaEjec["semaforo"] }) {
+  const c = s === "bueno" ? "bg-pos" : s === "malo" ? "bg-neg" : s === "neutro" ? "bg-gold" : "bg-transparent";
+  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${c}`} />;
+}
+
+function FilaEjecucion({ f }: { f: FilaEjec }) {
+  const total = f.tipo === "total";
+  const num = (v: number | null, dbl = false) => (
+    <span className={`inline-block ${total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5" : ""}`}>
+      {v === null ? "—" : fmtCont(v, total && dbl)}
+    </span>
+  );
+  const pct = f.pctEjec === null ? "—" : `${f.pctEjec.toFixed(0)}%`;
+  return (
+    <tr className={total ? "bg-card2 font-semibold" : "hover:bg-card2/60"}>
+      <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line-soft ${total ? "bg-card2 uppercase text-[13px] tracking-wide" : "bg-card"}`}>
+        <span className="flex items-center gap-2">
+          <Dot s={f.semaforo} />
+          <span className={total ? "" : "text-muted"}>{f.etiqueta}</span>
+        </span>
+      </td>
+      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap">{num(f.ppto, true)}</td>
+      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap font-medium">{num(f.real, true)}</td>
+      <td className={`text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap ${f.semaforo === "bueno" ? "text-pos" : f.semaforo === "malo" ? "text-neg" : ""}`}>{num(f.variacion)}</td>
+      <td className="text-right tnum tabular-nums px-4 py-2.5 border-b border-line-soft whitespace-nowrap text-muted">{pct}</td>
+    </tr>
+  );
 }
