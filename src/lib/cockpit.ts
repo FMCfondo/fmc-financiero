@@ -13,7 +13,7 @@ import * as D from "./data";
 import { provisionRenta, impuestoMes, serieResultados } from "./statements";
 import { ejecucion, realFormula } from "./ejecucion";
 import { portafolio } from "./inversiones";
-import { mesCorto, mesNombre } from "./format";
+import { fmtPct, mesCorto, mesNombre } from "./format";
 
 export type Base = "ppto" | "mes" | "anio";
 export type Modo = "acum" | "mes";
@@ -40,6 +40,10 @@ const BASE_LABEL: Record<Base, string> = {
   mes: "el mes anterior",
   anio: "el mismo período del año anterior",
 };
+// Variantes gramaticales de la referencia ("por encima DE LO presupuestado",
+// "N,N veces LO presupuestado") — módulo, las usan R1 y los hallazgos.
+const BASE_DE: Record<Base, string> = { ppto: "de lo presupuestado", mes: "del mes anterior", anio: "del mismo período del año anterior" };
+const BASE_VECES: Record<Base, string> = { ppto: "lo presupuestado", mes: "la del mes anterior", anio: "la del mismo período del año anterior" };
 // Rótulos ejecutivos fijos del termómetro (la hoja trae "Provisión Renta", "SUBTOTAL EBITDA"…).
 const LABEL_TERMO: Record<string, string> = {
   ing_operacion: "Ingresos de operación",
@@ -83,6 +87,8 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
 
   const e = hayPpto ? ejecucion(anio, mes, modo) : null;
   const tramoLabel = modo === "acum" ? `acumulada a ${mesNombre[mes].toLowerCase()}` : `de ${mesNombre[mes].toLowerCase()}`;
+  // "lo presupuestado hasta junio" / "para junio" — reemplaza la jerga "tramo" en la UI.
+  const planLabel = `lo presupuestado ${modo === "acum" ? "hasta" : "para"} ${mesNombre[mes].toLowerCase()}`;
 
   // ----- cifras del tramo (real) -----
   const utilReal = utilNetaTramo(etq, modo);
@@ -122,11 +128,14 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
 
   const dUtil = refFlujo(utilNetaTramo, () => tramoPpto(lineaPpto(anio, (l) => l.formula === "util_neta"), mes, modo));
   const dEbitda = refFlujo((q, m) => realFormula("ebitda", q, m), () => tramoPpto(lineaPpto(anio, (l) => l.formula === "ebitda" && l.tipo === "total"), mes, modo));
-  const dIng = refFlujo((q, m) => val(q, "4", m), () => {
+  const dIngBase = refFlujo((q, m) => val(q, "4", m), () => {
     const inv = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4150")), mes, modo);
     const com = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4180")), mes, modo);
     return inv === null || com === null ? null : inv + com; // el plan solo presupuesta las dos vías
   });
+  // Rotular la base real evita que se lea como "total vs. presupuesto total" al
+  // lado del 138% de ejecución (que es el ingreso de operación, neto de costo).
+  const dIng = base === "ppto" ? { ...dIngBase, label: "vs. presupuesto (comisiones + inversiones)" } : dIngBase;
   const dReservas = refSaldo((q) => D.fact(q, "2640"));
   const dLiquidez = refSaldo((q) => D.fact(q, "11") + D.fact(q, "12"));
   const dPatrim = refSaldo(patrimTotal);
@@ -145,7 +154,7 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     {
       id: "reservas", label: "Reservas individuales", valor: reservas, unidad: "cop",
       delta: dReservas.delta, deltaUnidad: "pct", deltaLabel: dReservas.label, dir: "neutro",
-      sub: "obligaciones de garantía (2640)", serie: s12((q) => D.fact(q, "2640")),
+      sub: "obligaciones de garantía", serie: s12((q) => D.fact(q, "2640")),
     },
     {
       id: "rendimiento", label: "Rendimiento del portafolio", valor: port.tasaPonderada, unidad: "pct",
@@ -174,7 +183,7 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     {
       id: "liquidez", label: "Respaldo líquido", valor: respaldo, unidad: "cop",
       delta: dLiquidez.delta, deltaUnidad: "pct", deltaLabel: dLiquidez.label, dir: dirDe(dLiquidez.delta),
-      sub: `cubre ${f1(cob * 100, 0)}% de las garantías`, serie: s12((q) => D.fact(q, "11") + D.fact(q, "12")),
+      sub: `cubre ${fmtPct(cob)} de las garantías`, serie: s12((q) => D.fact(q, "11") + D.fact(q, "12")),
     },
     {
       id: "patrimonio", label: "Patrimonio total", valor: patrimTotal(etq), unidad: "cop",
@@ -295,9 +304,6 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     const driverTxt = drivers.length
       ? `, ${sube ? "impulsada principalmente por" : "explicada principalmente por"} ${unir(drivers)}`
       : "";
-    // Referencias con la contracción correcta ("del mes anterior", no "de el mes…").
-    const BASE_DE: Record<Base, string> = { ppto: "de lo presupuestado", mes: "del mes anterior", anio: "del mismo período del año anterior" };
-    const BASE_VECES: Record<Base, string> = { ppto: "lo presupuestado", mes: "la del mes anterior", anio: "la del mismo período del año anterior" };
     // Con desvíos muy grandes, "N,N veces" se lee mejor que "230% por encima".
     const magnitud = sube && dUtil.delta >= 200
       ? `${f1(1 + dUtil.delta / 100)} veces ${BASE_VECES[base]}`
@@ -333,8 +339,8 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
   frases.push({
     regla: "R4", tono: cob >= 1 ? "pos" : "neg",
     texto: cob >= 1
-      ? `El respaldo líquido (efectivo e inversiones) cubre el ${f1(cob * 100, 0)}% de las obligaciones de garantía, por encima del umbral del 100%.`
-      : `El respaldo líquido cubre solo el ${f1(cob * 100, 0)}% de las obligaciones de garantía — por debajo del umbral del 100%.`,
+      ? `El respaldo líquido (efectivo e inversiones) cubre el ${fmtPct(cob)} de las obligaciones de garantía, por encima del umbral del 100%.`
+      : `El respaldo líquido cubre solo el ${fmtPct(cob)} de las obligaciones de garantía — por debajo del umbral del 100%.`,
   });
   // R5 — crecimiento del negocio: reservas y patrimonio interanual.
   {
@@ -375,14 +381,19 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
   const hallazgos: Hallazgo[] = [];
   // 1) La misión primero.
   if (cob < 1)
-    hallazgos.push({ tono: "neg", href: "/estados/situacion", texto: `La cobertura descendió al ${f1(cob * 100, 0)}% de las obligaciones de garantía, por debajo del umbral del 100%.` });
+    hallazgos.push({ tono: "neg", href: "/estados/situacion", texto: `La cobertura descendió al ${fmtPct(cob)} de las obligaciones de garantía, por debajo del umbral del 100%.` });
   else
-    hallazgos.push({ tono: "pos", texto: `El respaldo líquido cubre el ${f1(cob * 100, 0)}% de las obligaciones de garantía${cob < 1.05 ? " (margen estrecho)" : ""}.` });
+    hallazgos.push({ tono: "pos", texto: `El respaldo líquido cubre el ${fmtPct(cob)} de las obligaciones de garantía${cob < 1.05 ? " (margen estrecho)" : ""}.` });
   // 2) Resultado y su ritmo.
   if (utilReal < 0)
     hallazgos.push({ tono: "neg", href: "/estados/resultados", texto: `La utilidad neta ${tramoLabel} fue negativa (${fmtMi(utilReal)}).` });
   else if (dUtil.delta !== null)
-    hallazgos.push({ tono: "pos", texto: `La utilidad neta ${tramoLabel} (${fmtMi(utilReal)}) supera ${BASE_LABEL[base]} en ${f1(Math.abs(dUtil.delta), 0)}%.` });
+    hallazgos.push({
+      tono: "pos",
+      texto: dUtil.delta >= 200
+        ? `La utilidad neta ${tramoLabel} (${fmtMi(utilReal)}) llegó a ${f1(1 + dUtil.delta / 100)} veces ${BASE_VECES[base]}.`
+        : `La utilidad neta ${tramoLabel} (${fmtMi(utilReal)}) supera ${BASE_LABEL[base]} en ${f1(Math.abs(dUtil.delta), 0)}%.`,
+    });
   if (racha >= 3) hallazgos.push({ tono: "pos", texto: `El EBITDA acumula ${racha} meses consecutivos en terreno positivo.` });
   // 3) Disciplina de gasto.
   if (e) {
@@ -390,10 +401,10 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     if (g && g.pct !== null)
       hallazgos.push(g.pct <= 105
         ? { tono: "pos", texto: `Los gastos de administración se mantienen dentro del presupuesto (${f1(g.pct, 0)}% de ejecución).` }
-        : { tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `Los gastos de administración van al ${f1(g.pct, 0)}% del plan del tramo (${fmtMi(g.real)} vs. ${fmtMi(g.ppto)}).` });
+        : { tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `Los gastos de administración van al ${f1(g.pct, 0)}% de ${planLabel} (${fmtMi(g.real)} frente a ${fmtMi(g.ppto)}).` });
     // Rubro puntual muy por encima del plan (material).
     const rub = e.filas.find((f) => f.tipo === "detalle" && !f.formula && f.clase === "gasto" && f.pctEjec !== null && f.pctEjec >= 150 && (f.variacion ?? 0) >= 2_000_000);
-    if (rub) hallazgos.push({ tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `${rub.etiqueta} va al ${f1(rub.pctEjec!, 0)}% del presupuesto (${fmtMi(rub.variacion as number)} sobre el plan del tramo).` });
+    if (rub) hallazgos.push({ tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `${rub.etiqueta} va al ${f1(rub.pctEjec!, 0)}% del presupuesto (${fmtMi(rub.variacion as number)} por encima de ${planLabel}).` });
   }
   // 4) Portafolio.
   if (port.hayDatos) {
@@ -419,7 +430,7 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     estado,
     periodo: { etq, anio, mes, nombre: `${mesNombre[mes]} ${anio}` },
     modo, base, hayPpto, hayPrevMes: !!prevM, hayPrevAnio: !!prevA,
-    tramoLabel, baseLabel: BASE_LABEL[base],
+    tramoLabel, baseLabel: BASE_LABEL[base], planLabel,
     frases, kpis, comportamiento, variaciones, utilReal, termometro,
     evolucion, portafolio: mini, hallazgos,
     ejecGlobal: e ? {

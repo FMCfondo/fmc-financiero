@@ -364,6 +364,7 @@ const META_CORTA: Record<string, string> = {
   razon_corriente: "meta ≥ 1,0",
   margen_ebitda: "meta > 0%",
   margen_neto: "meta > 0%",
+  roa: "meta > 0%",
 };
 const PALABRA: Record<Nivel, string> = { bien: "Adecuado", regular: "En vigilancia", mal: "Bajo umbral" };
 const PALABRA_ID: Record<string, Partial<Record<Nivel, string>>> = {
@@ -371,7 +372,10 @@ const PALABRA_ID: Record<string, Partial<Record<Nivel, string>>> = {
   razon_corriente: { bien: "Holgada" },
 };
 export function indicadoresCockpit(etq: string): IndCockpit[] {
-  const ORDEN = ["cobertura", "margen_ebitda", "margen_neto", "razon_corriente", "roe", "endeud_real"];
+  // ROA y no ROE: el propio catálogo advierte que el ROE de FMC sale inflado
+  // (patrimonio pequeño por diseño) y que el comparable es el ROA. El ROE sigue
+  // disponible en la vista completa de Indicadores, siempre con su nota.
+  const ORDEN = ["cobertura", "margen_ebitda", "margen_neto", "razon_corriente", "roa", "endeud_real"];
   const c = ctx(etq);
   const pm = D.prevPeriodo(etq)?.etiqueta ?? null;
   const cPrev = pm ? ctx(pm) : null;

@@ -121,10 +121,13 @@ function SignosVitales({ inf }: { inf: Informe }) {
               <BarraEjec label="Ingresos de operación" pct={inf.ejecGlobal.ing} bueno={(inf.ejecGlobal.ing ?? 0) >= 95} />
               <BarraEjec label="Gastos de administración" pct={inf.ejecGlobal.gas} bueno={(inf.ejecGlobal.gas ?? 999) <= 105} />
             </div>
-            <div className="text-[11px] text-faint mt-2.5">% del plan del tramo · detalle en la sección 4</div>
+            <div className="text-[11px] text-faint mt-2.5">% de {inf.planLabel} · detalle en la sección 4</div>
           </div>
         )}
       </div>
+      <p className="text-[11px] text-faint mt-2">
+        <b className="text-muted">EBITDA</b> = la utilidad de operar el negocio antes de impuestos y de los gastos que no mueven caja (depreciaciones y amortizaciones).
+      </p>
     </section>
   );
 }
@@ -238,7 +241,7 @@ function PresupuestoReal({ inf }: { inf: Informe }) {
           })}
         </div>
         <div className="flex items-center gap-x-4 gap-y-1 text-[11px] text-muted flex-wrap mt-3">
-          <span>La línea vertical marca el 100% del plan del tramo.</span>
+          <span>La línea vertical marca el 100% de {inf.planLabel}.</span>
           <Link href="/estados/resultados?vista=ejec-acum" className="text-accent2 hover:underline font-medium">Ver las 75 líneas del presupuesto <ArrowRight size={11} className="inline" /></Link>
         </div>
       </div>
@@ -306,7 +309,7 @@ function IndCard({ i }: { i: IndCockpit }) {
         <div className="text-[13px] text-muted">{i.nombre}</div>
         {i.palabra && <span className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-full ${chip}`}>{i.palabra}</span>}
       </div>
-      <div className="text-[22px] font-bold tnum mt-1" title={i.nota ?? undefined}>{fmtInd(i.valor, i.formato)}</div>
+      <div className="text-[22px] font-bold tnum mt-1">{fmtInd(i.valor, i.formato)}</div>
       <div className="flex items-center gap-2 mt-1 text-[11.5px]">
         {i.deltaMes !== null && Math.abs(i.deltaMes) > 1e-9 && (
           <span className={`inline-flex items-center gap-0.5 font-medium ${trendColor}`}>
@@ -316,6 +319,8 @@ function IndCard({ i }: { i: IndCockpit }) {
         )}
         <span className="text-faint">{i.meta ?? (i.deltaMes !== null ? "vs. mes anterior" : "sin comparativo")}</span>
       </div>
+      {/* La advertencia del catálogo es OBLIGATORIA y visible: nunca en un tooltip. */}
+      {i.nota && <p className="text-[10.5px] text-faint leading-snug mt-1.5">{i.nota}</p>}
     </div>
   );
 }
