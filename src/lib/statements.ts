@@ -78,10 +78,10 @@ export function er(etq: string) {
   const resMes = ingMes - gasMes, resYTD = ingYTD - gasYTD;
   const pr = provisionRenta(etq);
   const tasa = pr.tasa;
-  // El mes lleva una estimación proporcional; el acumulado lleva la provisión completa.
-  const impuestoMes = Math.max(resMes, 0) * tasa, netoMes = resMes - impuestoMes;
+  // El mes lleva la provisión marginal (cuadra al sumar los meses); el acumulado, la completa.
+  const impMes = impuestoMes(etq), netoMes = resMes - impMes;
   const impuestoYTD = pr.provision, netoYTD = pr.neto;
-  return { ingresos, gastos, ingMes, gasMes, ingYTD, gasYTD, resMes, resYTD, tasa, impuestoMes, netoMes, impuestoYTD, netoYTD };
+  return { ingresos, gastos, ingMes, gasMes, ingYTD, gasYTD, resMes, resYTD, tasa, impuestoMes: impMes, netoMes, impuestoYTD, netoYTD };
 }
 
 // ---------- Dashboard ----------
@@ -288,6 +288,65 @@ export function contribucionPeriodo(etq: string, modo: "acum" | "mes") {
 // Cuentas de gastos que no son plata (para el EBITDA): depreciaciones y amortizaciones.
 const CTA_DEPRECIACIONES = "5160";
 const CTA_AMORTIZACIONES = "5165";
+// La Junta lee el ER con estructura EBITDA: la sección Gastos EXCLUYE estas dos
+// (del árbol y del total) y ambas reaparecen como líneas propias entre el EBITDA
+// y la utilidad antes de impuestos.
+export const DEP_AMORT = [CTA_DEPRECIACIONES, CTA_AMORTIZACIONES];
+
+/** Impuesto de renta atribuible al MES: la provisión marginal (acumulada del mes
+ *  menos la del mes anterior del MISMO año). Así los meses SUMAN el impuesto
+ *  acumulado — antes el mes usaba una estimación proporcional que ignoraba el
+ *  50% del GMF y no cuadraba con el acumulado. En enero (o si no hay mes previo
+ *  del año) la base es 0, porque la provisión reinicia con el año fiscal. */
+export function impuestoMes(etq: string): number {
+  const p = D.periodo(etq);
+  const prev = D.prevPeriodo(etq);
+  const base = prev && prev.anio === p.anio ? provisionRenta(prev.etiqueta).provision : 0;
+  return provisionRenta(etq).provision - base;
+}
+
+/** Valor mensual de una cuenta EXCLUYENDO las depreciaciones/amortizaciones que
+ *  contenga (para la sección Gastos con estructura EBITDA). Solo afecta a los
+ *  ancestros de 5160/5165 (la clase 5 y el grupo 51); en el resto = fact. */
+function valOper(etq: string, codigo: string): number {
+  let v = D.fact(etq, codigo);
+  for (const d of DEP_AMORT) if (d !== codigo && d.startsWith(codigo)) v -= D.fact(etq, d);
+  return v;
+}
+function valOperYtd(etq: string, codigo: string): number {
+  let v = D.ytd(etq, codigo);
+  for (const d of DEP_AMORT) if (d !== codigo && d.startsWith(codigo)) v -= D.ytd(etq, d);
+  return v;
+}
+
+/** Cadena EBITDA del ER para un conjunto de meses (SUMA de los meses dados: sirve
+ *  igual para un mes suelto o para un período — bimestre, trimestre, año). */
+function cadenaEbitda(etqs: string[]) {
+  const s = (c: string) => etqs.reduce((a, m) => a + D.fact(m, c), 0);
+  const ing = s("4"), gas = s("5"), dep = s(CTA_DEPRECIACIONES), amort = s(CTA_AMORTIZACIONES);
+  const gastosOper = gas - dep - amort;
+  const uai = ing - gas;
+  const impuesto = etqs.reduce((a, m) => a + impuestoMes(m), 0);
+  return { ing, gastosOper, dep, amort, ebitda: ing - gastosOper, uai, impuesto, utilNeta: uai - impuesto };
+}
+/** Cadena EBITDA ACUMULADA del año hasta `etq` (el impuesto es la provisión completa). */
+function cadenaEbitdaYtd(etq: string) {
+  const ing = D.ytd(etq, "4"), gas = D.ytd(etq, "5");
+  const dep = D.ytd(etq, CTA_DEPRECIACIONES), amort = D.ytd(etq, CTA_AMORTIZACIONES);
+  const gastosOper = gas - dep - amort;
+  const pr = provisionRenta(etq);
+  return { ing, gastosOper, dep, amort, ebitda: ing - gastosOper, uai: ing - gas, impuesto: pr.provision, utilNeta: pr.neto };
+}
+export type ClaveEbitda = "ebitda" | "dep" | "amort" | "uai" | "impuesto" | "utilNeta";
+/** Filas de cierre EBITDA (etiquetas + tipo de subtotal) — orden de la Junta. */
+export const FILAS_EBITDA: { clave: ClaveEbitda; nombre: string; tipo?: "sub" | "total" }[] = [
+  { clave: "ebitda", nombre: "(=) EBITDA", tipo: "sub" },
+  { clave: "dep", nombre: "(−) Depreciaciones" },
+  { clave: "amort", nombre: "(−) Amortizaciones" },
+  { clave: "uai", nombre: "(=) Utilidad antes de impuestos", tipo: "sub" },
+  { clave: "impuesto", nombre: "(−) Impuesto de renta" },
+  { clave: "utilNeta", nombre: "(=) Utilidad neta", tipo: "total" },
+];
 
 /** KPIs del panel de Resultados, en modo acumulado del año o solo el mes. */
 export function resultadosPanel(etq: string, modo: "acum" | "mes") {
@@ -307,13 +366,12 @@ export function resultadosPanel(etq: string, modo: "acum" | "mes") {
 
 /** Serie mensual de EBITDA y utilidad neta (12 meses), para los gráficos del panel. */
 export function serieResultados(etq: string, n = 12) {
-  const tasa = D.paramNum("tasa_imporenta", 0.35);
   return D.ultimosPeriodos(etq, n).map((q) => {
     const res = D.fact(q.etiqueta, "4") - D.fact(q.etiqueta, "5");
     return {
       mes: mesLabel(q),
       ebitda: res + D.fact(q.etiqueta, CTA_DEPRECIACIONES) + D.fact(q.etiqueta, CTA_AMORTIZACIONES),
-      utilNeta: res > 0 ? res * (1 - tasa) : res,
+      utilNeta: res - impuestoMes(q.etiqueta),
     };
   });
 }
@@ -353,11 +411,13 @@ export type NodoPct = {
 function nodoPct(
   codigo: string, meses: string[], depth: number,
   calc: (etq: string, codigo: string) => number | null,
+  omitir?: string[],
 ): NodoPct | null {
+  if (omitir?.includes(codigo)) return null;
   const c = D.cuentaByCodigo.get(codigo);
   if (!c) return null;
   const hijos = D.children(codigo)
-    .map((ch) => nodoPct(ch.codigo, meses, depth + 1, calc))
+    .map((ch) => nodoPct(ch.codigo, meses, depth + 1, calc, omitir))
     .filter((x): x is NodoPct => x !== null);
   const vals = meses.map((m) => calc(m, codigo));
   if (vals.every((v) => v === null || v === 0) && hijos.length === 0) return null;
@@ -375,29 +435,44 @@ export function analisisMatriz(
 ) {
   const etqs = meses.map((m) => m.etiqueta);
   const flujo = estado === "er";
-  const val = (e: string, c: string) => D.fact(e, c); // valor del mes (ER: movimiento; ESF: saldo)
+  // ER: los gastos se muestran SIN dep/amort (estructura EBITDA), así que su valor
+  // y el de sus ancestros (5, 51) excluye esas cuentas. ESF: valor directo.
+  const val = flujo ? (e: string, c: string) => valOper(e, c) : (e: string, c: string) => D.fact(e, c);
+  const refDe = (e: string) => (contra === "anio" ? D.sameMonthPrevYear(e)?.etiqueta : D.prevPeriodo(e)?.etiqueta);
+  const pct = (e: string, v: number | null): number | null => {
+    if (v === null) return null;
+    const base = flujo ? D.fact(e, "4") : D.fact(e, "1");
+    return base ? (v / base) * 100 : null;
+  };
+  const varPct = (e: string, cur: number | null, prev: number | null): number | null =>
+    cur === null || !prev ? null : ((cur - prev) / Math.abs(prev)) * 100;
   const calc: (e: string, c: string) => number | null =
     modo === "vertical"
-      ? (e, c) => {
-          const base = flujo ? D.fact(e, "4") : D.fact(e, "1");
-          return base ? (val(e, c) / base) * 100 : null;
-        }
-      : (e, c) => {
-          const ref = contra === "anio" ? D.sameMonthPrevYear(e)?.etiqueta : D.prevPeriodo(e)?.etiqueta;
-          if (!ref) return null;
-          const prev = val(ref, c);
-          if (!prev) return null;
-          return ((val(e, c) - prev) / Math.abs(prev)) * 100;
-        };
+      ? (e, c) => pct(e, val(e, c))
+      : (e, c) => { const r = refDe(e); return r ? varPct(e, val(e, c), val(r, c)) : null; };
   const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
   const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
+
+  // Cierre EBITDA (solo ER): cada fila como % de los ingresos (vertical) o su
+  // variación contra el período de referencia (horizontal).
+  const finCalc = (e: string, k: ClaveEbitda): number | null => {
+    const cur = cadenaEbitda([e])[k];
+    if (modo === "vertical") return pct(e, cur);
+    const r = refDe(e);
+    return r ? varPct(e, cur, cadenaEbitda([r])[k]) : null;
+  };
+  const filasFinales = flujo
+    ? FILAS_EBITDA.map((f) => ({ nombre: f.nombre, tipo: f.tipo, vals: etqs.map((m) => finCalc(m, f.clave)) }))
+    : [];
+
   return {
     labels: meses.map(mesLabel),
     secciones: raices.map((r) => ({
       titulo: titulos[r],
-      arbol: nodoPct(r, etqs, -1, calc)?.hijos ?? [],
+      arbol: nodoPct(r, etqs, -1, calc, flujo ? DEP_AMORT : undefined)?.hijos ?? [],
       totalVals: etqs.map((m) => calc(m, r)),
     })),
+    filasFinales,
     base: modo === "vertical"
       ? (flujo ? "los ingresos del mes" : "el total de activos del mes")
       : (contra === "anio" ? "el mismo mes del año anterior" : "el mes anterior"),
@@ -436,11 +511,12 @@ export function interanualCols(unidad: UnidadPeriodo, indice: number): ColAnio[]
 
 type NodoNull = { codigo: string; nombre: string; depth: number; vals: (number | null)[]; acum: number | null; hijos: NodoNull[] };
 
-function nodoCols(codigo: string, cols: ColAnio[], depth: number, valFn: (col: ColAnio, codigo: string) => number | null): NodoNull | null {
+function nodoCols(codigo: string, cols: ColAnio[], depth: number, valFn: (col: ColAnio, codigo: string) => number | null, omitir?: string[]): NodoNull | null {
+  if (omitir?.includes(codigo)) return null;
   const c = D.cuentaByCodigo.get(codigo);
   if (!c) return null;
   const hijos = D.children(codigo)
-    .map((ch) => nodoCols(ch.codigo, cols, depth + 1, valFn))
+    .map((ch) => nodoCols(ch.codigo, cols, depth + 1, valFn, omitir))
     .filter((x): x is NodoNull => x !== null);
   const vals = cols.map((col) => valFn(col, codigo));
   if (vals.every((v) => v === null || v === 0) && hijos.length === 0) return null;
@@ -457,22 +533,34 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
       ? col.meses.reduce((sum, m) => sum + D.fact(m.etiqueta, codigo), 0)
       : D.fact(col.finEtq as string, codigo);
   };
+  // Igual que `val`, pero en el ER excluye dep/amort (estructura EBITDA). Se usa
+  // para los árboles y los totales de sección; `val` (completo) se conserva para
+  // la utilidad del período y el resumen de los dos motores.
+  const valArbol = (col: ColAnio, codigo: string): number | null => {
+    if (!col.meses.length) return null;
+    return flujo
+      ? col.meses.reduce((sum, m) => sum + valOper(m.etiqueta, codigo), 0)
+      : D.fact(col.finEtq as string, codigo);
+  };
+  const omitir = flujo ? DEP_AMORT : undefined;
   const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
   const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
+  // Cadena EBITDA por columna (una vez): sirve a las filas de cierre.
+  const cadenas = cols.map((c) => (c.meses.length ? cadenaEbitda(c.meses.map((m) => m.etiqueta)) : null));
 
   const cifras = raices.map((r) => ({
     titulo: titulos[r],
-    arbol: nodoCols(r, cols, -1, val)?.hijos ?? [],
-    totalVals: cols.map((c) => val(c, r)),
+    arbol: nodoCols(r, cols, -1, valArbol, omitir)?.hijos ?? [],
+    totalVals: cols.map((c) => valArbol(c, r)),
   }));
 
   // Horizontal: cada año contra el año anterior CON DATOS del mismo período.
   const horiz = (codigo: string): (number | null)[] =>
     cols.map((c, i) => {
-      const v = val(c, codigo);
+      const v = valArbol(c, codigo);
       if (v === null) return null;
       for (let j = i - 1; j >= 0; j--) {
-        const prev = val(cols[j], codigo);
+        const prev = valArbol(cols[j], codigo);
         if (prev === null) continue;
         return prev === 0 ? null : ((v - prev) / Math.abs(prev)) * 100;
       }
@@ -481,16 +569,30 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
   // Vertical: participación dentro de su propia columna.
   const vert = (codigo: string): (number | null)[] =>
     cols.map((c) => {
-      const v = val(c, codigo);
-      const base = val(c, flujo ? "4" : "1");
+      const v = valArbol(c, codigo);
+      const base = valArbol(c, flujo ? "4" : "1");
       return v === null || !base ? null : (v / base) * 100;
     });
   const analitico = (calc: (codigo: string) => (number | null)[]) =>
     raices.map((r) => ({
       titulo: titulos[r],
-      arbol: nodoCols(r, cols, -1, (col, codigo) => calc(codigo)[cols.indexOf(col)])?.hijos ?? [],
+      arbol: nodoCols(r, cols, -1, (col, codigo) => calc(codigo)[cols.indexOf(col)], omitir)?.hijos ?? [],
       totalVals: calc(r),
     }));
+
+  // Filas de cierre EBITDA por columna (solo ER): cifras en pesos, horizontal en
+  // variación contra el año previo con datos, vertical como % de los ingresos.
+  const finVals = (k: ClaveEbitda, tipo: "cifra" | "horiz" | "vert"): (number | null)[] => {
+    if (tipo === "cifra") return cadenas.map((c) => (c ? c[k] : null));
+    if (tipo === "vert") return cadenas.map((c, i) => { const base = valArbol(cols[i], "4"); return c && base ? (c[k] / base) * 100 : null; });
+    return cadenas.map((c, i) => {
+      if (!c) return null;
+      for (let j = i - 1; j >= 0; j--) { const p = cadenas[j]; if (!p) continue; return p[k] === 0 ? null : ((c[k] - p[k]) / Math.abs(p[k])) * 100; }
+      return null;
+    });
+  };
+  const finales = (tipo: "cifra" | "horiz" | "vert") =>
+    flujo ? FILAS_EBITDA.map((f) => ({ nombre: f.nombre, tipo: f.tipo, vals: finVals(f.clave, tipo) })) : [];
 
   // Utilidad del período por columna (solo flujo).
   const utilPeriodo: (number | null)[] = flujo
@@ -522,6 +624,7 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
     finEtqs: cols.map((c) => c.finEtq),
     algunParcial: cols.some((c) => c.parcial),
     cifras, horizontal: analitico(horiz), vertical: analitico(vert),
+    finalesCifras: finales("cifra"), finalesHorizontal: finales("horiz"), finalesVertical: finales("vert"),
     utilPeriodo, resumen, periodosCierre,
     labelsCierre: cols.filter((c) => c.finEtq).map((c) => c.label),
   };
@@ -676,23 +779,38 @@ function nodoM(codigo: string, meses: string[], depth: number, flujo: boolean, e
   return { codigo, nombre: c.nombre, depth, vals, acum, hijos };
 }
 
+/** Árbol de gastos con estructura EBITDA: omite dep/amort y descuenta su valor de
+ *  cada ancestro (así los subtotales de 51 y del total siguen cuadrando). */
+function nodoMOper(codigo: string, meses: string[], depth: number, etqAcum: string): NodoM | null {
+  if (DEP_AMORT.includes(codigo)) return null;
+  const c = D.cuentaByCodigo.get(codigo);
+  if (!c) return null;
+  const hijos = D.children(codigo)
+    .map((ch) => nodoMOper(ch.codigo, meses, depth + 1, etqAcum))
+    .filter((x): x is NodoM => x !== null);
+  const vals = meses.map((m) => valOper(m, codigo));
+  const acum = valOperYtd(etqAcum, codigo);
+  if (vals.every((v) => v === 0) && !acum && hijos.length === 0) return null;
+  return { codigo, nombre: c.nombre, depth, vals, acum, hijos };
+}
+
 /** ER multi-mes con árbol completo. `meses` viene de D.mesesVista(). */
 export function erMatrizArbol(meses: { etiqueta: string; anio: number; mes: number }[]) {
   const etqs = meses.map((m) => m.etiqueta);
   const ultimo = etqs[etqs.length - 1];
-  const fila = (codigo: string) => ({ vals: etqs.map((m) => D.fact(m, codigo)), acum: D.ytd(ultimo, codigo) });
-  const ing = fila("4"), gas = fila("5");
-  const prs = etqs.map((m) => provisionRenta(m));
-  const prUlt = prs[prs.length - 1];
+  const cad = etqs.map((m) => cadenaEbitda([m]));
+  const cadAcum = cadenaEbitdaYtd(ultimo);
+  // Cada fila de cierre: valor por mes + acumulado del año.
+  const pick = (k: ClaveEbitda) => ({ vals: cad.map((c) => c[k]), acum: cadAcum[k] });
   return {
     labels: meses.map(mesLabel),
     ingresos: nodoM("4", etqs, -1, true, ultimo)?.hijos ?? [],
-    gastos: nodoM("5", etqs, -1, true, ultimo)?.hijos ?? [],
-    totalIng: ing, totalGas: gas,
-    utilAntes: { vals: etqs.map((m, i) => ing.vals[i] - gas.vals[i]), acum: ing.acum - gas.acum },
-    impuesto: { vals: etqs.map((m, i) => Math.max(ing.vals[i] - gas.vals[i], 0) * prs[i].tasa), acum: prUlt.provision },
-    utilNeta: { vals: etqs.map((m, i) => (ing.vals[i] - gas.vals[i]) * (ing.vals[i] - gas.vals[i] > 0 ? 1 - prs[i].tasa : 1)), acum: prUlt.neto },
-    tasa: prUlt.tasa,
+    gastos: nodoMOper("5", etqs, -1, ultimo)?.hijos ?? [], // sin dep/amort, subtotales cuadrados
+    totalIng: { vals: etqs.map((m) => D.fact(m, "4")), acum: D.ytd(ultimo, "4") },
+    totalGas: { vals: cad.map((c) => c.gastosOper), acum: cadAcum.gastosOper }, // gastos operativos (sin dep/amort)
+    ebitda: pick("ebitda"), dep: pick("dep"), amort: pick("amort"),
+    utilAntes: pick("uai"), impuesto: pick("impuesto"), utilNeta: pick("utilNeta"),
+    tasa: provisionRenta(ultimo).tasa,
   };
 }
 
