@@ -1,17 +1,17 @@
 import { cambiosPatrimonio } from "@/lib/statements";
-import { ensureLoaded, periodos, periodo } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, periodos, periodo, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import { fmtNum } from "@/lib/format";
 import AnioSelector from "@/components/AnioSelector";
 
 export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
   const { p, anio } = await searchParams;
   await ensureLoaded();
-  const etqBase = p || PERIODO_DEFAULT;
+  const etqBase = resolverEtq(p);
   const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etqBase).anio);
   // Con año seleccionado, el estado corre hasta el último mes disponible de ese año.
   const delAnio = nAnio ? periodos.filter((q) => q.anio === nAnio) : [];
-  const etq = delAnio.length ? delAnio[delAnio.length - 1].etiqueta : p || PERIODO_DEFAULT;
+  const etq = delAnio.length ? delAnio[delAnio.length - 1].etiqueta : etqBase;
   const c = cambiosPatrimonio(etq);
 
   return (

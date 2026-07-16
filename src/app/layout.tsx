@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import PeriodSelector from "@/components/PeriodSelector";
+import { ensureLoaded, periodos } from "@/lib/data";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -16,7 +17,11 @@ export const metadata: Metadata = {
   description: "Plataforma financiera · Fondo Mutuo de Cobertura FMC S.A.S.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // El selector de períodos se alimenta de la BASE, no de una lista fija:
+  // al ingestar un mes nuevo aparece de inmediato.
+  await ensureLoaded();
+  const etiquetas = periodos.map((q) => q.etiqueta);
   return (
     <html lang="es" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full">
@@ -30,7 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="font-medium text-fg">FMC S.A.S.</span>
             </div>
             <Suspense fallback={null}>
-              <PeriodSelector />
+              <PeriodSelector periodos={etiquetas} />
             </Suspense>
           </header>
           <main className="flex-1 p-6 max-w-[1400px] w-full mx-auto">{children}</main>

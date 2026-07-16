@@ -5,8 +5,8 @@ import {
 } from "@/lib/statements";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import Link from "next/link";
-import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd, periodo } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, ultimosPeriodos, mesesVista, fact, ytd, periodo, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCompact, fmtPct, fmtMillones, fmtCont, fmtPctCont } from "@/lib/format";
 import {
   TrendChart, ResultBars, WaterfallChart, DualLine, HBars, PctBars, VarBars,
@@ -21,10 +21,10 @@ import { ShieldCheck, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string; meses?: string; anio?: string; modo?: string }> }) {
   const { p, sec, meses, anio, modo } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   const current = sec || "resumen";
   const nMeses = Math.min(Math.max(parseInt(meses || "6") || 6, 1), 24);
   await ensureLoaded();
+  const etq = resolverEtq(p);
   // Por defecto, el segmentador arranca en el AÑO del corte (2026 hoy).
   const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
 

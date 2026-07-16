@@ -1,6 +1,6 @@
 import { flujoEfectivo, flujoMatriz } from "@/lib/statements";
-import { ensureLoaded, mesesVista, periodo } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCont } from "@/lib/format";
 import MesesSelector from "@/components/MesesSelector";
 import AnioSelector from "@/components/AnioSelector";
@@ -8,9 +8,9 @@ import { CheckCircle2, Info } from "lucide-react";
 
 export default async function FlujoPage({ searchParams }: { searchParams: Promise<{ p?: string; meses?: string; anio?: string }> }) {
   const { p, meses, anio } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   await ensureLoaded();
+  const etq = resolverEtq(p);
   const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
 
   const cols = mesesVista(etq, nAnio, nMeses);

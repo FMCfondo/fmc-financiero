@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
-import { ensureLoaded } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import { Settings2 } from "lucide-react";
 
@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 
 export default async function InversionesPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   await ensureLoaded();
+  const etq = resolverEtq(p);
   const d = portafolio(etq);
 
   return (
