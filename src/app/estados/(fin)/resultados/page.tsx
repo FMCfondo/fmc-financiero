@@ -60,11 +60,14 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
         conAcum
         secciones={[
           { titulo: "Ingresos", tono: "bg-pos", arbol: m.ingresos, totalLabel: "Total ingresos", totalVals: m.totalIng.vals, totalAcum: m.totalIng.acum },
-          { titulo: "Gastos", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
+          { titulo: "Gastos (sin dep. ni amort.)", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
         ]}
         filasFinales={[
-          { nombre: "Utilidad antes de impuestos", vals: m.utilAntes.vals, acum: m.utilAntes.acum, tipo: "sub" },
-          { nombre: `(−) Impuesto de renta estimado (${fmtNum(m.tasa * 100)}%)`, vals: m.impuesto.vals, acum: m.impuesto.acum },
+          { nombre: "(=) EBITDA", vals: m.ebitda.vals, acum: m.ebitda.acum, tipo: "sub" },
+          { nombre: "(−) Depreciaciones", vals: m.dep.vals.map((v) => -v), acum: -m.dep.acum },
+          { nombre: "(−) Amortizaciones", vals: m.amort.vals.map((v) => -v), acum: -m.amort.acum },
+          { nombre: "(=) Utilidad antes de impuestos", vals: m.utilAntes.vals, acum: m.utilAntes.acum, tipo: "sub" },
+          { nombre: `(−) Impuesto de renta — provisión (${fmtNum(m.tasa * 100)}%)`, vals: m.impuesto.vals.map((v) => -v), acum: -m.impuesto.acum },
           { nombre: "(=) Utilidad neta", vals: m.utilNeta.vals, acum: m.utilNeta.acum, tipo: "total" },
         ]}
       />
@@ -94,7 +97,7 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} filasFinales={a.filasFinales} />
       <p className="text-xs text-muted">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}.`
@@ -125,7 +128,7 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
                 { titulo: "Ingresos", tono: "bg-pos", arbol: d.cifras[0].arbol, totalLabel: "Total ingresos", totalVals: d.cifras[0].totalVals },
                 { titulo: "Gastos", tono: "bg-gold", arbol: d.cifras[1].arbol, totalLabel: "Total gastos", totalVals: d.cifras[1].totalVals },
               ]}
-              filasFinales={[{ nombre: "Utilidad del período (antes de impuestos)", vals: d.utilPeriodo, tipo: "total" }]}
+              filasFinales={d.finalesER}
             />
           </Recuadro>
           <Recuadro titulo="Análisis Horizontal" sub="cada año contra el año anterior con datos" tono="bg-gold">

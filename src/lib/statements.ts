@@ -391,13 +391,43 @@ export function analisisMatriz(
         };
   const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
   const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
+
+  // Métrica compuesta (EBITDA, gastos sin dep/amort, utilidad…) sobre el mismo
+  // modo: vertical = % de la base del mes; horizontal = variación vs referencia.
+  const metrica = (fn: (e: string) => number): (number | null)[] =>
+    etqs.map((e) => {
+      if (modo === "vertical") {
+        const base = flujo ? D.fact(e, "4") : D.fact(e, "1");
+        return base ? (fn(e) / base) * 100 : null;
+      }
+      const ref = contra === "anio" ? D.sameMonthPrevYear(e)?.etiqueta : D.prevPeriodo(e)?.etiqueta;
+      if (!ref) return null;
+      const prev = fn(ref);
+      return prev ? ((fn(e) - prev) / Math.abs(prev)) * 100 : null;
+    });
+
+  const gasSin = (e: string) => D.fact(e, "5") - D.fact(e, "5160") - D.fact(e, "5165");
+  const uaiDe = (e: string) => D.fact(e, "4") - D.fact(e, "5");
+  const tasa = D.paramNum("tasa_imporenta", 0.35);
+  const filasFinales = flujo
+    ? [
+        { nombre: "(=) EBITDA", vals: metrica((e) => D.fact(e, "4") - gasSin(e)), tipo: "sub" as const },
+        { nombre: "(−) Depreciaciones", vals: metrica((e) => D.fact(e, "5160")) },
+        { nombre: "(−) Amortizaciones", vals: metrica((e) => D.fact(e, "5165")) },
+        { nombre: "(=) Utilidad antes de impuestos", vals: metrica(uaiDe), tipo: "sub" as const },
+        { nombre: "(−) Impuesto de renta (provisión)", vals: metrica((e) => Math.max(uaiDe(e), 0) * tasa) },
+        { nombre: "(=) Utilidad neta", vals: metrica((e) => uaiDe(e) * (uaiDe(e) > 0 ? 1 - tasa : 1)), tipo: "total" as const },
+      ]
+    : [];
+
   return {
     labels: meses.map(mesLabel),
     secciones: raices.map((r) => ({
-      titulo: titulos[r],
-      arbol: nodoPct(r, etqs, -1, calc)?.hijos ?? [],
-      totalVals: etqs.map((m) => calc(m, r)),
+      titulo: r === "5" ? "Gastos (sin dep. ni amort.)" : titulos[r],
+      arbol: r === "5" ? podar(nodoPct(r, etqs, -1, calc)?.hijos ?? []) : nodoPct(r, etqs, -1, calc)?.hijos ?? [],
+      totalVals: r === "5" ? metrica(gasSin) : etqs.map((m) => calc(m, r)),
     })),
+    filasFinales,
     base: modo === "vertical"
       ? (flujo ? "los ingresos del mes" : "el total de activos del mes")
       : (contra === "anio" ? "el mismo mes del año anterior" : "el mes anterior"),
@@ -460,10 +490,14 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
   const raices = flujo ? ["4", "5"] : ["1", "2", "3"];
   const titulos: Record<string, string> = { "1": "Activo", "2": "Pasivo", "3": "Patrimonio", "4": "Ingresos", "5": "Gastos" };
 
+  const menosNull = (a: number | null, b: number | null) => (a === null || b === null ? a : a - b);
   const cifras = raices.map((r) => ({
-    titulo: titulos[r],
-    arbol: nodoCols(r, cols, -1, val)?.hijos ?? [],
-    totalVals: cols.map((c) => val(c, r)),
+    titulo: flujo && r === "5" ? "Gastos (sin dep. ni amort.)" : titulos[r],
+    arbol: flujo && r === "5" ? podar(nodoCols(r, cols, -1, val)?.hijos ?? []) : nodoCols(r, cols, -1, val)?.hijos ?? [],
+    totalVals:
+      flujo && r === "5"
+        ? cols.map((c) => menosNull(menosNull(val(c, "5"), val(c, "5160")), val(c, "5165")))
+        : cols.map((c) => val(c, r)),
   }));
 
   // Horizontal: cada año contra el año anterior CON DATOS del mismo período.
@@ -492,12 +526,23 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
       totalVals: calc(r),
     }));
 
-  // Utilidad del período por columna (solo flujo).
+  // Cadena EBITDA por columna (solo flujo), en la estructura de la Junta.
+  const linea = (fn: (c: ColAnio) => number | null) => cols.map(fn);
+  const num = (c: ColAnio, cod: string) => val(c, cod) ?? 0;
+  const hayDatos = (c: ColAnio) => val(c, "4") !== null;
   const utilPeriodo: (number | null)[] = flujo
-    ? cols.map((c) => {
-        const ing = val(c, "4"), gas = val(c, "5");
-        return ing === null || gas === null ? null : ing - gas;
-      })
+    ? linea((c) => (hayDatos(c) ? num(c, "4") - num(c, "5") : null))
+    : [];
+  const tasaInt = D.paramNum("tasa_imporenta", 0.35);
+  const finalesER = flujo
+    ? [
+        { nombre: "(=) EBITDA", vals: linea((c) => (hayDatos(c) ? num(c, "4") - num(c, "5") + num(c, "5160") + num(c, "5165") : null)), tipo: "sub" as const },
+        { nombre: "(−) Depreciaciones", vals: linea((c) => (hayDatos(c) ? -num(c, "5160") : null)) },
+        { nombre: "(−) Amortizaciones", vals: linea((c) => (hayDatos(c) ? -num(c, "5165") : null)) },
+        { nombre: "(=) Utilidad antes de impuestos", vals: utilPeriodo, tipo: "sub" as const },
+        { nombre: "(−) Impuesto de renta (provisión)", vals: linea((c) => (hayDatos(c) ? -Math.max(num(c, "4") - num(c, "5"), 0) * tasaInt : null)) },
+        { nombre: "(=) Utilidad neta", vals: linea((c) => { if (!hayDatos(c)) return null; const u = num(c, "4") - num(c, "5"); return u > 0 ? u * (1 - tasaInt) : u; }), tipo: "total" as const },
+      ]
     : [];
 
   // Resumen del período (solo flujo): los dos motores + gastos + utilidad.
@@ -522,7 +567,7 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
     finEtqs: cols.map((c) => c.finEtq),
     algunParcial: cols.some((c) => c.parcial),
     cifras, horizontal: analitico(horiz), vertical: analitico(vert),
-    utilPeriodo, resumen, periodosCierre,
+    utilPeriodo, finalesER, resumen, periodosCierre,
     labelsCierre: cols.filter((c) => c.finEtq).map((c) => c.label),
   };
 }
@@ -676,22 +721,39 @@ function nodoM(codigo: string, meses: string[], depth: number, flujo: boolean, e
   return { codigo, nombre: c.nombre, depth, vals, acum, hijos };
 }
 
-/** ER multi-mes con árbol completo. `meses` viene de D.mesesVista(). */
+// Depreciaciones y amortizaciones: en la estructura de presentación de la Junta
+// salen del bloque de gastos y van como líneas propias entre el EBITDA y la
+// utilidad antes de impuestos (igual que en el PPTO).
+const DEP_AMORT = ["5160", "5165"];
+
+function podar<T extends { codigo: string; hijos: T[] }>(nodos: T[]): T[] {
+  return nodos
+    .filter((n) => !DEP_AMORT.includes(n.codigo))
+    .map((n) => ({ ...n, hijos: podar(n.hijos) }));
+}
+
+/** ER multi-mes con árbol completo y cierre en estructura EBITDA (la de la Junta):
+ *  Total gastos (sin dep/amort) → EBITDA → (−)Dep → (−)Amort → UAI → (−)Imp → UN. */
 export function erMatrizArbol(meses: { etiqueta: string; anio: number; mes: number }[]) {
   const etqs = meses.map((m) => m.etiqueta);
   const ultimo = etqs[etqs.length - 1];
   const fila = (codigo: string) => ({ vals: etqs.map((m) => D.fact(m, codigo)), acum: D.ytd(ultimo, codigo) });
-  const ing = fila("4"), gas = fila("5");
+  const ing = fila("4"), gas = fila("5"), dep = fila("5160"), amort = fila("5165");
   const prs = etqs.map((m) => provisionRenta(m));
   const prUlt = prs[prs.length - 1];
+  const uai = (i: number) => ing.vals[i] - gas.vals[i];
   return {
     labels: meses.map(mesLabel),
     ingresos: nodoM("4", etqs, -1, true, ultimo)?.hijos ?? [],
-    gastos: nodoM("5", etqs, -1, true, ultimo)?.hijos ?? [],
-    totalIng: ing, totalGas: gas,
-    utilAntes: { vals: etqs.map((m, i) => ing.vals[i] - gas.vals[i]), acum: ing.acum - gas.acum },
-    impuesto: { vals: etqs.map((m, i) => Math.max(ing.vals[i] - gas.vals[i], 0) * prs[i].tasa), acum: prUlt.provision },
-    utilNeta: { vals: etqs.map((m, i) => (ing.vals[i] - gas.vals[i]) * (ing.vals[i] - gas.vals[i] > 0 ? 1 - prs[i].tasa : 1)), acum: prUlt.neto },
+    gastos: podar(nodoM("5", etqs, -1, true, ultimo)?.hijos ?? []),
+    totalIng: ing,
+    // Total de gastos SIN depreciaciones ni amortizaciones (estructura EBITDA).
+    totalGas: { vals: etqs.map((m, i) => gas.vals[i] - dep.vals[i] - amort.vals[i]), acum: gas.acum - dep.acum - amort.acum },
+    ebitda: { vals: etqs.map((m, i) => uai(i) + dep.vals[i] + amort.vals[i]), acum: ing.acum - gas.acum + dep.acum + amort.acum },
+    dep, amort,
+    utilAntes: { vals: etqs.map((m, i) => uai(i)), acum: ing.acum - gas.acum },
+    impuesto: { vals: etqs.map((m, i) => Math.max(uai(i), 0) * prs[i].tasa), acum: prUlt.provision },
+    utilNeta: { vals: etqs.map((m, i) => uai(i) * (uai(i) > 0 ? 1 - prs[i].tasa : 1)), acum: prUlt.neto },
     tasa: prUlt.tasa,
   };
 }

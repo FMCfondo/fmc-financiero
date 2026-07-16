@@ -22,13 +22,17 @@ const fmt = (v: number | null) => {
   return v < 0 ? `(${s})%` : `${s}%`;
 };
 
+export type FilaFinalPct = { nombre: string; vals: (number | null)[]; tipo?: "sub" | "total" };
+
 export default function AnalisisMatrix({
-  labels, secciones, colorear,
+  labels, secciones, colorear, filasFinales = [],
 }: {
   labels: string[];
   secciones: { titulo: string; arbol: NodoPct[]; totalVals: (number | null)[] }[];
   /** true en horizontal: verde crece / rojo cae. En vertical no se colorea. */
   colorear?: boolean;
+  /** Cierre en estructura EBITDA (solo el ER). */
+  filasFinales?: FilaFinalPct[];
 }) {
   const [senal, setSenal] = useState<{ v: number; abierto: boolean }>({ v: 0, abierto: true });
   return (
@@ -53,6 +57,16 @@ export default function AnalisisMatrix({
         <tbody>
           {secciones.map((s) => (
             <Seccion key={s.titulo} s={s} nCols={labels.length} colorear={colorear} senal={senal} />
+          ))}
+          {filasFinales.map((f) => (
+            <tr key={f.nombre} className={f.tipo === "total" ? "bg-card2 font-semibold" : f.tipo === "sub" ? "bg-card2/50 font-medium" : ""}>
+              <td className={`sticky left-0 z-10 px-5 py-2.5 border-b border-line ${f.tipo === "total" ? "bg-card2 uppercase text-[13px] tracking-wide" : f.tipo === "sub" ? "bg-card2/70" : "bg-card"}`}>{f.nombre}</td>
+              {f.vals.map((v, i) => (
+                <td key={i} className={`${CELL} border-b border-line`}>
+                  <span className={f.tipo === "total" ? "border-t border-b-[3px] border-double border-fg/60 py-0.5 inline-block" : f.tipo === "sub" ? "border-t border-fg/30 inline-block" : ""}>{fmt(v)}</span>
+                </td>
+              ))}
+            </tr>
           ))}
         </tbody>
       </table>
