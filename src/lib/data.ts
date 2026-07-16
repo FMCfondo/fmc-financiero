@@ -53,6 +53,24 @@ function buildIndexes() {
   for (const arr of childrenMap.values()) arr.sort((a, b) => a.codigo.localeCompare(b.codigo));
 }
 
+/* Marca de frescura de los datos: cambia cuando se carga un período nuevo
+   (fila en `ingesta`) o cambia el catálogo de períodos. Cada instancia del
+   serverless la compara en el refresco por request: si difiere de la que
+   tenía al cargar, recarga TODO el dataset — sin esto, las demás instancias
+   seguían sirviendo saldos y períodos viejos después de una ingesta (el
+   "cargué junio y los filtros no lo muestran"). */
+let marcaDatos: string | null = null;
+
+async function leerMarca(sql: any): Promise<string | null> {
+  try {
+    const r = await sql`select (select coalesce(max(ingesta_id), 0) from ingesta)::text
+                               || '/' || (select count(*) from dim_periodo)::text as marca`;
+    return String((r as any[])[0]?.marca ?? "");
+  } catch {
+    return null; // tabla ingesta aún no migrada: sin marca, sin recargas extra
+  }
+}
+
 async function loadFromNeon() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Falta DATABASE_URL. Configura .env.local (local) o la variable en Vercel (producción).");
@@ -85,6 +103,7 @@ async function loadFromNeon() {
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
   await cargarInversiones(sql);
+  marcaDatos = await leerMarca(sql);
 }
 
 /* La tabla `inversion` puede no existir aún (migración pendiente): en ese caso
@@ -114,7 +133,9 @@ async function cargarInversiones(sql: any): Promise<void> {
 
 /* Los parámetros de la provisión se refrescan en cada request (consulta mínima):
    sin esto, otra instancia del serverless seguiría sirviendo la tasa vieja después
-   de guardar — el "bug del porcentaje anterior al cambiar de hoja". */
+   de guardar — el "bug del porcentaje anterior al cambiar de hoja".
+   El mismo refresco compara la marca de frescura: si otra instancia ingresó un
+   período nuevo, aquí se recarga el dataset completo (saldos + períodos). */
 let ultimaCargaParams = 0;
 async function refreshParametros(): Promise<void> {
   if (Date.now() - ultimaCargaParams < 2000) return; // colapsa ráfagas de una misma página
@@ -122,6 +143,13 @@ async function refreshParametros(): Promise<void> {
   if (!url) return;
   const { neon } = await import("@neondatabase/serverless");
   const sql = neon(url);
+  const marca = await leerMarca(sql);
+  if (marca !== null && marca !== marcaDatos) {
+    await loadFromNeon(); // también refresca parámetros e inversiones y actualiza la marca
+    buildIndexes();
+    ultimaCargaParams = Date.now();
+    return;
+  }
   const pr = await sql`select clave, valor from parametro`;
   parametros = {};
   for (const r of pr as any[]) {
