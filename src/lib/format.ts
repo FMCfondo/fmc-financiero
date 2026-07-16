@@ -52,6 +52,15 @@ export function fmtCompact(n: number): string {
   return `${s}${num0.format(a)}`;
 }
 
+/* Cifra ejecutiva del Cockpit: "COP 30,1 M" para montos grandes; pesos completos
+   para montos pequeños. El valor exacto va SIEMPRE en el title (hover). */
+export function fmtM(n: number): string {
+  const a = Math.abs(n || 0);
+  if (a < 1e6) return fmtCOP(n);
+  const m = (n || 0) / 1e6;
+  return `COP ${(m >= 100 || m <= -100 ? num0 : num2).format(m)} M`;
+}
+
 export const mesNombre = [
   "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
