@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { esfMatrizArbol, analisisMatriz, interanualData, provisionRenta, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
-import { ensureLoaded, mesesVista, periodo } from "@/lib/data";
+import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { indicadoresMatriz } from "@/lib/indicadores";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
@@ -15,11 +15,11 @@ import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
 
 export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   const current = vista || "estado";
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
+  const etq = resolverEtq(p);
   // Por defecto, el segmentador arranca en el AÑO del corte (2026 hoy).
   const nAnio = anio === "ultimos" ? undefined : (parseInt(anio || "") || periodo(etq).anio);
   // Interanual: unidad de período + índice (por defecto, el período que contiene el mes del corte).

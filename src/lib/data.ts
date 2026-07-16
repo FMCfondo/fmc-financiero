@@ -173,6 +173,19 @@ export async function guardarParametros(vals: Record<string, number>): Promise<v
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
 }
 
+/** Invalida el dataset en memoria: la próxima petición recarga todo de Neon.
+ *  Se llama tras cargar un período nuevo desde la ingesta. */
+export function invalidateDatos(): void {
+  ready = null;
+}
+
+/** Resuelve la etiqueta de período a usar: la pedida si existe; si no, la última
+ *  CARGADA (así el default avanza solo cuando se ingesta un mes nuevo). */
+export function resolverEtq(p?: string | null): string {
+  if (p && periodos.some((x) => x.etiqueta === p)) return p;
+  return periodos.length ? periodos[periodos.length - 1].etiqueta : (p ?? "MAY2026");
+}
+
 export const children = (codigo: string): Cuenta[] => childrenMap.get(codigo) ?? [];
 export const latest = (): Periodo => periodos[periodos.length - 1];
 export const periodo = (etq?: string): Periodo => periodos.find((p) => p.etiqueta === etq) ?? latest();

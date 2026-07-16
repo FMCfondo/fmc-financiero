@@ -1,14 +1,14 @@
 import { provisionRenta } from "@/lib/statements";
-import { ensureLoaded, paramNum } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, paramNum, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import ImpuestoCalc from "@/components/ImpuestoCalc";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImpuestoPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   await ensureLoaded();
+  const etq = resolverEtq(p);
   const r = provisionRenta(etq);
 
   return (

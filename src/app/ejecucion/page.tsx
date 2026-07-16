@@ -1,13 +1,13 @@
 import { er } from "@/lib/statements";
-import { ensureLoaded } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import { fmtCOP } from "@/lib/format";
 import { Info } from "lucide-react";
 
 export default async function EjecucionPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   await ensureLoaded();
+  const etq = resolverEtq(p);
   const s = er(etq);
 
   return (

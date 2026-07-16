@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
-import { ensureLoaded, inversiones, paramNum } from "@/lib/data";
-import { PERIODO_DEFAULT, etqNombre } from "@/lib/periodos";
+import { ensureLoaded, inversiones, paramNum, resolverEtq } from "@/lib/data";
+import { etqNombre } from "@/lib/periodos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import InversionesMantenimiento from "@/components/InversionesMantenimiento";
 import { Settings2, LayoutDashboard } from "lucide-react";
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PortafolioPage({ searchParams }: { searchParams: Promise<{ p?: string; v?: string }> }) {
   const { p, v } = await searchParams;
-  const etq = p || PERIODO_DEFAULT;
   await ensureLoaded();
+  const etq = resolverEtq(p);
   const d = portafolio(etq);
 
   return (
