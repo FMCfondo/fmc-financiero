@@ -8,8 +8,8 @@ export default function AnalisisTabs({ current }: { current: string }) {
     { id: "vertical", label: "Análisis Vertical", soon: false },
     { id: "horizontal", label: "Análisis Horizontal", soon: false },
     { id: "interanual", label: "Comparación interanual", soon: false },
-    { id: "ejec-acum", label: "Ejecución Acum.", soon: true },
-    { id: "ejec-mes", label: "Ejecución Mes", soon: true },
+    { id: "ejec-acum", label: "Ejecución Acum.", soon: false },
+    { id: "ejec-mes", label: "Ejecución Mes", soon: false },
   ];
   const pathname = usePathname();
   const sp = useSearchParams();

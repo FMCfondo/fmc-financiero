@@ -96,6 +96,24 @@ create table fact_presupuesto (
   primary key (periodo_id, linea_id)
 );
 
+-- Presupuesto anual cargado TAL CUAL de la hoja "PPTO N" del Excel de la Junta
+-- (estructura EBITDA propia, autocontenida). `cuentas`/`formula` mapean cada
+-- línea al ER real para la ejecución presupuestal. Ver scripts/migrate-ppto.mjs.
+create table ppto (
+  id       bigint generated always as identity primary key,
+  anio     int  not null,
+  orden    int  not null,
+  etiqueta text not null,
+  tipo     text not null default 'detalle',   -- 'detalle' | 'total' (subtotal en negrita)
+  clase    text not null default 'gasto',      -- 'ingreso' | 'gasto' | 'resultado' (semaforo)
+  nota     text,
+  meses    numeric(18,2)[] not null,           -- 12 valores ENE..DIC
+  total    numeric(18,2) not null,
+  cuentas  text[] not null default '{}',       -- codigos PUC mapeados -> Real
+  formula  text,                               -- totales computados del ER real
+  unique (anio, orden)
+);
+
 create table fact_inversion (
   inversion_id  bigint generated always as identity primary key,
   periodo_id    int    not null references dim_periodo,
