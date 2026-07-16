@@ -23,23 +23,21 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
         <AnioSelector current={nAnio} />
       </div>
 
-      <div className="card overflow-auto">
-        <table className="text-sm border-collapse w-max min-w-full">
+      <div className="stmt card" style={{ ["--stmt-col1" as string]: "260px" }}>
+        <table>
           <thead>
-            <tr className="text-[11px] uppercase tracking-wide text-faint">
-              <th className="sticky left-0 z-10 bg-card text-left font-normal px-4 py-2.5 border-b border-line min-w-[220px]">Concepto</th>
-              {c.comps.map((comp) => (
-                <th key={comp.codigo} className="text-right font-normal px-4 py-2.5 border-b border-line min-w-[130px]">{comp.nombre}</th>
-              ))}
-              <th className="text-right font-semibold px-4 py-2.5 border-b border-line min-w-[140px] bg-card2">Total</th>
+            <tr>
+              <th className="col1">Concepto</th>
+              {c.comps.map((comp) => <th key={comp.codigo} className="num">{comp.nombre}</th>)}
+              <th className="num num-acc">Total</th>
             </tr>
           </thead>
           <tbody>
             <MRow label="Saldo inicial" vals={c.comps.map((x) => x.inicial)} total={c.totalInicial} />
             <MRow label="Movimientos del patrimonio (aportes, reservas…)" vals={c.comps.map((x) => x.movimiento)} total={c.totalFinalBase - c.totalInicial} />
-            <MRow label="Saldo final del patrimonio contable" vals={c.comps.map((x) => x.final)} total={c.totalFinalBase} bold />
+            <MRow label="Saldo final del patrimonio contable" vals={c.comps.map((x) => x.final)} total={c.totalFinalBase} tipo="subtotal" />
             <MRow label="(+) Utilidad del ejercicio" vals={c.comps.map(() => null)} total={c.resultado} />
-            <MRow label="Patrimonio total (incluye utilidad)" vals={c.comps.map(() => null)} total={c.totalFinal} grand />
+            <MRow label="Patrimonio total (incluye utilidad)" vals={c.comps.map(() => null)} total={c.totalFinal} tipo="total" />
           </tbody>
         </table>
       </div>
@@ -51,16 +49,18 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
   );
 }
 
-function MRow({ label, vals, total, bold, grand }: { label: string; vals: (number | null)[]; total: number; bold?: boolean; grand?: boolean }) {
-  const rowCls = grand ? "brand-grad text-white font-semibold" : bold ? "fila-total font-semibold" : "";
-  const cell = "text-right tnum px-4 py-2.5 border-b border-line-soft";
+function MRow({ label, vals, total, tipo }: { label: string; vals: (number | null)[]; total: number; tipo?: "subtotal" | "total" }) {
+  const isTotal = tipo === "total";
+  const rule = isTotal ? "border-t border-fg/45 border-b-[3px] border-double border-fg/45 py-0.5" : tipo === "subtotal" ? "border-t border-fg/25" : "";
   return (
-    <tr className={rowCls}>
-      <td className={`sticky left-0 z-10 px-4 py-2.5 border-b border-line-soft ${grand ? "bg-transparent" : bold ? "bg-[color:var(--color-card2)]" : "bg-card"}`}>{label}</td>
+    <tr className={tipo === "total" ? "total" : tipo === "subtotal" ? "subtotal" : "row"}>
+      <td className="col1">{label}</td>
       {vals.map((v, i) => (
-        <td key={i} className={`${cell} ${v !== null && v < 0 ? "text-neg" : ""}`}>{v === null ? "—" : fmtNum(v)}</td>
+        <td key={i} className={`num ${v !== null && v < 0 ? "text-neg" : ""}`}>
+          <span className={`inline-block ${rule}`}>{v === null ? "—" : fmtNum(v)}</span>
+        </td>
       ))}
-      <td className={`${cell} font-semibold ${!grand ? "bg-card2" : ""}`}>{fmtNum(total)}</td>
+      <td className="num num-acc"><span className={`inline-block font-semibold ${rule}`}>{fmtNum(total)}</span></td>
     </tr>
   );
 }
