@@ -13,7 +13,7 @@ import * as D from "./data";
 import { provisionRenta, impuestoMes, serieResultados } from "./statements";
 import { ejecucion, realFormula } from "./ejecucion";
 import { portafolio } from "./inversiones";
-import { mesCorto, mesNombre } from "./format";
+import { fmtPct, mesCorto, mesNombre } from "./format";
 
 export type Base = "ppto" | "mes" | "anio";
 export type Modo = "acum" | "mes";
@@ -29,16 +29,21 @@ export type Kpi = {
   serie: number[] | null;  // 12 meses para la micro-tendencia
   ancla?: boolean;         // el KPI de la misión (cobertura)
 };
-export type PasoPuente = { name: string; base: number; value: number; tipo: "inc" | "dec" | "total"; signo: number };
+export type Metrica = { label: string; valor: number; delta: number | null; subeEsBueno: boolean; bueno: boolean };
 export type Variacion = { nombre: string; clase: "ingreso" | "gasto"; actual: number; ref: number; delta: number; impacto: number };
 export type FilaTermo = { etiqueta: string; real: number; ppto: number; pct: number | null; semaforo: "bueno" | "malo" | "neutro" | null };
-export type Aspecto = { sev: "alta" | "media" | "info"; titulo: string; detalle: string; href: string };
+// Hallazgo = observación del período basada en datos (no una alerta permanente).
+export type Hallazgo = { texto: string; tono: Tono; href?: string };
 
 const BASE_LABEL: Record<Base, string> = {
   ppto: "lo presupuestado",
   mes: "el mes anterior",
   anio: "el mismo período del año anterior",
 };
+// Variantes gramaticales de la referencia ("por encima DE LO presupuestado",
+// "N,N veces LO presupuestado") — módulo, las usan R1 y los hallazgos.
+const BASE_DE: Record<Base, string> = { ppto: "de lo presupuestado", mes: "del mes anterior", anio: "del mismo período del año anterior" };
+const BASE_VECES: Record<Base, string> = { ppto: "lo presupuestado", mes: "la del mes anterior", anio: "la del mismo período del año anterior" };
 // Rótulos ejecutivos fijos del termómetro (la hoja trae "Provisión Renta", "SUBTOTAL EBITDA"…).
 const LABEL_TERMO: Record<string, string> = {
   ing_operacion: "Ingresos de operación",
@@ -54,8 +59,6 @@ const f1 = (n: number, dec = 1) => n.toFixed(dec).replace(".", ",");
 const val = (etq: string, cod: string, modo: Modo) => (modo === "acum" ? D.ytd(etq, cod) : D.fact(etq, cod));
 const utilNetaTramo = (etq: string, modo: Modo) =>
   modo === "acum" ? provisionRenta(etq).neto : D.fact(etq, "4") - D.fact(etq, "5") - impuestoMes(etq);
-const impuestoTramo = (etq: string, modo: Modo) =>
-  modo === "acum" ? provisionRenta(etq).provision : impuestoMes(etq);
 const razonCobertura = (etq: string) => {
   const o = D.fact(etq, "2640");
   return o ? (D.fact(etq, "11") + D.fact(etq, "12")) / o : 0;
@@ -84,6 +87,8 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
 
   const e = hayPpto ? ejecucion(anio, mes, modo) : null;
   const tramoLabel = modo === "acum" ? `acumulada a ${mesNombre[mes].toLowerCase()}` : `de ${mesNombre[mes].toLowerCase()}`;
+  // "lo presupuestado hasta junio" / "para junio" — reemplaza la jerga "tramo" en la UI.
+  const planLabel = `lo presupuestado ${modo === "acum" ? "hasta" : "para"} ${mesNombre[mes].toLowerCase()}`;
 
   // ----- cifras del tramo (real) -----
   const utilReal = utilNetaTramo(etq, modo);
@@ -123,11 +128,14 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
 
   const dUtil = refFlujo(utilNetaTramo, () => tramoPpto(lineaPpto(anio, (l) => l.formula === "util_neta"), mes, modo));
   const dEbitda = refFlujo((q, m) => realFormula("ebitda", q, m), () => tramoPpto(lineaPpto(anio, (l) => l.formula === "ebitda" && l.tipo === "total"), mes, modo));
-  const dIng = refFlujo((q, m) => val(q, "4", m), () => {
+  const dIngBase = refFlujo((q, m) => val(q, "4", m), () => {
     const inv = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4150")), mes, modo);
     const com = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4180")), mes, modo);
     return inv === null || com === null ? null : inv + com; // el plan solo presupuesta las dos vías
   });
+  // Rotular la base real evita que se lea como "total vs. presupuesto total" al
+  // lado del 138% de ejecución (que es el ingreso de operación, neto de costo).
+  const dIng = base === "ppto" ? { ...dIngBase, label: "vs. presupuesto (comisiones + inversiones)" } : dIngBase;
   const dReservas = refSaldo((q) => D.fact(q, "2640"));
   const dLiquidez = refSaldo((q) => D.fact(q, "11") + D.fact(q, "12"));
   const dPatrim = refSaldo(patrimTotal);
@@ -146,7 +154,7 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     {
       id: "reservas", label: "Reservas individuales", valor: reservas, unidad: "cop",
       delta: dReservas.delta, deltaUnidad: "pct", deltaLabel: dReservas.label, dir: "neutro",
-      sub: "obligaciones de garantía (2640)", serie: s12((q) => D.fact(q, "2640")),
+      sub: "obligaciones de garantía", serie: s12((q) => D.fact(q, "2640")),
     },
     {
       id: "rendimiento", label: "Rendimiento del portafolio", valor: port.tasaPonderada, unidad: "pct",
@@ -175,7 +183,7 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     {
       id: "liquidez", label: "Respaldo líquido", valor: respaldo, unidad: "cop",
       delta: dLiquidez.delta, deltaUnidad: "pct", deltaLabel: dLiquidez.label, dir: dirDe(dLiquidez.delta),
-      sub: `cubre ${f1(cob * 100, 0)}% de las garantías`, serie: s12((q) => D.fact(q, "11") + D.fact(q, "12")),
+      sub: `cubre ${fmtPct(cob)} de las garantías`, serie: s12((q) => D.fact(q, "11") + D.fact(q, "12")),
     },
     {
       id: "patrimonio", label: "Patrimonio total", valor: patrimTotal(etq), unidad: "cop",
@@ -219,61 +227,37 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
     .slice(0, 6);
 
-  // ----- puente de la utilidad (cierra EXACTO contra el motor) -----
-  const pasos: { label: string; tipo: "inc" | "dec" | "total"; valor: number }[] = [];
-  let utilBase: number | null = null;
-  if (base === "ppto" && e) {
-    utilBase = tramoPpto(lineaPpto(anio, (l) => l.formula === "util_neta"), mes, modo) ?? 0;
-    const dIngOper = realFormula("ing_operacion", etq, modo) - (tramoPpto(lineaPpto(anio, (l) => l.formula === "ing_operacion"), mes, modo) ?? 0);
-    const dGastos = gasAdmReal - (tramoPpto(lineaPpto(anio, (l) => l.formula === "gastos_admin"), mes, modo) ?? 0);
-    const depReal = val(etq, "5160", modo) + val(etq, "5165", modo);
-    const depPpto = (tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("5160")), mes, modo) ?? 0)
-      + (tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("5165")), mes, modo) ?? 0);
-    const dImp = impuestoTramo(etq, modo) - (tramoPpto(lineaPpto(anio, (l) => l.formula === "impuesto"), mes, modo) ?? 0);
-    const cIng = dIngOper, cGas = -dGastos, cDep = -(depReal - depPpto), cImp = -dImp;
-    const cOtros = utilReal - utilBase - (cIng + cGas + cDep + cImp);
-    pasos.push(
-      { label: "Utilidad presupuestada", tipo: "total", valor: utilBase },
-      { label: "Ingresos de operación", tipo: cIng >= 0 ? "inc" : "dec", valor: cIng },
-      { label: "Gastos de administración", tipo: cGas >= 0 ? "inc" : "dec", valor: cGas },
-      { label: "Dep. y amortizaciones", tipo: cDep >= 0 ? "inc" : "dec", valor: cDep },
-      { label: "Otros netos", tipo: cOtros >= 0 ? "inc" : "dec", valor: cOtros },
-      { label: "Impuesto de renta", tipo: cImp >= 0 ? "inc" : "dec", valor: cImp },
-      { label: "Utilidad real", tipo: "total", valor: utilReal },
-    );
-  } else {
-    const refP = base === "mes" ? prevM : prevA;
-    if (refP) {
-      const modoP: Modo = base === "mes" ? "mes" : modo;
-      const d = (cod: string) => val(etq, cod, modoP) - val(refP.etiqueta, cod, modoP);
-      utilBase = utilNetaTramo(refP.etiqueta, modoP);
-      const utilAct = utilNetaTramo(etq, modoP);
-      const cIngCob = d("4180"), cCosto = -d("5199150101"), cInv = d("4150");
-      const cOtrosIng = d("4") - d("4180") - d("4150");
-      const cGasOper = -(d("5") - d("5199150101"));
-      const cImp = -(impuestoTramo(etq, modoP) - impuestoTramo(refP.etiqueta, modoP));
-      pasos.push(
-        { label: `Utilidad ${base === "mes" ? mesCorto[refP.mes] + " " + String(refP.anio).slice(2) : String(refP.anio)}`, tipo: "total", valor: utilBase },
-        { label: "Ingresos por cobertura", tipo: cIngCob >= 0 ? "inc" : "dec", valor: cIngCob },
-        { label: "Costo de cobertura", tipo: cCosto >= 0 ? "inc" : "dec", valor: cCosto },
-        { label: "Ingresos por inversiones", tipo: cInv >= 0 ? "inc" : "dec", valor: cInv },
-        { label: "Otros ingresos", tipo: cOtrosIng >= 0 ? "inc" : "dec", valor: cOtrosIng },
-        { label: "Gastos operativos", tipo: cGasOper >= 0 ? "inc" : "dec", valor: cGasOper },
-        { label: "Impuesto de renta", tipo: cImp >= 0 ? "inc" : "dec", valor: cImp },
-        { label: `Utilidad ${mesCorto[mes]} ${String(anio).slice(2)}`, tipo: "total", valor: utilAct },
-      );
-    }
-  }
-  let run = 0;
-  const puente: PasoPuente[] = pasos.map((s) => {
-    if (s.tipo === "total") {
-      run = s.valor;
-      return { name: s.label, base: 0, value: Math.abs(s.valor), tipo: s.tipo, signo: s.valor >= 0 ? 1 : -1 };
-    }
-    const start = run;
-    run += s.valor;
-    return { name: s.label, base: Math.min(start, run), value: Math.abs(s.valor), tipo: s.tipo, signo: s.valor >= 0 ? 1 : -1 };
-  });
+  // ----- comportamiento del período: 4 magnitudes con su crecimiento -----
+  // (Reemplaza al waterfall: cada barra responde una pregunta obvia, sin
+  //  requerir que la Junta interprete un gráfico de puente.)
+  const crecFlujo = (fReal: (q: string, m: Modo) => number, fPpto: () => number | null): number | null => {
+    if (base === "ppto") { const p = fPpto(); return p === null ? null : pctVar(fReal(etq, modo), p); }
+    if (base === "mes") return prevM ? pctVar(fReal(etq, "mes"), fReal(prevM.etiqueta, "mes")) : null;
+    return prevA ? pctVar(fReal(etq, modo), fReal(prevA.etiqueta, modo)) : null;
+  };
+  const comportamiento: Metrica[] = [
+    {
+      label: "Ingresos", valor: ingReal, subeEsBueno: true,
+      delta: crecFlujo((q, m) => val(q, "4", m), () => {
+        const inv = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4150")), mes, modo);
+        const com = tramoPpto(lineaPpto(anio, (l) => l.cuentas.includes("4180")), mes, modo);
+        return inv === null || com === null ? null : inv + com;
+      }),
+    },
+    {
+      label: "Gastos de administración", valor: gasAdmReal, subeEsBueno: false,
+      delta: crecFlujo((q, m) => realFormula("gastos_admin", q, m), () => tramoPpto(lineaPpto(anio, (l) => l.formula === "gastos_admin"), mes, modo)),
+    },
+    {
+      label: "EBITDA", valor: ebitdaReal, subeEsBueno: true,
+      delta: crecFlujo((q, m) => realFormula("ebitda", q, m), () => tramoPpto(lineaPpto(anio, (l) => l.formula === "ebitda" && l.tipo === "total"), mes, modo)),
+    },
+    {
+      label: "Patrimonio", valor: patrimTotal(etq), subeEsBueno: true,
+      delta: base === "mes" ? (prevM ? pctVar(patrimTotal(etq), patrimTotal(prevM.etiqueta)) : null)
+        : (prevA ? pctVar(patrimTotal(etq), patrimTotal(prevA.etiqueta)) : null),
+    },
+  ].map((m) => ({ ...m, bueno: m.delta === null ? true : (m.delta >= 0) === m.subeEsBueno }));
 
   // ----- termómetro del presupuesto (siempre contra el plan, si existe) -----
   let termometro: FilaTermo[] = [];
@@ -320,9 +304,6 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     const driverTxt = drivers.length
       ? `, ${sube ? "impulsada principalmente por" : "explicada principalmente por"} ${unir(drivers)}`
       : "";
-    // Referencias con la contracción correcta ("del mes anterior", no "de el mes…").
-    const BASE_DE: Record<Base, string> = { ppto: "de lo presupuestado", mes: "del mes anterior", anio: "del mismo período del año anterior" };
-    const BASE_VECES: Record<Base, string> = { ppto: "lo presupuestado", mes: "la del mes anterior", anio: "la del mismo período del año anterior" };
     // Con desvíos muy grandes, "N,N veces" se lee mejor que "230% por encima".
     const magnitud = sube && dUtil.delta >= 200
       ? `${f1(1 + dUtil.delta / 100)} veces ${BASE_VECES[base]}`
@@ -358,8 +339,8 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
   frases.push({
     regla: "R4", tono: cob >= 1 ? "pos" : "neg",
     texto: cob >= 1
-      ? `El respaldo líquido (efectivo e inversiones) cubre el ${f1(cob * 100, 0)}% de las obligaciones de garantía, por encima del umbral del 100%.`
-      : `El respaldo líquido cubre solo el ${f1(cob * 100, 0)}% de las obligaciones de garantía — por debajo del umbral del 100%.`,
+      ? `El respaldo líquido (efectivo e inversiones) cubre el ${fmtPct(cob)} de las obligaciones de garantía, por encima del umbral del 100%.`
+      : `El respaldo líquido cubre solo el ${fmtPct(cob)} de las obligaciones de garantía — por debajo del umbral del 100%.`,
   });
   // R5 — crecimiento del negocio: reservas y patrimonio interanual.
   {
@@ -393,55 +374,65 @@ export function construirInforme(etq: string, modo: Modo, baseIn: Base) {
     top1: port.top1, porTipo: port.porTipo.map((t) => ({ tipo: t.tipo, pct: t.pct })),
   };
 
-  // ----- aspectos que requieren atención (reglas conservadoras; vacío = decirlo) -----
-  const atencion: Aspecto[] = [];
-  if (cob < 1) {
-    atencion.push({ sev: "alta", titulo: `La cobertura cayó al ${f1(cob * 100, 0)}%`, detalle: "El respaldo líquido no cubre el total de las obligaciones de garantía (umbral: 100%).", href: "/estados/situacion" });
-  } else if (cob < 1.05) {
-    atencion.push({ sev: "media", titulo: `Cobertura en ${f1(cob * 100, 0)}% — margen estrecho`, detalle: "El respaldo supera las obligaciones por menos del 5%.", href: "/estados/situacion" });
-  }
-  if (utilReal < 0) {
-    atencion.push({ sev: "alta", titulo: `Utilidad neta ${tramoLabel} negativa`, detalle: `El resultado del período es ${fmtMi(utilReal)}.`, href: "/estados/resultados" });
-  }
+  // ----- HALLAZGOS del período (observaciones por datos, no alertas) -----
+  // Reemplaza "Aspectos que requieren atención": frases que un gerente diría
+  // en la Junta. Rojo SOLO para lo verdaderamente importante (misión/resultado);
+  // el resto se enuncia como observación neutra o positiva. Nunca queda vacío.
+  const hallazgos: Hallazgo[] = [];
+  // 1) La misión primero.
+  if (cob < 1)
+    hallazgos.push({ tono: "neg", href: "/estados/situacion", texto: `La cobertura descendió al ${fmtPct(cob)} de las obligaciones de garantía, por debajo del umbral del 100%.` });
+  else
+    hallazgos.push({ tono: "pos", texto: `El respaldo líquido cubre el ${fmtPct(cob)} de las obligaciones de garantía${cob < 1.05 ? " (margen estrecho)" : ""}.` });
+  // 2) Resultado y su ritmo.
+  if (utilReal < 0)
+    hallazgos.push({ tono: "neg", href: "/estados/resultados", texto: `La utilidad neta ${tramoLabel} fue negativa (${fmtMi(utilReal)}).` });
+  else if (dUtil.delta !== null)
+    hallazgos.push({
+      tono: "pos",
+      texto: dUtil.delta >= 200
+        ? `La utilidad neta ${tramoLabel} (${fmtMi(utilReal)}) llegó a ${f1(1 + dUtil.delta / 100)} veces ${BASE_VECES[base]}.`
+        : `La utilidad neta ${tramoLabel} (${fmtMi(utilReal)}) supera ${BASE_LABEL[base]} en ${f1(Math.abs(dUtil.delta), 0)}%.`,
+    });
+  if (racha >= 3) hallazgos.push({ tono: "pos", texto: `El EBITDA acumula ${racha} meses consecutivos en terreno positivo.` });
+  // 3) Disciplina de gasto.
   if (e) {
     const g = termometro.find((t) => t.etiqueta.toLowerCase().includes("administra"));
-    if (g && g.pct !== null && g.pct > 105) {
-      atencion.push({ sev: "media", titulo: `Gastos de administración al ${f1(g.pct, 0)}% del plan`, detalle: `${fmtMi(g.real)} ejecutados frente a ${fmtMi(g.ppto)} presupuestados en el tramo.`, href: "/estados/resultados?vista=ejec-acum" });
-    }
-    // Rubros mapeados con sobre-ejecución material (≥150% y ≥ 2 M de desvío).
-    e.filas
-      .filter((f) => f.tipo === "detalle" && !f.formula && f.clase === "gasto" && f.pctEjec !== null && f.pctEjec >= 150 && (f.variacion ?? 0) >= 2_000_000)
-      .slice(0, 2)
-      .forEach((f) => atencion.push({
-        sev: "media", titulo: `${f.etiqueta}: ${f1(f.pctEjec!, 0)}% del presupuesto`,
-        detalle: `Desvío de ${fmtMi(f.variacion as number)} sobre el plan del tramo. Revisar si es adelanto de gasto anual o desvío real.`,
-        href: "/estados/resultados?vista=ejec-acum",
-      }));
+    if (g && g.pct !== null)
+      hallazgos.push(g.pct <= 105
+        ? { tono: "pos", texto: `Los gastos de administración se mantienen dentro del presupuesto (${f1(g.pct, 0)}% de ejecución).` }
+        : { tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `Los gastos de administración van al ${f1(g.pct, 0)}% de ${planLabel} (${fmtMi(g.real)} frente a ${fmtMi(g.ppto)}).` });
+    // Rubro puntual muy por encima del plan (material).
+    const rub = e.filas.find((f) => f.tipo === "detalle" && !f.formula && f.clase === "gasto" && f.pctEjec !== null && f.pctEjec >= 150 && (f.variacion ?? 0) >= 2_000_000);
+    if (rub) hallazgos.push({ tono: "neutro", href: "/estados/resultados?vista=ejec-acum", texto: `${rub.etiqueta} va al ${f1(rub.pctEjec!, 0)}% del presupuesto (${fmtMi(rub.variacion as number)} por encima de ${planLabel}).` });
   }
-  if (port.hayDatos && port.top1 > 0.3) {
-    atencion.push({ sev: "media", titulo: `Concentración del portafolio: ${f1(port.top1 * 100, 0)}% en una entidad`, detalle: "Supera el umbral prudencial del 30%. Evaluar diversificación en el próximo vencimiento.", href: "/portafolio" });
+  // 4) Portafolio.
+  if (port.hayDatos) {
+    if (port.benchmark)
+      hallazgos.push({ tono: port.tasaPonderada >= port.benchmark ? "pos" : "neutro", texto: `El portafolio rinde ${f1(port.tasaPonderada * 100)}% E.A., ${port.tasaPonderada >= port.benchmark ? "por encima de" : "por debajo de"} la referencia de ${f1(port.benchmark * 100)}%.` });
+    if (port.top1 > 0.3)
+      hallazgos.push({ tono: "neutro", href: "/portafolio", texto: `La concentración del portafolio alcanza el ${f1(port.top1 * 100, 0)}% en una sola entidad (referencia prudencial: 30%).` });
+    const venc = port.posiciones.find((p) => p.estadoVenc === "vencido") ?? port.posiciones.find((p) => p.estadoVenc === "decision");
+    if (venc) hallazgos.push({ tono: venc.estadoVenc === "vencido" ? "neg" : "neutro", href: "/portafolio", texto: venc.estadoVenc === "vencido" ? `El ${venc.tipo} de ${venc.entidad} (${fmtMi(venc.monto)}) está vencido y requiere decisión.` : `El ${venc.tipo} de ${venc.entidad} vence en ${venc.diasRestantes} días.` });
   }
-  port.posiciones
-    .filter((p) => p.estadoVenc === "decision" || p.estadoVenc === "vencido")
-    .slice(0, 2)
-    .forEach((p) => atencion.push({
-      sev: p.estadoVenc === "vencido" ? "alta" : "media",
-      titulo: p.estadoVenc === "vencido" ? `${p.entidad}: posición vencida` : `${p.entidad}: vence en ${p.diasRestantes} días`,
-      detalle: `${p.tipo} por ${fmtMi(p.monto)}. Requiere decisión de renovación o retiro.`, href: "/portafolio",
-    }));
+  // 5) Crecimiento del negocio.
+  {
+    const rY = prevA ? pctVar(reservas, D.fact(prevA.etiqueta, "2640")) : null;
+    if (rY !== null && Math.abs(rY) >= 3) hallazgos.push({ tono: "neutro", texto: `Las reservas individuales ${rY >= 0 ? "crecieron" : "disminuyeron"} ${f1(Math.abs(rY), 0)}% frente al año anterior.` });
+  }
 
   // Estado global: "grave" solo si la misión (cobertura) o el resultado están mal;
-  // una posición del portafolio por vencer NO tiñe a toda la organización.
+  // "vigilar" si hay un hallazgo importante (rojo). Un CDT por vencer no tiñe todo.
   const estado: "solida" | "vigilar" | "grave" =
-    cob < 1 || utilReal < 0 ? "grave" : atencion.length > 0 ? "vigilar" : "solida";
+    cob < 1 || utilReal < 0 ? "grave" : hallazgos.some((h) => h.tono === "neg") ? "vigilar" : "solida";
 
   return {
     estado,
     periodo: { etq, anio, mes, nombre: `${mesNombre[mes]} ${anio}` },
     modo, base, hayPpto, hayPrevMes: !!prevM, hayPrevAnio: !!prevA,
-    tramoLabel, baseLabel: BASE_LABEL[base],
-    frases, kpis, variaciones, puente, utilBase, utilReal, termometro,
-    evolucion, portafolio: mini, atencion,
+    tramoLabel, baseLabel: BASE_LABEL[base], planLabel,
+    frases, kpis, comportamiento, variaciones, utilReal, termometro,
+    evolucion, portafolio: mini, hallazgos,
     ejecGlobal: e ? {
       ing: termometro.find((t) => t.etiqueta.toLowerCase().includes("ingresos"))?.pct ?? null,
       gas: termometro.find((t) => t.etiqueta.toLowerCase().includes("administra"))?.pct ?? null,

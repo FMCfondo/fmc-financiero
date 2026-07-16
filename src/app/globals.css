@@ -67,36 +67,42 @@ body {
 
 /* Contenedor con scroll: la cabecera queda fija arriba y la 1ª columna a la izq. */
 .stmt {
-  --stmt-col1: 300px;         /* ancho de la columna de concepto */
+  --stmt-col1: 288px;         /* ancho de la columna de concepto */
   --stmt-tint: #f6f9fd;       /* tinte de subtotal (navy muy tenue) */
   --stmt-tint2: #eef3fb;      /* tinte de total */
+  --stmt-px: 14px;            /* padding horizontal de celda */
+  --stmt-py: 6px;             /* padding vertical de celda (densidad) */
   overflow: auto;
   border-radius: var(--radius-xl);
+  /* Tipografía ligeramente más pequeña que el resto: más filas visibles sin scroll,
+     como una hoja de cálculo bien maquetada, pero más limpia. */
+  font-size: 12.5px;
 }
 .stmt table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
 .stmt th, .stmt td { white-space: nowrap; }
 
-/* Cabecera fija (sticky) con sombra sutil al hacer scroll */
+/* Cabecera fija (sticky) — los meses permanecen visibles en TODO el scroll vertical */
 .stmt thead th {
   position: sticky; top: 0; z-index: 20;
   background: var(--color-card);
-  font-weight: 500; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  font-weight: 600; font-size: 10.5px; letter-spacing: 0.055em; text-transform: uppercase;
   color: var(--color-faint);
-  padding: 11px 16px 10px;
+  padding: 9px var(--stmt-px) 8px;
   border-bottom: 1px solid var(--color-line);
   box-shadow: 0 1px 0 var(--color-line);
 }
 .stmt thead th.num { text-align: right; }
 
-/* Primera columna fija (concepto), ancho mínimo consistente, con divisor sutil */
+/* Primera columna fija (concepto): la referencia no se pierde al hacer scroll
+   horizontal. Ancho mínimo consistente + divisor sutil (freeze-panes elegante). */
 .stmt .col1 { position: sticky; left: 0; z-index: 10; background: var(--color-card); min-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
-.stmt tbody td.col1 { padding: 7px 16px; }
-.stmt thead th.col1 { z-index: 30; text-align: left; padding: 11px 16px 10px; }
+.stmt tbody td.col1 { padding: var(--stmt-py) var(--stmt-px); }
+.stmt thead th.col1 { z-index: 30; text-align: left; padding: 9px var(--stmt-px) 8px; }
 
 /* Celdas numéricas: tabulares, alineadas, ancho parejo */
 .stmt .num {
   text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
-  padding: 7px 16px; min-width: 128px;
+  padding: var(--stmt-py) var(--stmt-px); min-width: 116px;
 }
 .stmt .num-acc { border-left: 1px solid var(--color-line); background: var(--stmt-tint); }
 
@@ -107,13 +113,13 @@ body {
 
 /* Encabezado de sección (Ingresos / Activo…): limpio, sin barra de color llena */
 .stmt tr.section td {
-  padding: 14px 16px 7px; background: var(--color-card);
+  padding: 13px var(--stmt-px) 6px; background: var(--color-card);
   border-bottom: 1px solid var(--color-line); border-right: none;
 }
-.stmt tbody tr.section:first-child td { padding-top: 10px; }
+.stmt tbody tr.section:first-child td { padding-top: 9px; }
 .stmt tr.section .sec-label {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted);
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.085em; text-transform: uppercase; color: var(--color-muted);
 }
 .stmt tr.section .sec-dot { width: 6px; height: 6px; border-radius: 999px; }
 
@@ -125,7 +131,7 @@ body {
 .stmt tr.subtotal td { background: var(--stmt-tint); font-weight: 600; }
 .stmt tr.subtotal .col1 { background: var(--stmt-tint); }
 .stmt tr.total td { background: var(--stmt-tint2); font-weight: 700; }
-.stmt tr.total .col1 { background: var(--stmt-tint2); text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; }
+.stmt tr.total .col1 { background: var(--stmt-tint2); text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
 
 /* Guías de indentación (jerarquía de cuentas) */
 .stmt .indent { position: relative; display: inline-flex; align-items: center; }
