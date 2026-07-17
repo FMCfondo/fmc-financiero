@@ -103,6 +103,7 @@ create table ppto (
   id       bigint generated always as identity primary key,
   anio     int  not null,
   orden    int  not null,
+  nivel    smallint not null default 0,        -- 0 espina/ingresos, 1 rubro, 2 cuenta de detalle (agrupación Excel)
   etiqueta text not null,
   tipo     text not null default 'detalle',   -- 'detalle' | 'total' (subtotal en negrita)
   clase    text not null default 'gasto',      -- 'ingreso' | 'gasto' | 'resultado' (semaforo)

@@ -28,6 +28,7 @@ await client.query(`
     anio     int  not null,
     orden    int  not null,
     etiqueta text not null,
+    nivel    smallint not null default 0,        -- 0 espina/ingresos, 1 rubro, 2 cuenta de detalle (agrupacion Excel)
     tipo     text not null default 'detalle',   -- 'detalle' | 'total' (subtotal en negrita)
     clase    text not null default 'gasto',      -- 'ingreso' | 'gasto' | 'resultado' (semaforo)
     nota     text,
@@ -38,13 +39,15 @@ await client.query(`
     unique (anio, orden)
   );
 `);
+// Migracion in-place por si la tabla existia sin la columna nivel.
+await client.query(`alter table ppto add column if not exists nivel smallint not null default 0`);
 
 await client.query(`delete from ppto where anio = $1`, [anio]);
 for (const f of filas) {
   await client.query(
-    `insert into ppto (anio, orden, etiqueta, tipo, clase, nota, meses, total, cuentas, formula)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [anio, f.orden, f.etiqueta, f.tipo, f.clase, f.nota, f.meses, f.total, f.cuentas, f.formula],
+    `insert into ppto (anio, orden, nivel, etiqueta, tipo, clase, nota, meses, total, cuentas, formula)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [anio, f.orden, f.nivel ?? 0, f.etiqueta, f.tipo, f.clase, f.nota, f.meses, f.total, f.cuentas, f.formula],
   );
 }
 
