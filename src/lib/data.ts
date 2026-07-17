@@ -186,7 +186,8 @@ async function refreshParametros(): Promise<void> {
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
-  await cargarInversiones(sql); // también editables desde la app → misma frescura
+  await cargarInversiones(sql);   // editables desde la app → misma frescura
+  await cargarPresupuesto(sql);   // el mapeo del presupuesto también se edita en la app
   ultimaCargaParams = Date.now();
 }
 
@@ -228,6 +229,18 @@ export async function guardarParametros(vals: Record<string, number>): Promise<v
     parametros[clave] = valor;
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
+}
+
+/** Actualiza el mapeo PUC de una línea del presupuesto (columna `ppto.cuentas`)
+ *  en Neon y en memoria. Es lo que edita el usuario en el editor de mapeo. */
+export async function guardarMapeoPptoDb(anio: number, orden: number, cuentas: string[]): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  await sql`update ppto set cuentas = ${cuentas} where anio = ${anio} and orden = ${orden}`;
+  const i = presupuesto.findIndex((l) => l.anio === anio && l.orden === orden);
+  if (i >= 0) presupuesto[i] = { ...presupuesto[i], cuentas };
 }
 
 /** Invalida el dataset en memoria: la próxima petición recarga todo de Neon.
