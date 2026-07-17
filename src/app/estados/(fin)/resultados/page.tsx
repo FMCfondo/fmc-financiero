@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
-import { ejecucion, type FilaEjec } from "@/lib/ejecucion";
+import { type FilaEjec } from "@/lib/ejecucion";
+import { presupuestoArbol, ejecucionArbol } from "@/lib/presupuesto";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { etqNombre } from "@/lib/periodos";
-import { fmtCOP, fmtNum, fmtCont } from "@/lib/format";
+import { fmtCOP, fmtNum, fmtCont, fmtM } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
 import MesesSelector from "@/components/MesesSelector";
@@ -12,6 +13,8 @@ import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
+import PresupuestoMatrix from "@/components/PresupuestoMatrix";
+import EjecucionMatrix from "@/components/EjecucionMatrix";
 import { Info } from "lucide-react";
 
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
@@ -39,6 +42,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
+      {current === "presupuesto" && <VistaPresupuesto etq={etq} />}
       {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" />}
       {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" />}
     </div>
@@ -201,96 +205,105 @@ function Recuadro({ titulo, sub, tono, children }: { titulo: string; sub?: strin
   );
 }
 
-/* ---------- Ejecución presupuestal: Presupuesto 2026 vs. ER real ---------- */
-function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
-  const ANIO = 2026;
-  const per = periodo(etq);
-  const mesHasta = per.anio === ANIO ? per.mes : 12;
-  const e = ejecucion(ANIO, mesHasta, modo);
-
-  if (!e.filas.length)
-    return <div className="card p-6 flex items-start gap-3 border-accent/25"><Info size={18} className="text-accent2 mt-0.5 shrink-0" /><p className="text-sm text-muted">El Presupuesto {ANIO} aún no está cargado en la base de datos.</p></div>;
-  if (!e.hayReal)
-    return <div className="card p-6 text-sm text-muted">Aún no hay datos reales de {ANIO} para comparar.</div>;
-
-  const per2026 = etqNombre(e.etq as string);
+/* ---------- Presupuesto: la plantilla anual completa, expandible ---------- */
+function VistaPresupuesto({ etq }: { etq: string }) {
+  const ANIO = periodo(etq).anio;
+  const p = presupuestoArbol(ANIO);
+  if (!p.hay) return <AvisoInfo>El presupuesto de {ANIO} aún no está cargado.</AvisoInfo>;
   return (
-    <div className="space-y-3">
-      <div className="card p-4 flex items-start gap-3 border-accent/20">
-        <Info size={16} className="text-accent2 mt-0.5 shrink-0" />
-        <p className="text-xs text-muted">
-          {modo === "acum"
-            ? <>Real <b>acumulado</b> de enero a {per2026} contra el mismo tramo del presupuesto.</>
-            : <>Real <b>solo del mes</b> de {per2026} contra el presupuesto de ese mes.</>}{" "}
-          El presupuesto se carga tal cual del Excel de la Junta; el real sale del ER (cuentas PUC mapeadas y los subtotales de la
-          estructura EBITDA). Las líneas de detalle sin cuenta contable propia muestran solo el presupuesto (—).
-        </p>
+    <div className="space-y-4">
+      <p className="text-sm text-muted">Presupuesto {ANIO} · estructura EBITDA · el mismo orden del Estado de Resultados · pesos colombianos</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <MiniKpi label="Ingresos de operación" valor={p.resumen.ingOperacion} />
+        <MiniKpi label="Gastos de administración" valor={p.resumen.gastosAdmin} />
+        <MiniKpi label="EBITDA presupuestado" valor={p.resumen.ebitda} />
+        <MiniKpi label="Utilidad neta presupuestada" valor={p.resumen.utilNeta} />
       </div>
-      <div className="stmt card">
-        <table>
-          <thead>
-            <tr>
-              <th className="col1">Concepto</th>
-              <th className="num">Presupuesto</th>
-              <th className="num">Real</th>
-              <th className="num">Variación</th>
-              <th className="num" style={{ minWidth: 150 }}>% Ejecución</th>
-            </tr>
-          </thead>
-          <tbody>
-            {e.filas.map((f) => <FilaEjecucion key={f.orden} f={f} />)}
-          </tbody>
-        </table>
+      <PresupuestoMatrix labels={p.labels} roots={p.roots} persistKey={`ppto-${ANIO}`} />
+    </div>
+  );
+}
+
+/* ---------- Ejecución presupuestal JERÁRQUICA: presupuesto vs. real ---------- */
+function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
+  const ANIO = periodo(etq).anio;
+  const mesHasta = periodo(etq).mes;
+  const e = ejecucionArbol(ANIO, mesHasta, modo);
+  if (!e.hay) return <AvisoInfo>El presupuesto de {ANIO} aún no está cargado.</AvisoInfo>;
+  if (!e.hayReal) return <div className="card p-6 text-sm text-muted">Aún no hay datos reales de {ANIO} para comparar.</div>;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">Ejecución {e.periodoLabel} · el real (Estado de Resultados) frente al presupuesto de la Junta · pesos colombianos</p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <KpiEjec label="Ingresos de operación" fila={e.kpis.ingOp} />
+        <KpiEjec label="Gastos de administración" fila={e.kpis.gastosAdmin} />
+        <KpiEjec label="EBITDA" fila={e.kpis.ebitda} />
+        <KpiEjec label="Utilidad neta" fila={e.kpis.utilNeta} />
       </div>
-      <div className="flex items-center gap-x-5 gap-y-1.5 text-[11px] text-muted flex-wrap">
-        <span className="flex items-center gap-1.5"><Dot s="bueno" /> dentro o mejor que el presupuesto</span>
-        <span className="flex items-center gap-1.5"><Dot s="neutro" /> desvío hasta 5%</span>
-        <span className="flex items-center gap-1.5"><Dot s="malo" /> desvío mayor al 5%</span>
-        <span>La <b>Variación</b> es Real − Presupuesto; en gastos, negativa = ahorro.</span>
+
+      <EjecucionMatrix roots={e.roots} persistKey={`ejec-${ANIO}-${modo}`} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="card p-5">
+          <h3 className="font-medium">Rubros que más se desvían del plan</h3>
+          <p className="text-xs text-muted mb-3">{e.fueraDeRango} rubro{e.fueraDeRango === 1 ? "" : "s"} fuera de rango (desvío &gt; 15%)</p>
+          {e.top.length === 0 ? <p className="text-sm text-faint">Sin desvíos materiales en el período.</p> : e.top.map((t) => {
+            const bien = t.clase === "gasto" ? t.variacion <= 0 : t.variacion >= 0;
+            return (
+              <div key={t.etiqueta} className="flex items-baseline justify-between gap-3 py-1.5 border-b border-line-soft last:border-0">
+                <span className="text-[13px] truncate">{t.etiqueta}</span>
+                <span className={`text-[13px] font-bold tnum whitespace-nowrap ${bien ? "text-pos" : "text-neg"}`} title={fmtCOP(t.variacion)}>
+                  {t.variacion >= 0 ? "+" : "−"}{fmtCont(Math.abs(t.variacion))} · {t.pctEjec?.toFixed(0)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {e.proyeccion && (
+          <div className="card p-5">
+            <h3 className="font-medium">Proyección de cierre del año</h3>
+            <p className="text-xs text-muted mb-3">al ritmo actual (real acumulado anualizado) frente al plan anual</p>
+            {e.proyeccion.map((r) => (
+              <div key={r.label} className="flex items-baseline justify-between gap-3 py-1.5 border-b border-line-soft last:border-0">
+                <span className="text-[13px]">{r.label}</span>
+                <span className="text-[13px] tnum whitespace-nowrap">
+                  <b title={r.proyectado !== null ? fmtCOP(r.proyectado) : undefined}>{r.proyectado === null ? "—" : fmtM(r.proyectado)}</b>
+                  <span className="text-faint"> / plan {fmtM(r.planAnual)}</span>
+                  {r.pct !== null && <span className="text-muted"> · {r.pct.toFixed(0)}%</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Dot({ s }: { s: FilaEjec["semaforo"] }) {
-  const c = s === "bueno" ? "bg-pos" : s === "malo" ? "bg-neg" : s === "neutro" ? "bg-gold" : "bg-transparent";
-  return <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${c}`} />;
+/* ---------- helpers de presupuesto / ejecución ---------- */
+function AvisoInfo({ children }: { children: React.ReactNode }) {
+  return <div className="card p-6 flex items-start gap-3 border-accent/25"><Info size={18} className="text-accent2 mt-0.5 shrink-0" /><p className="text-sm text-muted">{children}</p></div>;
 }
-
-/* Mini-medidor sobrio del % de ejecución (0–100 lleno; >100 marca sobre-ejecución). */
-function EjecBar({ pct, s }: { pct: number | null; s: FilaEjec["semaforo"] }) {
-  if (pct === null) return <span className="text-faint">—</span>;
-  const fill = s === "malo" ? "var(--color-neg)" : s === "neutro" ? "var(--color-gold)" : "var(--color-pos)";
+function MiniKpi({ label, valor }: { label: string; valor: number }) {
   return (
-    <span className="inline-flex items-center gap-2 justify-end w-full">
-      <span className="tnum text-muted w-11 text-right">{pct.toFixed(0)}%</span>
-      <span className="ejec-bar w-16"><span style={{ width: `${Math.min(pct, 100)}%`, background: fill }} /></span>
-    </span>
+    <div className="card p-4">
+      <div className="text-xs text-muted leading-snug">{label}</div>
+      <div className="text-lg font-semibold tnum mt-1" title={fmtCOP(valor)}>{fmtM(valor)}</div>
+    </div>
   );
 }
-
-function FilaEjecucion({ f }: { f: FilaEjec }) {
-  const total = f.tipo === "total";
-  const rule = total ? "border-t border-fg/45 border-b-[3px] border-double border-fg/45 py-0.5" : "";
-  const num = (v: number | null, dbl = false) => (
-    <span className={`inline-block ${rule}`}>{v === null ? "—" : fmtCont(v, total && dbl)}</span>
-  );
-  const dir = f.semaforo === "bueno" ? "pos" : f.semaforo === "malo" ? "neg" : f.semaforo === "neutro" ? "flat" : null;
+function KpiEjec({ label, fila }: { label: string; fila: FilaEjec | null }) {
+  const col = fila?.semaforo === "bueno" ? "text-pos" : fila?.semaforo === "malo" ? "text-neg" : "text-muted";
   return (
-    <tr className={total ? "total" : "row"}>
-      <td className="col1">
-        <span className="flex items-center gap-2.5">
-          <Dot s={f.semaforo} />
-          <span className={total ? "" : "text-muted"}>{f.etiqueta}</span>
-        </span>
-      </td>
-      <td className="num">{num(f.ppto, true)}</td>
-      <td className="num font-medium">{num(f.real, true)}</td>
-      <td className="num">
-        {f.variacion === null ? <span className="text-faint">—</span>
-          : <span className={`delta ${dir ? "delta-" + dir : ""} justify-end`}>{num(f.variacion)}</span>}
-      </td>
-      <td className="num"><EjecBar pct={f.pctEjec} s={f.semaforo} /></td>
-    </tr>
+    <div className="card p-4">
+      <div className="text-xs text-muted leading-snug">{label}</div>
+      <div className="text-lg font-semibold tnum mt-1" title={fila && fila.real !== null ? fmtCOP(fila.real) : undefined}>{fila && fila.real !== null ? fmtM(fila.real) : "—"}</div>
+      <div className="text-[11px] mt-0.5">
+        <span className={col}>{fila?.pctEjec != null ? `${fila.pctEjec.toFixed(0)}% del plan` : "—"}</span>
+        <span className="text-faint"> · plan {fila ? fmtM(fila.ppto) : "—"}</span>
+      </div>
+    </div>
   );
 }

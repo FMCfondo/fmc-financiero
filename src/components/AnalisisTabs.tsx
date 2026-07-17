@@ -8,8 +8,9 @@ export default function AnalisisTabs({ current, ejec = true }: { current: string
     { id: "vertical", label: "Análisis Vertical", soon: false },
     { id: "horizontal", label: "Análisis Horizontal", soon: false },
     { id: "interanual", label: "Comparación interanual", soon: false },
-    // La ejecución presupuestal solo aplica al Estado de Resultados.
+    // El presupuesto y su ejecución solo aplican al Estado de Resultados.
     ...(ejec ? [
+      { id: "presupuesto", label: "Presupuesto", soon: false },
       { id: "ejec-acum", label: "Ejecución Acum.", soon: false },
       { id: "ejec-mes", label: "Ejecución Mes", soon: false },
     ] : []),

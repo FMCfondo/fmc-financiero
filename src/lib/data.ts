@@ -40,7 +40,7 @@ export let inversiones: Inversion[] = [];
    CUAL de la hoja PPTO del Excel. `cuentas`/`formula` mapean cada línea al real
    para la ejecución presupuestal. `meses` = 12 valores ENE..DIC. */
 export type PptoLinea = {
-  anio: number; orden: number; etiqueta: string;
+  anio: number; orden: number; nivel: number; etiqueta: string;
   tipo: "detalle" | "total"; clase: "ingreso" | "gasto" | "resultado";
   nota: string | null; meses: number[]; total: number;
   cuentas: string[]; formula: string | null;
@@ -122,10 +122,10 @@ async function loadFromNeon() {
    presupuesto queda vacío y la ejecución muestra el aviso, sin tumbar la app. */
 async function cargarPresupuesto(sql: any): Promise<void> {
   try {
-    const ps = await sql`select anio, orden, etiqueta, tipo, clase, nota, meses, total, cuentas, formula
+    const ps = await sql`select anio, orden, nivel, etiqueta, tipo, clase, nota, meses, total, cuentas, formula
                            from ppto order by anio, orden`;
     presupuesto = (ps as any[]).map((r) => ({
-      anio: Number(r.anio), orden: Number(r.orden), etiqueta: r.etiqueta,
+      anio: Number(r.anio), orden: Number(r.orden), nivel: Number(r.nivel ?? 0), etiqueta: r.etiqueta,
       tipo: r.tipo, clase: r.clase, nota: r.nota ?? null,
       meses: (r.meses ?? []).map((v: any) => Number(v)), total: Number(r.total),
       cuentas: r.cuentas ?? [], formula: r.formula ?? null,
