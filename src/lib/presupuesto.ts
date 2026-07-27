@@ -85,17 +85,22 @@ export function ejecucionArbol(anio: number, mesHasta: number, modo: "acum" | "m
   const totalDe = (formula: string) => { const fs = e.filas.filter((x) => x.formula === formula); return fs.length ? fs[fs.length - 1] : null; };
   const kpis = { ingOp: totalDe("ing_operacion"), gastosAdmin: totalDe("gastos_admin"), ebitda: totalDe("ebitda"), utilNeta: totalDe("util_neta") };
 
-  // Rubros de detalle mapeados; base para "fuera de rango" y "top desviaciones".
-  const vistos = new Set<string>();
-  const detalles = e.filas
-    .filter((f) => f.tipo === "detalle" && !f.formula && f.real !== null && f.clase !== "resultado")
-    .filter((f) => (vistos.has(f.etiqueta) ? false : (vistos.add(f.etiqueta), true)));
-  const fueraDeRango = detalles.filter((f) => f.pctEjec !== null && Math.abs(f.pctEjec - 100) > 15).length;
-  const top = detalles
-    .filter((f) => Math.abs(f.variacion ?? 0) >= 1_000_000)
+  // "Fuera de rango" y "top desviaciones" se calculan sobre el NIVEL MÁS FINO
+  // mapeado (una hoja de comparación = nodo con real y sin hijos con real), para
+  // no contar la misma plata a nivel de grupo y de subcuenta.
+  const hojas: NodoEjec[] = [];
+  const recolectar = (n: NodoEjec) => {
+    const hijosMapeados = n.hijos.some((h) => h.real !== null);
+    if (n.real !== null && !n.formula && n.clase !== "resultado" && !hijosMapeados) hojas.push(n);
+    n.hijos.forEach(recolectar);
+  };
+  roots.forEach(recolectar);
+  const fueraDeRango = hojas.filter((n) => n.pctEjec !== null && Math.abs(n.pctEjec - 100) > 15).length;
+  const top = hojas
+    .filter((n) => Math.abs(n.variacion ?? 0) >= 1_000_000)
     .sort((a, b) => Math.abs(b.variacion as number) - Math.abs(a.variacion as number))
     .slice(0, 5)
-    .map((f) => ({ etiqueta: f.etiqueta, clase: f.clase, variacion: f.variacion as number, pctEjec: f.pctEjec, ppto: f.ppto, real: f.real as number }));
+    .map((n) => ({ etiqueta: n.etiqueta, clase: n.clase, variacion: n.variacion as number, pctEjec: n.pctEjec, ppto: n.ppto, real: n.real as number }));
 
   // Proyección de cierre (solo acumulado): ritmo actual anualizado vs. plan anual.
   const anual = (formula: string) => { const ls = D.presupuesto.filter((l) => l.anio === anio && l.formula === formula); return ls.length ? ls[ls.length - 1].total : 0; };
@@ -116,3 +121,20 @@ export function ejecucionArbol(anio: number, mesHasta: number, modo: "acum" | "m
   };
 }
 export type Ejecucion = ReturnType<typeof ejecucionArbol>;
+
+// ---------- Líneas editables para el editor de mapeo ----------
+// Las líneas de DETALLE (rubros y subcuentas) cuyo Real sale de `cuentas` PUC.
+// Los totales estructurales (formula) no se editan: su real es una fórmula del ER.
+export function lineasMapeo(anio: number, mesHasta: number, modo: "acum" | "mes") {
+  const e = ejecucion(anio, mesHasta, modo);
+  const by = new Map(e.filas.map((f) => [f.orden, f]));
+  return D.presupuesto
+    .filter((l) => l.anio === anio && l.tipo === "detalle" && !l.formula)
+    .sort((a, b) => a.orden - b.orden)
+    .map((l) => ({
+      orden: l.orden, nivel: l.nivel, etiqueta: l.etiqueta, cuentas: l.cuentas,
+      nombres: l.cuentas.map((c) => D.cuentaByCodigo.get(c)?.nombre ?? `${c} (no existe)`),
+      real: by.get(l.orden)?.real ?? null,
+    }));
+}
+export type LineaMapeo = ReturnType<typeof lineasMapeo>[number];

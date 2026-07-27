@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
 import { type FilaEjec } from "@/lib/ejecucion";
-import { presupuestoArbol, ejecucionArbol } from "@/lib/presupuesto";
+import { presupuestoArbol, ejecucionArbol, lineasMapeo } from "@/lib/presupuesto";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { etqNombre } from "@/lib/periodos";
@@ -15,7 +15,8 @@ import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
 import PresupuestoMatrix from "@/components/PresupuestoMatrix";
 import EjecucionMatrix from "@/components/EjecucionMatrix";
-import { Info } from "lucide-react";
+import MapeoEditor from "@/components/MapeoEditor";
+import { Info, SlidersHorizontal, ArrowLeft } from "lucide-react";
 
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
@@ -43,6 +44,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
       {current === "presupuesto" && <VistaPresupuesto etq={etq} />}
+      {current === "mapeo" && <VistaMapeo etq={etq} />}
       {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" />}
       {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" />}
     </div>
@@ -224,6 +226,21 @@ function VistaPresupuesto({ etq }: { etq: string }) {
   );
 }
 
+/* ---------- Editor del mapeo presupuesto → cuentas PUC ---------- */
+function VistaMapeo({ etq }: { etq: string }) {
+  const ANIO = periodo(etq).anio;
+  const lineas = lineasMapeo(ANIO, periodo(etq).mes, "acum");
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted">Mapeo de cuentas del presupuesto {ANIO}</p>
+        <Link href="?vista=ejec-acum" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><ArrowLeft size={12} /> Volver a la ejecución</Link>
+      </div>
+      <MapeoEditor anio={ANIO} lineas={lineas} />
+    </div>
+  );
+}
+
 /* ---------- Ejecución presupuestal JERÁRQUICA: presupuesto vs. real ---------- */
 function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
   const ANIO = periodo(etq).anio;
@@ -234,7 +251,10 @@ function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">Ejecución {e.periodoLabel} · el real (Estado de Resultados) frente al presupuesto de la Junta · pesos colombianos</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted">Ejecución {e.periodoLabel} · el real (Estado de Resultados) frente al presupuesto de la Junta · pesos colombianos</p>
+        <Link href="?vista=mapeo" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><SlidersHorizontal size={12} /> Editar mapeo de cuentas</Link>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <KpiEjec label="Ingresos de operación" fila={e.kpis.ingOp} />
