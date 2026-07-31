@@ -219,12 +219,14 @@ export function construirInforme(etq: string, modo: Modo) {
     dosVias: labels.map((m, i) => ({ mes: m, comisiones: sCom[i], inversiones: sInvIng[i], total: sCom[i] + sInvIng[i] })),
     ejecucion,
     trayectoria: { ingOp: sIngOp, gastos: sGastOp, ebitda: sEbitda, utilNeta: sUn, patrimonio: sPat },
-    // Los márgenes del catálogo (margen_ebitda, margen_neto) se calculan sobre los
-    // INGRESOS TOTALES, que incluyen el facturado de garantías; dan ~8,7% y ~5,4%.
-    // El Cockpit muestra el margen sobre el INGRESO DE OPERACIÓN (~36%), que es el
-    // que tiene sentido para este negocio. Mostrar ambos lado a lado se contradice,
-    // así que aquí solo va el ROA. (Pendiente decidir si el catálogo cambia de base.)
-    indicadores: { solidez: pick(["cobertura", "razon_corriente", "endeud_real"]), margen: pick(["roa"]) },
+    // Se muestran los DOS márgenes EBITDA porque miden cosas distintas y ambas
+    // importan: el tradicional sobre ingresos totales (que incluyen el facturado
+    // de garantías) y el «limpio» sobre el ingreso de operación (lo que de verdad
+    // entra al fondo). Van juntos y rotulados para que no se confundan.
+    indicadores: {
+      solidez: pick(["cobertura", "razon_corriente", "endeud_real"]),
+      margen: pick(["margen_ebitda", "margen_ebitda_limpio", "margen_neto", "roa"]),
+    },
   };
 }
 export type Informe = ReturnType<typeof construirInforme>;

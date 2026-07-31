@@ -207,6 +207,19 @@ const DEFS: Def[] = [
     fn: (c) => div(c.utilAntes + c.depAmort, c.ingYTD),
   },
   {
+    // Mismo EBITDA, otro denominador. Los ingresos totales incluyen el valor
+    // FACTURADO de las garantías, del que ~87% se va a constituir la reserva;
+    // por eso el margen sobre ingresos totales sale bajo y no refleja el negocio.
+    // El «limpio» se mide sobre el ingreso de operación (lo que de verdad entra
+    // al fondo) y es el que dice cuán rentable es operar. Se conservan los dos.
+    id: "margen_ebitda_limpio", nombre: "Margen EBITDA limpio", categoria: "rentabilidad", formato: "pct", bueno: "alto",
+    formula: "(Utilidad antes de impuestos + Depreciaciones + Amortizaciones) ÷ Ingreso de operación",
+    explica: "El mismo EBITDA, pero medido contra el ingreso de operación —lo que realmente entra al fondo— en vez de contra los ingresos totales, que incluyen el valor facturado de las garantías. Es el margen que dice qué tan rentable es operar el negocio.",
+    rango: "Bien: mayor que 0% · Mal: menor que 0%. Sin umbral universal por encima; se lee junto al margen EBITDA tradicional.",
+    evalua: (v) => (v > 0 ? "bien" : "mal"),
+    fn: (c) => div(c.utilAntes + c.depAmort, c.ingYTD - c.costoCob),
+  },
+  {
     id: "margen_operativo", nombre: "Margen operativo", categoria: "rentabilidad", formato: "pct", bueno: "alto",
     formula: "(Ingresos ordinarios − Gastos de administración y ventas) ÷ Ingresos ordinarios",
     explica: "Cuánto queda de la operación ordinaria después de TODOS los gastos de operar (incluido el costo de cobertura), antes de partidas extraordinarias e impuestos.",
@@ -363,6 +376,7 @@ const META_CORTA: Record<string, string> = {
   cobertura: "meta ≥ 100%",
   razon_corriente: "meta ≥ 1,0",
   margen_ebitda: "meta > 0%",
+  margen_ebitda_limpio: "meta > 0%",
   margen_neto: "meta > 0%",
   roa: "meta > 0%",
 };
@@ -375,7 +389,7 @@ export function indicadoresCockpit(etq: string): IndCockpit[] {
   // ROA y no ROE: el propio catálogo advierte que el ROE de FMC sale inflado
   // (patrimonio pequeño por diseño) y que el comparable es el ROA. El ROE sigue
   // disponible en la vista completa de Indicadores, siempre con su nota.
-  const ORDEN = ["cobertura", "margen_ebitda", "margen_neto", "razon_corriente", "roa", "endeud_real"];
+  const ORDEN = ["cobertura", "margen_ebitda", "margen_ebitda_limpio", "margen_neto", "razon_corriente", "roa", "endeud_real"];
   const c = ctx(etq);
   const pm = D.prevPeriodo(etq)?.etiqueta ?? null;
   const cPrev = pm ? ctx(pm) : null;

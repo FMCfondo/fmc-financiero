@@ -243,7 +243,7 @@ function Negocio({ inf }: { inf: Informe }) {
   const r = inf.resultado;
   const kpis = [
     { k: TERMINOS.ingOperacion, v: r.ingOp, cap: `lo que realmente entra al fondo — comisiones ${fmtPct(r.pctComisiones)}, inversiones ${fmtPct(r.pctInversiones)}`, p: r.projIngOp },
-    { k: "EBITDA", v: r.ebitda, cap: `margen ${fmtPct(r.margenEbitda)} sobre el ingreso de operación`, p: r.projEbitda },
+    { k: "EBITDA", v: r.ebitda, cap: `margen limpio ${fmtPct(r.margenEbitda)} — sobre el ingreso de operación`, p: r.projEbitda },
     { k: "Utilidad neta", v: r.utilNeta, cap: r.pctPlanUn !== null ? `${r.pctPlanUn.toFixed(0)}% del plan anual, con ${inf.tiempoPct.toFixed(0)}% del año transcurrido` : "después de la provisión de renta", p: r.projUtil },
   ];
   return (
