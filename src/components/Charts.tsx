@@ -208,7 +208,7 @@ export function ContribBars({ data }: { data: { mes: string; cobertura: number; 
   return (
     <div>
       <Leyenda items={[
-        { color: C.principal, label: "Ingresos por cobertura de créditos (netos)" },
+        { color: C.principal, label: "Ingresos por cobertura de créditos" },
         { color: C.acento, label: "Ingresos por inversiones" },
       ]} />
       <ResponsiveContainer width="100%" height={310}>

@@ -79,7 +79,7 @@ export function DosVias({ data }: { data: { mes: string; comisiones: number; inv
         })}
       </svg>
       <div className="flex gap-5 text-[11.5px] text-muted mt-2">
-        <span className="flex items-center gap-2"><i className="inline-block w-3 h-2.5 rounded-sm" style={{ background: C.principal }} />Ingreso real por comisiones</span>
+        <span className="flex items-center gap-2"><i className="inline-block w-3 h-2.5 rounded-sm" style={{ background: C.principal }} />Ingresos por cobertura de créditos</span>
         <span className="flex items-center gap-2"><i className="inline-block w-3 h-2.5 rounded-sm" style={{ background: C.acento }} />Ingreso por inversiones</span>
       </div>
     </div>

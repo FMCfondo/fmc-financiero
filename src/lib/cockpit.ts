@@ -8,9 +8,11 @@
 // ya produce el motor. Todas las cifras salen en MILLONES de pesos.
 //
 // NOMENCLATURA (decisión del analista, rige en toda la app):
-//   · «Comisiones facturadas»       = cuenta 4180, el valor cobrado antes de IVA
-//   · «Ingreso real por comisiones» = 4180 − reserva constituida (5199150101)
-//   · «Ingreso por inversiones»     = cuenta 4150
+//   · «Facturación por garantías»          = cuenta 4180, cobrado antes de IVA
+//   · «Ingresos por cobertura de créditos» = 4180 − reserva (5199150101)
+//   · «Ingresos por inversiones»           = cuenta 4150
+// Vocabularios separados a propósito: "facturación/garantías" para lo que se
+// cobra y "cobertura" para lo que el fondo gana — así no pueden confundirse.
 // El facturado NUNCA se muestra solo: siempre junto a su reserva y al ingreso real.
 //
 // COMPARACIÓN CONTRA EL PLAN: se compara contra el plan ANUAL usando el tiempo
@@ -29,10 +31,10 @@ export type Tono = "pos" | "neg" | "neutro";
 
 /** Rótulos canónicos — la UI los importa para no repetir literales. */
 export const TERMINOS = {
-  facturado: "Comisiones facturadas",
+  facturado: "Facturación por garantías",
   reserva: "Reserva constituida",
-  comisiones: "Ingreso real por comisiones",
-  inversiones: "Ingreso por inversiones",
+  comisiones: "Ingresos por cobertura de créditos",
+  inversiones: "Ingresos por inversiones",
   ingOperacion: "Ingreso de operación",
 } as const;
 
