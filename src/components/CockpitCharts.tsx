@@ -12,8 +12,44 @@ const mm = (v: number, d?: number) => {
   return v.toLocaleString("es-CO", { minimumFractionDigits: k, maximumFractionDigits: k });
 };
 
-/** El gráfico insignia: el respaldo cubriendo las obligaciones de garantía.
- *  Mientras la línea sólida vaya por encima de la punteada, el fondo cumple. */
+/** La misión, en una imagen: dos barras a la misma escala. Se VE que el respaldo
+ *  es más largo que las obligaciones, y el sobrante es el excedente. No hay que
+ *  interpretar un porcentaje: la comparación está a la vista. */
+export function BarrasCobertura({ respaldo, obligaciones }: { respaldo: number; obligaciones: number }) {
+  const max = Math.max(respaldo, obligaciones) || 1;
+  const excedente = respaldo - obligaciones;
+  const mmm = (v: number) => v.toLocaleString("es-CO", { maximumFractionDigits: 0 });
+  return (
+    <div className="space-y-3">
+      <Barra label="Respaldo líquido" sub="efectivo + inversiones" valor={respaldo} pct={(respaldo / max) * 100} color="var(--color-pos)" fuerte />
+      <Barra label="Obligaciones de garantía" sub="lo que el fondo debe respaldar" valor={obligaciones} pct={(obligaciones / max) * 100} color="var(--color-comparativo, #8A94A6)" />
+      <div className="flex items-baseline justify-between pt-2.5 border-t border-line">
+        <span className="text-[12.5px] text-muted">{excedente >= 0 ? "Excedente de respaldo" : "Faltante de respaldo"}</span>
+        <span className={`text-[17px] font-bold tnum ${excedente >= 0 ? "text-pos" : "text-neg"}`}>
+          {mmm(excedente)}<span className="text-[11px] font-semibold text-faint ml-1">Mill.</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+function Barra({ label, sub, valor, pct, color, fuerte }: {
+  label: string; sub: string; valor: number; pct: number; color: string; fuerte?: boolean;
+}) {
+  const mmm = (v: number) => v.toLocaleString("es-CO", { maximumFractionDigits: 0 });
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="text-[12.5px] font-medium">{label} <span className="text-faint font-normal">· {sub}</span></span>
+        <span className={`tnum ${fuerte ? "text-[16px] font-bold" : "text-[15px] font-semibold text-muted"}`}>{mmm(valor)}</span>
+      </div>
+      <div className="h-4 rounded-md bg-line overflow-hidden">
+        <div className="h-full rounded-md transition-[width] duration-500" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
+/** Evolución de la cobertura: el respaldo por encima de las obligaciones. */
 export function Cobertura({ resp, gar }: { resp: number[]; gar: number[] }) {
   const W = 300, H = 96, pt = 12, pb = 16;
   const all = [...resp, ...gar];
