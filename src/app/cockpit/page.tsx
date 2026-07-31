@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ensureLoaded, resolverEtq } from "@/lib/data";
+import { ensureLoaded, resolverEtq, leerNotas, type NotaPeriodo } from "@/lib/data";
+import { mesNombre } from "@/lib/format";
 import { construirInforme, TERMINOS, type Modo, type Informe } from "@/lib/cockpit";
 import type { IndCockpit } from "@/lib/indicadores";
 import { fmtCOP, fmtPct } from "@/lib/format";
@@ -29,6 +30,7 @@ export default async function CockpitPage({ searchParams }: {
   const etq = resolverEtq(p);
   const modo: Modo = qModo === "mes" ? "mes" : "acum";
   const inf = construirInforme(etq, modo);
+  const notas = await leerNotas(inf.periodo.anio, inf.periodo.mes);
 
   return (
     <div className="max-w-[1120px] space-y-0">
@@ -39,7 +41,7 @@ export default async function CockpitPage({ searchParams }: {
       <Negocio inf={inf} />
       {inf.hayPpto && <Ejecucion inf={inf} />}
       <Trayectoria inf={inf} />
-      <Notas />
+      <Notas notas={notas} mes={inf.periodo.mes} p={p} />
       <Detalle p={p} />
     </div>
   );
@@ -311,13 +313,33 @@ function Trayectoria({ inf }: { inf: Informe }) {
 }
 
 /* ---------- VI · notas del período ---------- */
-function Notas() {
+function Notas({ notas, mes, p }: { notas: NotaPeriodo[]; mes: number; p?: string }) {
   return (
-    <Seccion n="VI" titulo="Notas del período" pregunta="lo que explica lo inusual">
-      <div className="card p-6 text-sm text-muted">
-        Aún no hay notas registradas para este período. Al cargar el balance, la aplicación señalará los movimientos
-        que se salen de lo habitual y pedirá la explicación; lo que escribas aparecerá aquí, junto a la cifra que lo motivó.
-      </div>
+    <Seccion n="VI" titulo="Notas del período" pregunta="lo que explica lo inusual"
+      derecha={notas.length ? `${notas.length} nota${notas.length === 1 ? "" : "s"}` : undefined}>
+      {notas.length === 0 ? (
+        <div className="card p-6 text-sm text-muted">
+          Aún no hay notas registradas para este período. En{" "}
+          <Link href={`/revision${p ? `?p=${p}` : ""}`} className="text-accent2 hover:underline">Revisión del cierre</Link>{" "}
+          la aplicación señala los movimientos que se salen de lo habitual y pide la explicación; lo que escribas aparecerá aquí.
+        </div>
+      ) : (
+        <div>
+          {notas.map((nt, i) => (
+            <div key={i} className="ck-nt">
+              <div className="mg">Cierre de {mesNombre[mes].toLowerCase()}</div>
+              <div>
+                <div className="h">{nt.titulo}{nt.cifra && <em>{nt.cifra}</em>}</div>
+                <div className="b">{nt.cuerpo}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-faint mt-4 leading-relaxed max-w-[76ch]">
+        Estas notas <b className="text-muted">no las escribe el sistema</b>: la aplicación detecta lo que se sale del
+        comportamiento habitual de cada cuenta y el analista registra la explicación al cerrar el mes.
+      </p>
     </Seccion>
   );
 }

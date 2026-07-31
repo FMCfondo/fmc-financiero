@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, type LucideIcon,
+  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck, type LucideIcon,
 } from "lucide-react";
 import { NAV, MODOS, MODO_DEFAULT, CLAVE_MODO, visibleEn, type ModoApp } from "@/lib/modos";
 
-const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale };
+const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck };
 
 export default function Sidebar() {
   const pathname = usePathname();

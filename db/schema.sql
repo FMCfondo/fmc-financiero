@@ -147,3 +147,18 @@ create view v_movimiento_ajustado as
 insert into parametro (clave, valor, descripcion) values
   ('tasa_imporenta', '0.35', 'Tasa estimada de impuesto de renta (RN2)'),
   ('impuesto_modo', '"estimado"', 'estimado | contabilizado (RN2)');
+
+-- Notas del período: las explicaciones que el analista escribe al cerrar el mes
+-- sobre los movimientos que se salieron de lo habitual (ver src/lib/anomalias.ts).
+-- NO las genera el sistema; el sistema solo detecta qué merece explicarse.
+create table nota_periodo (
+  id         bigint generated always as identity primary key,
+  anio       int  not null,
+  mes        int  not null,
+  codigo_puc text,                                -- cuenta que motivo la nota
+  titulo     text not null,
+  cifra      text,                                -- el dato que la motivo, ya formateado
+  cuerpo     text not null,
+  creado_en  timestamptz not null default now(),
+  unique (anio, mes, codigo_puc)
+);

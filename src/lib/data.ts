@@ -231,6 +231,42 @@ export async function guardarParametros(vals: Record<string, number>): Promise<v
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
 }
 
+/* Notas del período: las explicaciones que el analista escribe al cerrar el mes
+   sobre lo que se salió de lo habitual. No las genera el sistema. */
+export type NotaPeriodo = { anio: number; mes: number; codigo: string | null; titulo: string; cifra: string | null; cuerpo: string };
+
+export async function leerNotas(anio: number, mes: number): Promise<NotaPeriodo[]> {
+  const url = process.env.DATABASE_URL;
+  if (!url) return [];
+  try {
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(url);
+    const rs = await sql`select anio, mes, codigo_puc, titulo, cifra, cuerpo
+                           from nota_periodo where anio = ${anio} and mes = ${mes} order by id`;
+    return (rs as any[]).map((r) => ({
+      anio: Number(r.anio), mes: Number(r.mes), codigo: r.codigo_puc ?? null,
+      titulo: r.titulo, cifra: r.cifra ?? null, cuerpo: r.cuerpo,
+    }));
+  } catch {
+    return []; // la tabla puede no existir aún: la sección lo indica y no tumba la app
+  }
+}
+
+export async function guardarNotaDb(n: NotaPeriodo): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  if (!n.cuerpo.trim()) {
+    await sql`delete from nota_periodo where anio=${n.anio} and mes=${n.mes} and codigo_puc is not distinct from ${n.codigo}`;
+    return;
+  }
+  await sql`insert into nota_periodo (anio, mes, codigo_puc, titulo, cifra, cuerpo)
+            values (${n.anio}, ${n.mes}, ${n.codigo}, ${n.titulo}, ${n.cifra}, ${n.cuerpo})
+            on conflict (anio, mes, codigo_puc) do update
+              set titulo = excluded.titulo, cifra = excluded.cifra, cuerpo = excluded.cuerpo, creado_en = now()`;
+}
+
 /** Actualiza el mapeo PUC de una línea del presupuesto (columna `ppto.cuentas`)
  *  en Neon y en memoria. Es lo que edita el usuario en el editor de mapeo. */
 export async function guardarMapeoPptoDb(anio: number, orden: number, cuentas: string[]): Promise<void> {
