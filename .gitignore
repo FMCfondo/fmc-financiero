@@ -46,3 +46,4 @@ next-env.d.ts
 
 # graphify (grafo derivado del codigo, se regenera con `graphify update .`)
 /graphify-out
+/db/cifras-control.json
