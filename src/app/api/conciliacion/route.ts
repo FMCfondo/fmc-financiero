@@ -13,22 +13,15 @@ import { NextResponse } from "next/server";
 import { ensureLoaded, fact, ytd, presupuesto, periodos, type PptoLinea } from "@/lib/data";
 import { esf, provisionRenta } from "@/lib/statements";
 import { realFormula } from "@/lib/ejecucion";
+import * as C from "@/lib/informe-cuentas";
 import { portafolio } from "@/lib/inversiones";
 
 export const dynamic = "force-dynamic";
 
 const TOLERANCIA = 1; // un peso: por debajo es redondeo
 
-/* El bolsillo digital Bold está contabilizado en 11 (efectivo) pero el informe
- * lo presenta dentro de las inversiones y rotulado como FIDUCIA. Lleva su
- * propia fila en el detalle del portafolio: lo que se pliega es el TIPO, no la
- * posición. No cambia el activo total: solo mueve la línea del balance. */
-const CTA_BOLD = "1110050104";
-
-/* Las cuentas 4210 (financieros) y 4295 (diversos) NO entran en la línea
- * "Ingresos de operación" del Excel, aunque sí en el EBITDA. Derivado al
- * conciliar — PENDIENTE de confirmación del usuario. */
-const FUERA_DE_OPERACION = ["4210", "4295"];
+/* Las composiciones de linea viven en informe-cuentas.ts: un solo sitio para
+ * toda la app. Aqui solo se comparan contra el Excel certificado. */
 
 const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
 const aEtq = (p: string) => {
@@ -52,10 +45,10 @@ function filasBalance(etq: string, c: Record<string, number>): Fila[] {
     ["activo_total", c.activo_total, e.totalActivo, "esf().totalActivo"],
     ["pasivo_total", c.pasivo_total, e.totalPasivo, "esf().totalPasivo (pasivo + provisión de renta)"],
     ["patrimonio_total", c.patrimonio_total, e.totalPatrim, "esf().totalPatrim (patrimonio + utilidad neta)"],
-    ["disponible", c.disponible, fact(etq, "11") - fact(etq, CTA_BOLD), "cuenta 11 − Bold", true],
-    ["inversiones_liquidas", c.inversiones_liquidas, fact(etq, "12") + fact(etq, CTA_BOLD), "cuenta 12 + Bold", true],
-    ["clientes", c.clientes, fact(etq, "1345") + fact(etq, "138005"), "1345 + 138005", true],
-    ["pasivos_estimados", c.pasivos_estimados, fact(etq, "26") + prov - fact(etq, "2610") - fact(etq, "2615"), "26 + provisión de renta − 2610 − 2615", true],
+    ["disponible", c.disponible, C.disponible(etq), "cuenta 11 − Bold", true],
+    ["inversiones_liquidas", c.inversiones_liquidas, C.inversionesLiquidas(etq), "cuenta 12 + Bold", true],
+    ["clientes", c.clientes, C.clientes(etq), "1345 + 138005", true],
+    ["pasivos_estimados", c.pasivos_estimados, C.pasivosEstimados(etq), "26 + provisión de renta − 2610 − 2615", true],
     ["utilidad_neta_balance", c.utilidad_neta_balance, e.neto, "esf().neto"],
   ];
   return def.map(([concepto, control, app, mapeo, derivado]) => ({
@@ -75,14 +68,12 @@ function filasResultados(etq: string, c: Record<string, number>, modo: "mes" | "
   const filas: Fila[] = def
     .filter(([k]) => c[k] !== undefined)
     .map(([concepto, formula]) => {
-      const v = (x: string) => (modo === "acum" ? ytd(etq, x) : fact(etq, x));
-      const fuera = formula === "ing_operacion"
-        ? FUERA_DE_OPERACION.reduce((s2, x) => s2 + v(x), 0) : 0;
-      const app = realFormula(formula, etq, modo) - fuera;
+      const esIngOp = formula === "ing_operacion";
+      const app = esIngOp ? C.ingOperacion(etq, modo) : realFormula(formula, etq, modo);
       return { grupo, concepto, control: c[concepto], app, diff: app - c[concepto],
         ok: Math.abs(app - c[concepto]) <= TOLERANCIA,
-        mapeo: `realFormula("${formula}", "${modo}")` + (fuera ? ` − ${FUERA_DE_OPERACION.join(" − ")}` : ""),
-        derivado: formula === "ing_operacion" || undefined };
+        mapeo: esIngOp ? `informe-cuentas.ingOperacion("${modo}")` : `realFormula("${formula}", "${modo}")`,
+        derivado: esIngOp || undefined };
     });
   if (c.impuesto_renta !== undefined) {
     const app = provisionRenta(etq).provision;

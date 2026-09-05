@@ -23,6 +23,7 @@ import "server-only";
 import * as D from "./data";
 import { provisionRenta, impuestoMes, COSTO_COBERTURA, ING_COBERTURA, ING_FINANCIERO } from "./statements";
 import { realFormula } from "./ejecucion";
+import { ingOperacion, gastosOperativos } from "./informe-cuentas";
 import { indicadoresCockpit, type IndCockpit } from "./indicadores";
 import { mesCorto, mesNombre } from "./format";
 
@@ -81,13 +82,21 @@ export function construirCockpit(etq: string, modo: Modo) {
   const sCom = sFact.map((v, i) => v - sRsv[i]), sInvIng = serie(ING_FINANCIERO);
 
   // ---------- resultado ----------
-  const ingOp = realFormula("ing_operacion", etq, modo) / 1e6;
+  /* Ingresos de operacion sale de informe-cuentas: es la MISMA definicion que usa
+   * el informe de Junta y la conciliacion. Antes iba directo a realFormula, que no
+   * resta 4210/4295, y la misma linea valia dos cosas distintas en la app.
+   * OJO la asimetria, deliberada: el real excluye esas cuentas y el presupuesto de
+   * la fila 7 SI las incluye, porque el Excel no las separa. */
+  const ingOp = ingOperacion(etq, modo) / 1e6;
   const ebitda = realFormula("ebitda", etq, modo) / 1e6;
   const pr = provisionRenta(etq);
   const utilNeta = (modo === "acum" ? pr.neto : D.fact(etq, "4") - D.fact(etq, "5") - impuestoMes(etq)) / 1e6;
-  const sIngOp = etqs.map((e) => realFormula("ing_operacion", e, "mes") / 1e6);
+  const sIngOp = etqs.map((e) => ingOperacion(e, "mes") / 1e6);
   const sEbitda = etqs.map((e) => realFormula("ebitda", e, "mes") / 1e6);
-  const sGastOp = sIngOp.map((v, i) => v - sEbitda[i]);
+  /* Se calcula aparte, no como ingOp - ebitda: esa resta valia lo mismo mientras
+   * ingOp incluia 4210/4295, y al sacarlos habria restado otros ingresos de los
+   * gastos. La serie no se mueve. */
+  const sGastOp = etqs.map((e) => gastosOperativos(e, "mes") / 1e6);
   const sUn = etqs.map((e) => (D.fact(e, "4") - D.fact(e, "5") - impuestoMes(e)) / 1e6);
 
   // ---------- balance ----------
