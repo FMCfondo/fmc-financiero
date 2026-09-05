@@ -20,9 +20,9 @@ export const dynamic = "force-dynamic";
 const TOLERANCIA = 1; // un peso: por debajo es redondeo
 
 /* El bolsillo digital Bold está contabilizado en 11 (efectivo) pero el informe
- * lo presenta dentro de las inversiones, integrado a FIDUCIA y sin etiqueta
- * propia (HANDOFF §7: "es marginal y va a desaparecer, pero sí entra en los
- * totales"). No cambia el activo total: solo mueve la línea. */
+ * lo presenta dentro de las inversiones y rotulado como FIDUCIA. Lleva su
+ * propia fila en el detalle del portafolio: lo que se pliega es el TIPO, no la
+ * posición. No cambia el activo total: solo mueve la línea del balance. */
 const CTA_BOLD = "1110050104";
 
 /* Las cuentas 4210 (financieros) y 4295 (diversos) NO entran en la línea
@@ -54,8 +54,8 @@ function filasBalance(etq: string, c: Record<string, number>): Fila[] {
     ["patrimonio_total", c.patrimonio_total, e.totalPatrim, "esf().totalPatrim (patrimonio + utilidad neta)"],
     ["disponible", c.disponible, fact(etq, "11") - fact(etq, CTA_BOLD), "cuenta 11 − Bold", true],
     ["inversiones_liquidas", c.inversiones_liquidas, fact(etq, "12") + fact(etq, CTA_BOLD), "cuenta 12 + Bold", true],
-    ["clientes", c.clientes, fact(etq, "1345") + fact(etq, "1380"), "1345 + 1380 (13 sin anticipos de impuestos)", true],
-    ["pasivos_estimados", c.pasivos_estimados, fact(etq, "26") + prov - fact(etq, "2610"), "26 + provisión de renta − 2610", true],
+    ["clientes", c.clientes, fact(etq, "1345") + fact(etq, "138005"), "1345 + 138005", true],
+    ["pasivos_estimados", c.pasivos_estimados, fact(etq, "26") + prov - fact(etq, "2610") - fact(etq, "2615"), "26 + provisión de renta − 2610 − 2615", true],
     ["utilidad_neta_balance", c.utilidad_neta_balance, e.neto, "esf().neto"],
   ];
   return def.map(([concepto, control, app, mapeo, derivado]) => ({
@@ -125,11 +125,14 @@ function filasPortafolio(etq: string, c: Record<string, number>): Fila[] {
     filas.push({ grupo: "portafolio", concepto: "total", control: c.total, app: p.total,
       diff: p.total - c.total, ok: Math.abs(p.total - c.total) <= TOLERANCIA, mapeo: "portafolio().total" });
   if (c.posiciones !== undefined) {
-    // El informe no le da fila propia a Bold: se integra a FIDUCIA (HANDOFF §7).
-    const app = p.posiciones.filter((x) => !x.cuentas.includes(CTA_BOLD)).length;
+    /* El informe imprime UNA FILA POR POSICIÓN CON SALDO. Bold SÍ lleva fila —
+     * lo que hace el informe es rotularla como FIDUCIA, no ocultarla. Excluirla
+     * daba el número correcto en julio sólo porque otra posición (Mi Banco,
+     * abierta en agosto) estaba en cero: dos errores que se cancelaban. */
+    const app = p.posiciones.filter((x) => x.monto !== 0).length;
     filas.push({ grupo: "portafolio", concepto: "posiciones", control: c.posiciones, app,
       diff: app - c.posiciones, ok: app === c.posiciones,
-      mapeo: "portafolio().posiciones sin la fila de Bold", derivado: true });
+      mapeo: "portafolio().posiciones con saldo distinto de cero", derivado: true });
   }
   return filas;
 }
