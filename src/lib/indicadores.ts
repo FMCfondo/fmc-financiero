@@ -165,9 +165,9 @@ const DEFS: Def[] = [
 
   // --- Ingresos ---
   {
-    id: "ing_cobertura", nombre: "Ingresos por cobertura de créditos", categoria: "ingresos", formato: "cop", bueno: "alto", clave: true,
-    formula: "Comisiones de cobertura del período (cuenta 4180)",
-    explica: "Lo facturado por el servicio de cobertura: las comisiones que pagan los intermediarios por cada crédito garantizado.",
+    id: "ing_cobertura", nombre: "Facturación por garantías", categoria: "ingresos", formato: "cop", bueno: "alto", clave: true,
+    formula: "Valor facturado por el servicio de garantía en el período (cuenta 4180)",
+    explica: "Lo que se le COBRA al cliente por garantizar sus créditos, antes de IVA. No es lo que gana el fondo: de aquí sale la reserva que respalda las garantías; lo que queda es el ingreso por cobertura de créditos.",
     rango: "Es un valor absoluto: no tiene umbral bueno/malo. Se lee contra su propia historia (¿crece?) y contra el presupuesto.",
     fn: (c) => c.ingCob,
     fnMes: (c) => c.ingCobMes,
@@ -182,8 +182,8 @@ const DEFS: Def[] = [
   },
   {
     id: "margen_cobertura", nombre: "Margen de cobertura", categoria: "ingresos", formato: "pct", bueno: "alto",
-    formula: "(Ingresos de cobertura − Costo de cobertura) ÷ Ingresos de cobertura",
-    explica: "De cada $100 que entran por coberturas, cuántos le quedan al fondo después de apartar el costo de cobertura (las reservas para siniestros). Si marca 13%, quedan $13 de cada $100 cobrados.",
+    formula: "(Facturación por garantías − Reserva constituida) ÷ Facturación por garantías",
+    explica: "De cada $100 facturados por garantías, cuántos le quedan al fondo después de constituir la reserva. Si marca 13%, quedan $13 de cada $100 cobrados: eso es el ingreso por cobertura de créditos.",
     rango: "Bien: mayor que 0% · Mal: menor que 0%. El 0% es el punto de equilibrio: por debajo, cada cobertura cuesta más de lo que ingresa. No existe un porcentaje ideal universal — depende de la siniestralidad del nicho; compárese contra la historia propia.",
     evalua: (v) => (v > 0 ? "bien" : "mal"),
     fn: (c) => div(c.contribCob, c.ingCob),
@@ -205,6 +205,19 @@ const DEFS: Def[] = [
     rango: "Bien: mayor que 0% · Mal: menor que 0% (equilibrio). En FMC los activos fijos son mínimos, así que quedará casi igual al margen antes de impuestos.",
     evalua: (v) => (v > 0 ? "bien" : "mal"),
     fn: (c) => div(c.utilAntes + c.depAmort, c.ingYTD),
+  },
+  {
+    // Mismo EBITDA, otro denominador. Los ingresos totales incluyen el valor
+    // FACTURADO de las garantías, del que ~87% se va a constituir la reserva;
+    // por eso el margen sobre ingresos totales sale bajo y no refleja el negocio.
+    // El «limpio» se mide sobre el ingreso de operación (lo que de verdad entra
+    // al fondo) y es el que dice cuán rentable es operar. Se conservan los dos.
+    id: "margen_ebitda_limpio", nombre: "Margen EBITDA limpio", categoria: "rentabilidad", formato: "pct", bueno: "alto",
+    formula: "(Utilidad antes de impuestos + Depreciaciones + Amortizaciones) ÷ Ingreso de operación",
+    explica: "El mismo EBITDA, pero medido contra el ingreso de operación —lo que realmente entra al fondo— en vez de contra los ingresos totales, que incluyen el valor facturado de las garantías. Es el margen que dice qué tan rentable es operar el negocio.",
+    rango: "Bien: mayor que 0% · Mal: menor que 0%. Sin umbral universal por encima; se lee junto al margen EBITDA tradicional.",
+    evalua: (v) => (v > 0 ? "bien" : "mal"),
+    fn: (c) => div(c.utilAntes + c.depAmort, c.ingYTD - c.costoCob),
   },
   {
     id: "margen_operativo", nombre: "Margen operativo", categoria: "rentabilidad", formato: "pct", bueno: "alto",
@@ -363,6 +376,7 @@ const META_CORTA: Record<string, string> = {
   cobertura: "meta ≥ 100%",
   razon_corriente: "meta ≥ 1,0",
   margen_ebitda: "meta > 0%",
+  margen_ebitda_limpio: "meta > 0%",
   margen_neto: "meta > 0%",
   roa: "meta > 0%",
 };
@@ -375,7 +389,7 @@ export function indicadoresCockpit(etq: string): IndCockpit[] {
   // ROA y no ROE: el propio catálogo advierte que el ROE de FMC sale inflado
   // (patrimonio pequeño por diseño) y que el comparable es el ROA. El ROE sigue
   // disponible en la vista completa de Indicadores, siempre con su nota.
-  const ORDEN = ["cobertura", "margen_ebitda", "margen_neto", "razon_corriente", "roa", "endeud_real"];
+  const ORDEN = ["cobertura", "margen_ebitda", "margen_ebitda_limpio", "margen_neto", "razon_corriente", "roa", "endeud_real"];
   const c = ctx(etq);
   const pm = D.prevPeriodo(etq)?.etiqueta ?? null;
   const cPrev = pm ? ctx(pm) : null;

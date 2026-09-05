@@ -116,22 +116,34 @@ Antes de dar por terminado un módulo:
 > Actualizar tras cada sesión.
 
 ### Cockpit
-- Calibrar con el usuario las reglas de **"Hallazgos / aspectos que requieren atención"**
-  (umbrales de materialidad, qué entra y qué no).
+- **BLOQUEANTE — falta el veredicto del usuario sobre la dirección visual.** Van tres
+  direcciones rechazadas: panel genérico, enfoque editorial/informe (*"me parece un
+  periódico… muy zombie"*) y la presentación de activos como lista de cuentas con
+  porcentajes (*"no es algo que uno entienda al instante con solo verlo"*). La cuarta
+  —lenguaje de tarjetas + `BalanceVisual` + `BarrasCobertura`— está en el preview y
+  **no debe construirse el PDF encima hasta que la apruebe**.
+- Lección de esas tres iteraciones: **cada bloque debe abrir con una imagen que se
+  explique sola**. Una cifra bien maquetada no sustituye a un gráfico; dos barras a la
+  misma escala comunican más que un porcentaje bien calculado.
+- Las reglas de *"aspectos que requieren atención"* quedaron **descartadas**: el usuario
+  las reemplazó por las **notas del período** (detección de anomalías + explicación
+  escrita por el analista). No reintroducir alertas automáticas.
 - **KPIs propios del negocio que faltan**: *Cartera Garantizada* y *Valor de las Coberturas
   Vigentes* — **no existen en la contabilidad**; definir cómo capturarlos (dato mensual
   manual o segunda ingesta) antes de mostrarlos.
-- Seguir puliendo claridad/legibilidad según feedback ("aún hay mejoras por hacer").
 
 ### Estados Financieros
 - Continuar el refinamiento de densidad tipográfica y comportamiento del scroll (sticky
   horizontal/vertical) — base hecha, queda pulido fino.
 
 ### Producto / infraestructura
+- **URGENTE — rotar la clave de Neon.** Quedó expuesta en un chat desde julio y el repo
+  es público. No depende de ninguna otra decisión; hacerlo antes que cualquier función
+  nueva, y actualizar `.env.local` y Vercel.
 - **Informe PDF** para la Junta, generado desde el mismo objeto `Informe` del Cockpit
-  (el contrato único ya está listo para reutilizarse).
+  (el contrato único ya está listo para reutilizarse). Depende del veredicto de diseño.
+- Propagar el lenguaje visual nuevo del Cockpit al resto de estados y a Análisis.
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
-- **Rotar la clave de Neon**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
 

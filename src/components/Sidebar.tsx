@@ -1,26 +1,31 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Gauge, Landmark, Table2, Percent, Upload, Wallet,
+  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck, type LucideIcon,
 } from "lucide-react";
+import { NAV, MODOS, MODO_DEFAULT, CLAVE_MODO, visibleEn, type ModoApp } from "@/lib/modos";
 
-// Un lugar para cada cosa: el Cockpit conduce la reunión de Junta; los estados
-// llevan el detalle; Balances e Ingesta son el ciclo operativo mensual.
-// (Plan de Cuentas y la página vieja de Ejecución se retiraron: eran redundantes.)
-const NAV = [
-  { href: "/cockpit", match: "/cockpit", label: "Cockpit Ejecutivo", icon: Gauge },
-  { href: "/estados/resultados", match: "/estados", label: "Estados Financieros", icon: Landmark },
-  { href: "/portafolio", match: "/portafolio", label: "Portafolio", icon: Wallet },
-  { href: "/balances", match: "/balances", label: "Balances / Resumen", icon: Table2 },
-  { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icon: Upload },
-  { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icon: Percent },
-];
+const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck };
 
 export default function Sidebar() {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
+  // El modo es una preferencia de vista, no un permiso: se recuerda en el navegador.
+  const [modo, setModo] = useState<ModoApp>(MODO_DEFAULT);
+  useEffect(() => {
+    try {
+      const g = localStorage.getItem(CLAVE_MODO) as ModoApp | null;
+      if (g === "reuniones" || g === "operacion") setModo(g);
+    } catch { /* noop */ }
+  }, []);
+  const cambiar = (m: ModoApp) => {
+    setModo(m);
+    try { localStorage.setItem(CLAVE_MODO, m); } catch { /* noop */ }
+  };
+  const items = NAV.filter((i) => visibleEn(i, modo));
 
   return (
     <aside className="group fixed left-0 top-0 z-40 h-screen w-16 hover:w-[248px] overflow-hidden brand-grad text-white transition-[width] duration-200 ease-out shadow-xl shadow-[#0b1f52]/40 flex flex-col">
@@ -35,9 +40,28 @@ export default function Sidebar() {
         </span>
       </div>
 
+      {/* Conmutador de modo: Reuniones (lo que ve la Junta) / Operación (tu trabajo) */}
+      <div className="px-3 pt-3 pb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="flex gap-1 p-1 rounded-lg bg-black/20">
+          {MODOS.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => cambiar(m.id)}
+              title={m.desc}
+              className={`flex-1 text-[11.5px] font-semibold py-1.5 rounded-md transition-colors whitespace-nowrap ${
+                modo === m.id ? "bg-white text-royal2" : "text-white/60 hover:text-white"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Nav */}
-      <nav className="flex-1 py-3">
-        {NAV.map(({ href, match, label, icon: Icon }) => {
+      <nav className="flex-1 py-2">
+        {items.map(({ href, match, label, icono }) => {
+          const Icon = ICONOS[icono] ?? Gauge;
           const active = pathname.startsWith(match);
           return (
             <Link

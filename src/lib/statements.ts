@@ -153,9 +153,9 @@ export function operacion(etq: string) {
 export function cascadaChart(etq: string, modo: "acum" | "mes" = "acum") {
   const c = contribucionPeriodo(etq, modo);
   const pasos: { label: string; tipo: "inc" | "dec" | "total"; valor: number }[] = [
-    { label: "Ingresos por cobertura", tipo: "inc", valor: c.ingCob },
-    { label: "(−) Costo de cobertura", tipo: "dec", valor: -c.costoCob },
-    { label: "= Aporte de cobertura", tipo: "total", valor: c.contribCob },
+    { label: "Facturación por garantías", tipo: "inc", valor: c.ingCob },
+    { label: "(−) Reserva constituida", tipo: "dec", valor: -c.costoCob },
+    { label: "= Ingresos por cobertura", tipo: "total", valor: c.contribCob },
     { label: "(+) Ingresos por inversiones", tipo: "inc", valor: c.contribInv },
     { label: "(+) Otros ingresos netos", tipo: "inc", valor: c.otrosNetos },
     { label: "(−) Gastos de administración", tipo: "dec", valor: -c.gastosAdmin },
@@ -606,10 +606,10 @@ export function interanualData(estado: "esf" | "er", unidad: UnidadPeriodo, indi
   const menos = (x: number | null) => (x === null ? null : -x);
   const resumen = flujo
     ? [
-        { nombre: "Ingresos por cobertura de créditos", vals: cols.map((c) => val(c, ING_COBERTURA)) },
-        { nombre: "(−) Costo de cobertura", vals: cols.map((c) => menos(val(c, COSTO_COBERTURA))) },
+        { nombre: "Facturación por garantías", vals: cols.map((c) => val(c, ING_COBERTURA)) },
+        { nombre: "(−) Reserva constituida", vals: cols.map((c) => menos(val(c, COSTO_COBERTURA))) },
         { nombre: "Ingresos por inversiones", vals: cols.map((c) => val(c, ING_FINANCIERO)) },
-        { nombre: "(−) Gastos totales (sin costo de cobertura)", vals: cols.map((c) => { const g = val(c, "5"), cc = val(c, COSTO_COBERTURA); return g === null || cc === null ? null : -(g - cc); }) },
+        { nombre: "(−) Gastos totales (sin la reserva)", vals: cols.map((c) => { const g = val(c, "5"), cc = val(c, COSTO_COBERTURA); return g === null || cc === null ? null : -(g - cc); }) },
         { nombre: "(=) Utilidad del período (antes de impuestos)", vals: utilPeriodo },
       ]
     : [];

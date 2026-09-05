@@ -183,7 +183,7 @@ function Resultados({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
 
       {/* 1. Las cinco cifras que cuentan la historia */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Cifra label={`Ingresos por cobertura (${tag})`} value={fmtCOP(r.ingCob)} sub={`aporte neto tras costo: ${fmtCompact(r.contribCob)}`} />
+        <Cifra label={`Facturación por garantías (${tag})`} value={fmtCOP(r.ingCob)} sub={`ingreso por cobertura: ${fmtCompact(r.contribCob)}`} />
         <Cifra label={`Ingresos por inversiones (${tag})`} value={fmtCOP(r.contribInv)} />
         <Cifra label={`EBITDA (${tag})`} value={fmtCOP(r.ebitda)} sub={`margen EBITDA: ${fmtPct(r.margenEbitda)}`} tone={r.ebitda >= 0 ? "pos" : "neg"} />
         <Cifra label={`Utilidad neta (${tag})`} value={fmtCOP(r.utilNeta)} sub={`margen neto: ${fmtPct(r.margenNeto)}`} tone={r.utilNeta >= 0 ? "pos" : "neg"} />
@@ -369,7 +369,7 @@ function BarraMezcla({ pctCob, pctInv, cob, inv }: { pctCob: number; pctInv: num
         </div>
       </div>
       <div className="flex justify-between mt-2 text-xs">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /><span className="text-muted">Ingresos por cobertura de créditos (netos)</span> <span className="tnum text-fg">{fmtCompact(cob)}</span></span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /><span className="text-muted">Ingresos por cobertura de créditos</span> <span className="tnum text-fg">{fmtCompact(cob)}</span></span>
         <span className="flex items-center gap-1.5"><span className="tnum text-fg">{fmtCompact(inv)}</span> <span className="text-muted">Ingresos por inversiones</span><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#C99A2E" }} /></span>
       </div>
     </div>
