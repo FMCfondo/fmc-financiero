@@ -1,5 +1,5 @@
 // Executive Financial Cockpit — contrato ÚNICO del informe para la Junta.
-// `construirInforme()` devuelve un objeto estructurado con TODA la narrativa y
+// `construirCockpit()` devuelve un objeto estructurado con TODA la narrativa y
 // las cifras. La página /cockpit lo RENDERIZA; el futuro informe PDF renderizará
 // EXACTAMENTE el mismo objeto. La narrativa es un dato, no un layout.
 //
@@ -48,7 +48,7 @@ export type FilaEj = {
 
 const f1 = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
 
-export function construirInforme(etq: string, modo: Modo) {
+export function construirCockpit(etq: string, modo: Modo) {
   const per = D.periodo(etq);
   const anio = per.anio, mes = per.mes;
   const meses = D.periodos.filter((p) => p.anio === anio && p.mes <= mes);
@@ -231,4 +231,4 @@ export function construirInforme(etq: string, modo: Modo) {
     },
   };
 }
-export type Informe = ReturnType<typeof construirInforme>;
+export type Cockpit = ReturnType<typeof construirCockpit>;
