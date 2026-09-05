@@ -1,0 +1,176 @@
+/* =============================================================================
+   informe.css — Sistema visual del Informe de Junta
+   -----------------------------------------------------------------------------
+   Portado desde el generador Python que produce el PDF actual. Define la
+   identidad del documento: Plus Jakarta Sans, azul institucional, verde/rojo
+   SOLO semánticos, y las convenciones contables (negativos entre paréntesis,
+   cero como raya, regla simple sobre subtotal y doble bajo el total).
+
+   Sirve para las DOS cosas a la vez: la vista en pantalla y la impresión a PDF.
+   No duplicar estilos en otro archivo: si la pantalla y el PDF divergen,
+   el informe pierde su garantía de fidelidad.
+
+   Escala tipográfica: revisada por legibilidad (el usuario reportó letra
+   pequeña). Ningún texto baja de 6,8 pt. Cuerpo de tablas 8,6 pt; en páginas
+   de tabla larga se usa .page.densa (8,2 pt) — que comprime el RELLENO, no la
+   letra. Si hace falta más espacio: quitar filas o partir en dos páginas,
+   nunca reducir el margen ni la fuente.
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@page { size: letter landscape; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --navy: #13286e; --royal: #1e40af; --ink: #1a2438; --muted: #5b6b86;
+  --faint: #8d9bb3; --line: #d9e0ec; --soft: #eef2f9; --tint: #f6f9fd;
+  --g1: #eef3fb; --g2: #e7eefc; --g3: #dce7fb;
+  --plan: #f3f0e8; --plan-linea: #ddd6c2; --plan-texto: #6b6350;
+  --pos: #157f3d; --neg: #c22626;
+}
+html, body { background: #fff; }
+body { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; color: var(--ink);
+       font-variant-numeric: tabular-nums; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+.page { width: 11in; height: 8.5in; padding: .34in .42in .26in; display: flex; flex-direction: column;
+        page-break-after: always; position: relative; overflow: hidden; }
+.page:last-child { page-break-after: auto; }
+
+/* Cabecera institucional */
+.band { background: linear-gradient(90deg, var(--navy), var(--royal)); color: #fff;
+        border-radius: 3px; padding: 9pt 13pt 8pt; display: flex;
+        justify-content: space-between; align-items: baseline; }
+.band h1 { font-size: 13pt; font-weight: 800; letter-spacing: .35pt; }
+.band .periodo { font-size: 10.5pt; font-weight: 700; letter-spacing: 1.1pt; color: #cfe0ff; }
+.meta { display: flex; justify-content: space-between; font-size: 8pt; color: var(--muted);
+        letter-spacing: .3pt; padding: 4pt 2pt 0; }
+.meta b { color: var(--ink); font-weight: 600; }
+
+/* Tabla contable */
+table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
+thead th { font-size: 7.3pt; font-weight: 600; color: var(--muted); text-transform: uppercase;
+           letter-spacing: .3pt; padding: 3.5pt 4pt; text-align: right; white-space: nowrap; }
+thead tr.cols th { border-bottom: 1.2pt solid var(--ink); }
+thead th.l { text-align: left; }
+thead tr.grupos th { padding: 3.5pt 4pt 3pt; text-align: center; border-bottom: none; vertical-align: bottom; }
+.gtitulo { font-size: 7.6pt; font-weight: 800; letter-spacing: .55pt; color: var(--navy); display: block; }
+.gdef { font-size: 7.2pt; font-weight: 500; text-transform: none; letter-spacing: .1pt;
+        color: var(--muted); display: block; margin-top: .5pt; }
+
+tbody td { font-size: 8.6pt; padding: 2.6pt 4pt; text-align: right; white-space: nowrap; }
+tbody td.l { text-align: left; white-space: normal; }
+tbody tr { border-bottom: .5pt solid var(--soft); }
+td.l .signo { display: inline-block; width: 12pt; color: var(--faint); font-size: 7.8pt; }
+td.l.s1 { padding-left: 18pt; }
+td.l.s1, tr.det.s1 td { color: #46536d; }
+
+tr.sub td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--tint); }
+tr.sec td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--soft); }
+tr.tot td { font-weight: 800; border-top: 1pt solid var(--ink); border-bottom: 2.6pt double var(--ink);
+            background: #e9effa; color: var(--navy); font-size: 9pt; }
+tr.hdr td { font-weight: 800; color: var(--navy); font-size: 8.4pt; letter-spacing: .8pt;
+            padding-top: 5pt; border-bottom: none; }
+td.pos { color: var(--pos); } td.neg { color: var(--neg); }
+td.pct { font-weight: 700; }
+td.ref { color: var(--muted); font-weight: 400; }
+td.hoy { font-weight: 700; color: var(--navy); background: var(--tint); }
+th.hoy { color: var(--navy) !important; }
+tr.tot td.hoy { background: #dfe8fb; }
+tr.sub td.hoy, tr.sec td.hoy { background: #e8eefa; }
+
+/* Bloques de ejecución presupuestal */
+th.gmes, td.cmes { background: var(--g1); }
+th.gacum, td.cacum { background: var(--g2); }
+th.ganio, td.canio { background: var(--g3); }
+th.gmes, th.gacum, th.ganio { border-radius: 3px 3px 0 0; }
+th.gap, td.gap { width: 5pt; background: #fff !important; padding: 0 !important; border: none !important; }
+tr.sub td.cmes { background: #e6edf9; } tr.sub td.cacum { background: #dfe8fb; } tr.sub td.canio { background: #d5e2fa; }
+tr.sec td.cmes { background: #e6edf9; } tr.sec td.cacum { background: #dfe8fb; } tr.sec td.canio { background: #d5e2fa; }
+tr.tot td.cmes { background: #e0e9f8; } tr.tot td.cacum { background: #d8e4fb; } tr.tot td.canio { background: #cddcf9; }
+
+/* Leyenda */
+.leyenda { display: flex; gap: 12pt; margin-top: 6pt; font-size: 7.6pt; color: var(--muted);
+           align-items: baseline; flex-wrap: wrap; }
+.leyenda b { color: var(--ink); font-weight: 700; }
+.lchip { display: inline-block; width: 10pt; height: 8pt; border-radius: 2pt; margin-right: 3.5pt;
+         vertical-align: -.5pt; border: .4pt solid rgba(0,0,0,.08); }
+
+/* Notas */
+.notas { margin-top: 7pt; border-top: .6pt solid var(--line); padding-top: 5pt; }
+.notas h2 { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.3pt; text-transform: uppercase;
+            color: var(--navy); margin-bottom: 4pt; }
+.notas .cuerpo { columns: 2; column-gap: 20pt; }
+.notas p { font-size: 8.6pt; line-height: 1.4; color: #2a3650; margin-bottom: 4.5pt; text-align: justify;
+           break-inside: avoid; }
+.notas p b { color: var(--ink); font-weight: 700; }
+.notas ul { columns: 2; column-gap: 20pt; list-style: none; }
+.notas li { font-size: 8.6pt; line-height: 1.4; color: #2a3650; margin-bottom: 4.5pt; break-inside: avoid;
+            padding-left: 9pt; text-indent: -9pt; }
+.notas li b { color: var(--ink); }
+.notas li::before { content: "· "; color: var(--royal); font-weight: 800; }
+
+/* Cifras de lectura rápida */
+.strip { display: grid; gap: 8pt; margin-top: 9pt; }
+.stat { border: .75pt solid var(--line); border-top: 2.4pt solid var(--royal); border-radius: 2px;
+        padding: 7pt 10pt 8pt; background: var(--tint); }
+.stat .lbl { font-size: 7.2pt; font-weight: 600; letter-spacing: .7pt; text-transform: uppercase; color: var(--muted); }
+.stat .val { font-size: 15pt; font-weight: 800; margin-top: 2pt; letter-spacing: -.2pt; }
+.stat .ctx { font-size: 7.7pt; color: var(--muted); margin-top: 1.5pt; }
+.stat .ctx b { font-weight: 700; }
+.stat .ctx b.pos { color: var(--pos); } .stat .ctx b.neg { color: var(--neg); }
+
+/* Páginas con tabla larga: densidad reducida sin perder legibilidad */
+.page.densa tbody td { padding: 1.4pt 3pt; font-size: 8.2pt; }
+.page.densa tbody td.l.s1 { padding-left: 18pt; }
+.page.densa .notas { margin-top: 4pt; padding-top: 4pt; }
+.page.densa .notas li, .page.densa .notas p { font-size: 8.2pt; line-height: 1.34; margin-bottom: 3.5pt; }
+.page.densa .leyenda { margin-top: 5pt; font-size: 7.5pt; }
+
+/* Pie */
+.pie { margin-top: auto; display: flex; justify-content: space-between; font-size: 7.2pt;
+       color: var(--faint); border-top: .6pt solid var(--line); padding-top: 4.5pt; letter-spacing: .3pt; }
+h2.sec-t { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.2pt; text-transform: uppercase;
+           color: var(--navy); margin: 10pt 0 5pt; }
+.compo { display: flex; height: 24pt; border-radius: 3pt; overflow: hidden; gap: 2px; }
+.seg { display: flex; align-items: center; justify-content: center; }
+.seg-lbl { color: #fff; font-size: 8.4pt; font-weight: 700; letter-spacing: .4pt; }
+.seg-lbl.osc { color: var(--navy); }
+.dos-col { display: grid; grid-template-columns: 57% 1fr; gap: 16pt; min-width: 0; }
+.dos-col > div { min-width: 0; }
+table.mini { margin-top: 0; }
+table.mini thead th { font-size: 7.2pt; }
+table.mini tbody td { font-size: 8.3pt; padding: 3pt 3.5pt; }
+table.mini tbody tr:nth-child(odd) td { background: var(--tint); }
+.tipo-tag { display: inline-block; font-size: 6.8pt; font-weight: 700; letter-spacing: .3pt;
+            padding: 1.5pt 4pt; border-radius: 2pt; background: #e2e8fa; color: var(--navy); }
+.conc { margin-bottom: 7pt; }
+.conc-cab { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5pt;
+            font-size: 8.3pt; }
+.conc-val { font-size: 7.8pt; color: var(--muted); white-space: nowrap; }
+.conc-val b { color: var(--ink); font-size: 8.3pt; }
+.conc-track { height: 7pt; background: var(--soft); border-radius: 2pt; }
+.conc-fill { display: block; height: 100%; background: var(--royal); border-radius: 2pt; }
+.conc-nota { font-size: 7.7pt; color: var(--faint); margin-top: 7pt; line-height: 1.4; }
+.grafs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10pt 14pt; }
+.graf { border: .75pt solid var(--line); border-radius: 2px; padding: 5pt 7pt 3pt; background: #fff; }
+.graf-t { font-size: 7.5pt; font-weight: 700; letter-spacing: .5pt; text-transform: uppercase;
+          color: var(--muted); margin-bottom: 3pt; }
+
+/* =============================================================================
+   PANTALLA vs. IMPRESIÓN
+   La misma marcación sirve para las dos. En pantalla cada .page se ve como una
+   hoja con sombra; al imprimir, cada .page es una página real.
+   ============================================================================= */
+@media screen {
+  .informe { background: #eef2f7; padding: 24px 0; display: flex;
+             flex-direction: column; align-items: center; gap: 20px; }
+  .informe .page { box-shadow: 0 2px 14px rgba(19,40,110,.13); background: #fff;
+                   border-radius: 2px; }
+}
+
+@media print {
+  .informe { background: none; padding: 0; gap: 0; display: block; }
+  .informe .page { box-shadow: none; border-radius: 0; }
+  /* La barra lateral y cualquier control quedan fuera del papel */
+  .no-imprimir, nav, aside, header.app { display: none !important; }
+}
