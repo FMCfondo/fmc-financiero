@@ -15,7 +15,7 @@
 import "server-only";
 import * as D from "./data";
 import { realFormula } from "./ejecucion";
-import { esf, provisionRenta, DEP_AMORT, COSTO_COBERTURA } from "./statements";
+import { esf, provisionRenta, impuestoMes, DEP_AMORT, COSTO_COBERTURA } from "./statements";
 
 export type Modo = "acum" | "mes";
 
@@ -161,3 +161,62 @@ export const LINEAS_PASIVO: LineaBalance[] = [
   { etiqueta: "TOTAL PATRIMONIO", nivel: "tot", valor: (e) => esf(e).totalPatrim },
   { etiqueta: "TOTAL PASIVOS Y PATRIMONIO", nivel: "tot", valor: (e) => esf(e).totalActivo },
 ];
+
+/* ------------------------------------------ líneas del estado de resultados ---
+ * Página 4 del informe. Orden y etiquetas del informe certificado; las cuentas se
+ * dedujeron conciliando contra él en los siete meses impresos de 2026.
+ *
+ * OJO — la cuenta 4175 «Devolución en ventas» NO tiene fila propia en el informe,
+ * pero SÍ está dentro de «Ingresos de operación». Es decir: las cinco filas de
+ * ingreso no suman exactamente su subtotal. Se conserva el comportamiento del
+ * original (el subtotal manda), y `residuoIngresos()` mide el hueco para que no
+ * crezca en silencio. En may-2026 vale −338.399,16.
+ */
+export type LineaResultado = {
+  etiqueta: string;
+  signo: "(+)" | "(−)" | "(=)";
+  nivel: "det" | "sub" | "tot";
+  /** true en gastos y provisiones: superar la meta es malo. */
+  esGasto?: boolean;
+  valor: (etq: string, modo: Modo) => number;
+};
+
+const cta = (c: string) => (e: string, m: Modo) => v(e, c, m);
+
+export const LINEAS_RESULTADO: LineaResultado[] = [
+  { etiqueta: "Ingresos por inversiones", signo: "(+)", nivel: "det", valor: cta("4150") },
+  { etiqueta: "Ingresos por comisiones", signo: "(+)", nivel: "det", valor: cta("4180") },
+  { etiqueta: "Reintegro de provisiones", signo: "(+)", nivel: "det", valor: cta("425035") },
+  { etiqueta: "Recuperación de garantías", signo: "(+)", nivel: "det", valor: cta("425055") },
+  { etiqueta: "De ejercicios anteriores", signo: "(+)", nivel: "det", valor: cta("4265") },
+  /* La reserva constituida más las devoluciones en ventas (4175). El informe no le da
+   * fila propia a la 4175: la pliega aquí, y así las cinco filas de ingreso sí suman su
+   * subtotal. Verificado en may-2026, el único mes con devoluciones. */
+  { etiqueta: "Provisiones (reservas)", signo: "(−)", nivel: "det", esGasto: true,
+    valor: (e, m) => v(e, COSTO_COBERTURA, m) - v(e, "4175", m) },
+  { etiqueta: "INGRESOS DE OPERACIÓN", signo: "(=)", nivel: "sub", valor: ingOperacion },
+  { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", esGasto: true, valor: gastosAdmin },
+  { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub",
+    valor: (e, m) => ingOperacion(e, m) - gastosAdmin(e, m) },
+  { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", valor: otrosIngresos },
+  { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", esGasto: true, valor: otrosGastos },
+  { etiqueta: "EBITDA", signo: "(=)", nivel: "sub",
+    // Ingresos menos gastos, sin depreciaciones ni amortizaciones. El costo de
+    // cobertura SÍ es gasto: no se devuelve al resultado.
+    valor: (e, m) => v(e, "4", m) - (v(e, "5", m) - DEP_AMORT.reduce((s, c) => s + v(e, c, m), 0)) },
+  { etiqueta: "Depreciaciones", signo: "(−)", nivel: "det", esGasto: true, valor: cta(DEP_AMORT[0]) },
+  { etiqueta: "Amortizaciones", signo: "(−)", nivel: "det", esGasto: true, valor: cta(DEP_AMORT[1]) },
+  { etiqueta: "UTILIDAD ANTES DE IMPUESTOS", signo: "(=)", nivel: "sub",
+    valor: (e, m) => v(e, "4", m) - v(e, "5", m) },
+  { etiqueta: "Impuesto de renta", signo: "(−)", nivel: "det", esGasto: true,
+    valor: (e, m) => (m === "acum" ? provisionRenta(e).provision : impuestoMes(e)) },
+  { etiqueta: "UTILIDAD NETA", signo: "(=)", nivel: "tot",
+    valor: (e, m) => v(e, "4", m) - v(e, "5", m)
+      - (m === "acum" ? provisionRenta(e).provision : impuestoMes(e)) },
+];
+
+/** Lo que queda fuera de las filas impresas del bloque de ingresos. Debe ser CERO: si
+ *  aparece algo, el informe está escondiendo una partida nueva de la clase 4. */
+export const residuoIngresos = (etq: string, modo: Modo) =>
+  v(etq, "4", modo) - otrosIngresos(etq, modo) - v(etq, "4175", modo)
+  - ["4150", "4180", "425035", "425055", "4265"].reduce((s, c) => s + v(etq, c, modo), 0);
