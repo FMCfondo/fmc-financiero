@@ -7,11 +7,14 @@
  * La hoja está acotada bajo `.informe`, así que no toca el resto de la app; al imprimir,
  * el bloque @media print esconde la barra lateral y la cabecera.
  */
-import { ensureLoaded, resolverEtq, sameMonthPrevYear } from "@/lib/data";
+import { ensureLoaded, resolverEtq, sameMonthPrevYear, fact, ytd } from "@/lib/data";
+import { ING_FINANCIERO } from "@/lib/statements";
 import { construirInforme } from "@/lib/informe";
 import { mesNombre } from "@/lib/format";
 import PaginaBalance from "./PaginaBalance";
 import PaginaResultados from "./PaginaResultados";
+import PaginaInteranual from "./PaginaInteranual";
+import PaginaPortafolio from "./PaginaPortafolio";
 import "./informe.css";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +53,23 @@ export default async function InformePage({
         mesNombre={mesNombre[inf.periodo.mes]}
         etiquetasMeses={inf.resultados.etiquetasMeses}
         filas={inf.resultados.filas}
+      />
+      <PaginaInteranual
+        periodo={periodo}
+        corte={inf.periodo.corte}
+        mesActual={`${mesNombre[inf.periodo.mes]} ${inf.periodo.anio}`}
+        mesAnterior={mesIA}
+        disponible={inf.interanual.disponible}
+        motivo={inf.interanual.motivo}
+        filas={inf.interanual.filas}
+      />
+      <PaginaPortafolio
+        periodo={periodo}
+        corte={inf.periodo.corte}
+        mesActual={mesNombre[inf.periodo.mes]}
+        p={inf.portafolio}
+        rendimientoMes={fact(etq, ING_FINANCIERO)}
+        rendimientoAcum={ytd(etq, ING_FINANCIERO)}
       />
     </div>
   );

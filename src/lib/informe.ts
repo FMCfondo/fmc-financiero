@@ -15,7 +15,10 @@ import * as D from "./data";
 import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type LineaBalance } from "./informe-cuentas";
 import { mesNombre, mesCorto } from "./format";
 import { filaPpto, pptoAcumulado, pptoMes } from "./informe-ppto";
-import type { FilaBalance, FilaResultados, Informe, Nota } from "./informe-tipos";
+import { portafolio } from "./inversiones";
+import { CTA_BOLD } from "./informe-cuentas";
+import { esf } from "./statements";
+import type { FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio } from "./informe-tipos";
 
 /** Ventana del balance: el período y los tres meses anteriores. En el Excel esto se hacía
  *  ocultando columnas a mano. */
@@ -90,6 +93,67 @@ function seccionResultados(etq: string) {
   return { etiquetasMeses: meses.map((m) => mesCorto[m.mes]), filas, notas: [] as Nota[] };
 }
 
+/* Página 6: las mismas líneas del estado de resultados, pero el mes contra el mismo mes
+ * del año anterior y en PESOS. Si no hay año anterior cargado, la página se declara no
+ * disponible con su motivo — no se inventa una columna vacía. */
+function seccionInteranual(etq: string) {
+  const prev = D.sameMonthPrevYear(etq);
+  if (!prev)
+    return { disponible: false, filas: [] as FilaInteranual[],
+      motivo: "No hay datos del mismo mes del año anterior." };
+
+  const filas: FilaInteranual[] = LINEAS_RESULTADO.map((l) => {
+    const anioAnterior = l.valor(prev.etiqueta, "mes");
+    const anioActual = l.valor(etq, "mes");
+    const varPesos = anioActual - anioAnterior;
+    return {
+      etiqueta: l.etiqueta, nivel: l.nivel, signo: l.signo, esGasto: l.esGasto,
+      anioAnterior, anioActual, varPesos,
+      // La base se mide en pesos enteros, que es lo que el informe imprime.
+      varPct: Math.abs(anioAnterior) < 1 ? null : (varPesos / Math.abs(anioAnterior)) * 100,
+    };
+  });
+  return { disponible: true, filas };
+}
+
+/* Página 7. Dos decisiones del informe que el motor no toma:
+ *   · Bold lleva FILA propia pero se rotula FIDUCIA — lo que se pliega es el TIPO.
+ *   · La tasa es la PONDERADA POR MONTO. El Excel rotula "Tasa Prom. Pond." y calcula
+ *     el promedio simple; la ponderada real es varios puntos mayor porque las fiducias
+ *     pesan más y rinden más. El informe usa la real y así la rotula.
+ * Solo se imprimen las posiciones CON saldo: una abierta a mitad de año está en cero
+ * hasta su primer mes. */
+function seccionPortafolio(etq: string): Portafolio {
+  const p = portafolio(etq);
+  const activas = p.posiciones.filter((x) => x.monto !== 0);
+  const total = activas.reduce((s, x) => s + x.monto, 0);
+  const activo = esf(etq).totalActivo;
+
+  const porEntidad = new Map<string, number>();
+  for (const x of activas) porEntidad.set(x.entidad, (porEntidad.get(x.entidad) ?? 0) + x.monto);
+
+  return {
+    total,
+    /* Orden del informe: primero los CDT y luego las fiducias, y dentro de cada tipo
+       por identificador. No por monto: la página se lee por clase de activo. */
+    posiciones: activas.map((x) => ({
+      id: x.id,
+      tipo: x.cuentas.includes(CTA_BOLD) || /fiducia/i.test(x.tipo) ? "FIDUCIA" : "CDT",
+      entidad: x.entidad,
+      monto: x.monto,
+      diasPlazo: x.diasPlazo,
+      tasaEA: x.tasaEa,
+    })).sort((a, b) => (a.tipo === b.tipo ? a.id.localeCompare(b.id) : a.tipo === "CDT" ? -1 : 1)),
+    concentracion: [...porEntidad.entries()]
+      .map(([entidad, monto]) => ({ entidad, monto, pct: total ? monto / total : 0 }))
+      .sort((a, b) => b.monto - a.monto),
+    tasaPonderada: total ? activas.reduce((s, x) => s + x.monto * x.tasaEa, 0) / total : 0,
+    pctActivo: activo ? total / activo : 0,
+    // Barrera: el total del portafolio tiene que ser el de Inversiones líquidas.
+    concilia: Math.abs(total - (D.fact(etq, "12") + D.fact(etq, CTA_BOLD))) <= 1,
+  };
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);
@@ -110,11 +174,8 @@ export async function construirInforme(etq: string): Promise<Informe> {
     resumen: { tarjetas: [], evolucion: [], notas: [] },
     resultados: seccionResultados(etq),
     gastos: { filas: [], notas: [] },
-    interanual: { disponible: false, motivo: "Pendiente de construir.", filas: [] },
-    portafolio: {
-      total: 0, posiciones: [], concentracion: [],
-      tasaPonderada: 0, pctActivo: 0, concilia: false,
-    },
+    interanual: seccionInteranual(etq),
+    portafolio: seccionPortafolio(etq),
 
     origen: {
       fuente: `Balance de prueba de ${mesNombre[p.mes]} ${p.anio}, cargado en la aplicación`,
