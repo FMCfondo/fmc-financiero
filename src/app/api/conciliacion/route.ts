@@ -20,6 +20,11 @@ export const dynamic = "force-dynamic";
 
 const TOLERANCIA = 1; // un peso: por debajo es redondeo
 
+/* El informe certificado imprime las cifras del balance redondeadas a pesos
+ * enteros, y sus subtotales son sumas de valores ya redondeados. Un peso no
+ * alcanza: se compara contra el entero impreso con margen de la propia suma. */
+const TOLERANCIA_INFORME = 2;
+
 /* Las composiciones de linea viven en informe-cuentas.ts: un solo sitio para
  * toda la app. Aqui solo se comparan contra el Excel certificado. */
 
@@ -32,7 +37,7 @@ const aEtq = (p: string) => {
 type Fila = {
   grupo: string; concepto: string;
   control: number; app: number; diff: number; ok: boolean;
-  mapeo: string; derivado?: boolean;
+  mapeo: string; derivado?: boolean; excepcion?: boolean;
 };
 
 /* Mapeo de cada línea del informe a su origen en la app. Es el contrato que la
@@ -128,6 +133,50 @@ function filasPortafolio(etq: string, c: Record<string, number>): Fila[] {
   return filas;
 }
 
+/* Páginas 2 y 3 del informe: 30 líneas × 5 meses contra el informe certificado.
+ * Es lo que cubre el hueco real — la conciliación por período solo miraba tres
+ * partidas del balance en dos meses, y ahí vivían los bugs que aparecieron. */
+function filasInformeBalance(ib: {
+  meses: string[];
+  activos: { etiqueta: string; valores: (number | null)[] }[];
+  pasivos: { etiqueta: string; valores: (number | null)[] }[];
+  excepciones?: { mes: string; concepto: string; difEsperada: number }[];
+}, cargados: Set<string>) {
+  /* Divergencias conocidas y explicadas: no son fallos, pero tampoco pasan por
+   * verdes. Se comprueba que la diferencia siga siendo la registrada; si cambia,
+   * vuelve a fallar. */
+  const excepcion = (mes: string, concepto: string) =>
+    (ib.excepciones ?? []).find((x) => x.mes === mes && x.concepto === concepto);
+  const secciones: [string, C.LineaBalance[], typeof ib.activos][] = [
+    ["activos", C.LINEAS_ACTIVO, ib.activos],
+    ["pasivos", C.LINEAS_PASIVO, ib.pasivos],
+  ];
+  const filas: (Fila & { mes: string })[] = [];
+  const sinContrato: string[] = [];
+
+  for (const [grupo, contrato, certificado] of secciones) {
+    for (const cert of certificado) {
+      const linea = contrato.find((l) => l.etiqueta === cert.etiqueta);
+      if (!linea) { sinContrato.push(`${grupo}: ${cert.etiqueta}`); continue; }
+      ib.meses.forEach((mes, i) => {
+        const control = cert.valores[i];
+        if (control === null || control === undefined) return;  // el informe imprime "—"
+        if (!cargados.has(mes)) return;
+        const app = linea.valor(mes);
+        const diff = app - control;
+        const exc = excepcion(mes, cert.etiqueta);
+        filas.push({ grupo: `informe_${grupo}`, concepto: cert.etiqueta, mes,
+          control, app, diff,
+          ok: exc ? Math.abs(diff - exc.difEsperada) <= TOLERANCIA_INFORME
+                  : Math.abs(diff) <= TOLERANCIA_INFORME,
+          excepcion: exc ? true : undefined,
+          mapeo: `LINEAS_${grupo === "activos" ? "ACTIVO" : "PASIVO"}[${cert.etiqueta}]` });
+      });
+    }
+  }
+  return { filas, sinContrato };
+}
+
 export async function GET() {
   const ruta = process.env.CIFRAS_CONTROL ?? join(process.cwd(), "db", "cifras-control.json");
   if (!existsSync(ruta))
@@ -158,10 +207,20 @@ export async function GET() {
   });
 
   const todas = resultado.flatMap((r: { filas: Fila[] }) => r.filas);
+  const bal = control.informe_balance
+    ? filasInformeBalance(control.informe_balance, cargados)
+    : { filas: [], sinContrato: [] };
+
+  const cuenta = (fs: { ok: boolean }[]) => ({
+    comparadas: fs.length, ok: fs.filter((f) => f.ok).length, fallan: fs.filter((f) => !f.ok).length });
+
   return NextResponse.json({
     tolerancia: TOLERANCIA,
-    resumen: { comparadas: todas.length, ok: todas.filter((f: Fila) => f.ok).length,
-      fallan: todas.filter((f: Fila) => !f.ok).length },
+    toleranciaInforme: TOLERANCIA_INFORME,
+    resumen: { ...cuenta([...todas, ...bal.filas]),
+      porPeriodo: cuenta(todas), balanceDelInforme: cuenta(bal.filas),
+      divergenciasDocumentadas: bal.filas.filter((f) => f.excepcion).length },
     periodos: resultado,
+    informeBalance: { sinContrato: bal.sinContrato, filas: bal.filas },
   });
 }

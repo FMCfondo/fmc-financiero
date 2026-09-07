@@ -15,7 +15,7 @@
 import "server-only";
 import * as D from "./data";
 import { realFormula } from "./ejecucion";
-import { provisionRenta, DEP_AMORT, COSTO_COBERTURA } from "./statements";
+import { esf, provisionRenta, DEP_AMORT, COSTO_COBERTURA } from "./statements";
 
 export type Modo = "acum" | "mes";
 
@@ -101,3 +101,63 @@ export const obligacionesLaborales = (etq: string) =>
 /** Otras cuentas por pagar operativas: acreedores sin la retención reclasificada. */
 export const otrasCuentasPorPagar = (etq: string) =>
   D.fact(etq, "23") - D.fact(etq, "2365");
+
+/* -------------------------------------------- líneas del balance del informe ---
+ * El orden y las etiquetas son los del informe certificado; la expresión de cada
+ * una se dedujo conciliando contra él en abril, mayo, junio y julio de 2026.
+ * Estas son las páginas 2 y 3 del informe, y a la vez lo que verifica el arnés.
+ */
+export type LineaBalance = {
+  etiqueta: string;
+  nivel: "det" | "sub" | "tot";
+  valor: (etq: string) => number;
+};
+
+const ppeBruto = (e: string) => D.fact(e, "1524") + D.fact(e, "1528");
+const difBruto = (e: string) => D.fact(e, "1705");
+
+export const LINEAS_ACTIVO: LineaBalance[] = [
+  { etiqueta: "Disponible", nivel: "det", valor: disponible },
+  { etiqueta: "Inversiones líquidas", nivel: "det", valor: inversionesLiquidas },
+  { etiqueta: "Total disponible e inversiones", nivel: "sub",
+    valor: (e) => disponible(e) + inversionesLiquidas(e) },
+  { etiqueta: "Clientes", nivel: "det", valor: clientes },
+  { etiqueta: "Anticipo de impuestos o saldos a favor", nivel: "det",
+    valor: (e) => D.fact(e, "1355") },
+  { etiqueta: "Otras cuentas por cobrar", nivel: "det", valor: otrasCuentasPorCobrar },
+  { etiqueta: "Total Cuentas Por Cobrar", nivel: "sub",
+    valor: (e) => clientes(e) + D.fact(e, "1355") + otrasCuentasPorCobrar(e) },
+  { etiqueta: "ACTIVOS CORRIENTES", nivel: "tot",
+    valor: (e) => disponible(e) + inversionesLiquidas(e) + clientes(e)
+      + D.fact(e, "1355") + otrasCuentasPorCobrar(e) },
+  { etiqueta: "Propiedades Planta y Equipo (PPE)", nivel: "det", valor: ppeBruto },
+  // Negativa: el informe la imprime entre paréntesis. Es el residuo del neto.
+  { etiqueta: "Depreciación acumulada", nivel: "det",
+    valor: (e) => D.fact(e, "15") - ppeBruto(e) },
+  { etiqueta: "Total PPE Neto", nivel: "sub", valor: (e) => D.fact(e, "15") },
+  { etiqueta: "Activos Diferidos", nivel: "det", valor: difBruto },
+  { etiqueta: "Amortización Acumulada", nivel: "det",
+    valor: (e) => D.fact(e, "17") - difBruto(e) },
+  { etiqueta: "Total Activos Diferidos", nivel: "sub", valor: (e) => D.fact(e, "17") },
+  { etiqueta: "Total Activos No Corrientes Operativos", nivel: "sub",
+    valor: (e) => D.fact(e, "15") + D.fact(e, "17") },
+  { etiqueta: "TOTAL ACTIVOS", nivel: "tot", valor: (e) => esf(e).totalActivo },
+];
+
+export const LINEAS_PASIVO: LineaBalance[] = [
+  { etiqueta: "Proveedores", nivel: "det", valor: (e) => D.fact(e, "22") },
+  { etiqueta: "Impuestos por Pagar", nivel: "det", valor: impuestosPorPagar },
+  { etiqueta: "Obligaciones Laborales", nivel: "det", valor: obligacionesLaborales },
+  { etiqueta: "Pasivos Estimados y Provisiones", nivel: "det", valor: pasivosEstimados },
+  { etiqueta: "Otras cuentas por pagar operativas", nivel: "det", valor: otrasCuentasPorPagar },
+  { etiqueta: "Cuentas por pagar NO operativas", nivel: "det", valor: (e) => D.fact(e, "28") },
+  { etiqueta: "TOTAL PASIVO CORRIENTE", nivel: "sub", valor: (e) => esf(e).totalPasivo },
+  { etiqueta: "TOTAL PASIVO", nivel: "tot", valor: (e) => esf(e).totalPasivo },
+  { etiqueta: "Capital social", nivel: "det", valor: (e) => D.fact(e, "31") },
+  { etiqueta: "Reservas", nivel: "det", valor: (e) => D.fact(e, "33") },
+  { etiqueta: "Superávit de capital", nivel: "det", valor: (e) => D.fact(e, "32") },
+  // La utilidad del ejercicio ya neta de la provisión de renta.
+  { etiqueta: "Total utilidades retenidas", nivel: "det", valor: (e) => esf(e).neto },
+  { etiqueta: "TOTAL PATRIMONIO", nivel: "tot", valor: (e) => esf(e).totalPatrim },
+  { etiqueta: "TOTAL PASIVOS Y PATRIMONIO", nivel: "tot", valor: (e) => esf(e).totalActivo },
+];
