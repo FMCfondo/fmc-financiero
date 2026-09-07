@@ -6,7 +6,7 @@
    · OPERACIÓN — el trabajo del analista: cargar el balance, revisar el mes,
      analizar en profundidad y mantener la configuración.
 
-   El Cockpit vive en los dos, porque es el resumen del que arranca cualquiera
+   El Panel vive en los dos, porque es el resumen del que arranca cualquiera
    de las dos conversaciones. */
 export type ModoApp = "reuniones" | "operacion";
 export const MODO_DEFAULT: ModoApp = "reuniones";
@@ -24,7 +24,7 @@ export const MODOS: { id: ModoApp; label: string; desc: string }[] = [
 export type ItemNav = { href: string; match: string | string[]; label: string; icono: string; modos?: ModoApp[] };
 
 export const NAV: ItemNav[] = [
-  { href: "/cockpit", match: "/cockpit", label: "Cockpit Ejecutivo", icono: "Gauge" },
+  { href: "/panel", match: "/panel", label: "Panel Ejecutivo", icono: "Gauge" },
   /* Una sola puerta al módulo: las cuatro pestañas se ven desde dentro. Antes había
      además una entrada suelta a «Situación Financiera», que llevaba a la misma sección
      y hacía saltar el resaltado entre dos entradas al cambiar de pestaña — parecían
@@ -33,10 +33,10 @@ export const NAV: ItemNav[] = [
     match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
             "/estados/patrimonio", "/estados/inversiones"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
-  /* EN CONSTRUCCIÓN (2 de 7 páginas). Visible en los DOS modos a propósito: el
-     conmutador de modo no está hidratando, así que dejarlo solo en Operación lo
-     haría inalcanzable. Es además el documento que se le envía a la Junta. */
-  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
+  /* EN CONSTRUCCIÓN (2 de 7 páginas): vive en Operación mientras se arma, para que
+     la Junta no vea un módulo a medias. Cuando esté completo pasa a los dos modos —
+     es el documento que se le envía. */
+  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText", modos: ["operacion"] },
   { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },

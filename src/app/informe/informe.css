@@ -126,7 +126,7 @@
 /* Pie */
 .pie { margin-top: auto; display: flex; justify-content: space-between; font-size: 7.2pt;
        color: var(--faint); border-top: .6pt solid var(--line); padding-top: 4.5pt; letter-spacing: .3pt; }
-h2.sec-t { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.2pt; text-transform: uppercase;
+.informe h2.sec-t { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.2pt; text-transform: uppercase;
            color: var(--navy); margin: 10pt 0 5pt; }
 .compo { display: flex; height: 24pt; border-radius: 3pt; overflow: hidden; gap: 2px; }
 .seg { display: flex; align-items: center; justify-content: center; }

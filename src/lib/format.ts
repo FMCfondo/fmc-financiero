@@ -31,6 +31,18 @@ export function fmtCont(n: number, simbolo = false): string {
   return simbolo ? `$ ${cuerpo}` : cuerpo;
 }
 
+/* Formato CONTABLE EN MILLONES, con un decimal: el del estado de resultados del
+   informe de Junta, donde con siete meses más seis columnas de ejecución los pesos
+   no caben. Mismas convenciones que fmtCont: negativos entre paréntesis y cero como
+   raya. Recibe PESOS y divide; nunca se le pasa una cifra ya dividida. */
+const num1 = new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+export function fmtContMill(pesos: number): string {
+  const m = Math.round((pesos || 0) / 1e5) / 10;   // a millones con un decimal
+  if (m === 0) return "—";
+  const abs = num1.format(Math.abs(m));
+  return m < 0 ? `(${abs})` : abs;
+}
+
 /** Porcentaje en formato contable: (1,2)% — el símbolo fuera del paréntesis. */
 export function fmtPctCont(n: number): string {
   const v = (n || 0) * 100;
@@ -52,7 +64,7 @@ export function fmtCompact(n: number): string {
   return `${s}${num0.format(a)}`;
 }
 
-/* Cifra ejecutiva del Cockpit: "COP 30,1 M" para montos grandes; pesos completos
+/* Cifra ejecutiva del Panel: "COP 30,1 M" para montos grandes; pesos completos
    para montos pequeños. El valor exacto va SIEMPRE en el title (hover). */
 export function fmtM(n: number): string {
   const a = Math.abs(n || 0);

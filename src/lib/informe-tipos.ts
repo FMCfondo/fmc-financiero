@@ -118,6 +118,9 @@ export type Tarjeta = {
   valor: number;
   /** Contexto corto: "98,3 % del activo total", "136 % de la meta a julio". */
   contexto: string;
+  /** La cifra del contexto que va destacada, si la hay: "+82 %", "136 %". El diseño la
+   *  imprime en negrita y con el tinte de `tono`; el resto del contexto queda en gris. */
+  destacado?: string;
   /** Tinte del contexto. Verde/rojo SOLO cuando el signo tiene lectura. */
   tono?: "pos" | "neg" | null;
 };

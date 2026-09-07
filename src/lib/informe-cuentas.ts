@@ -5,7 +5,7 @@
  * PUC. Esa correspondencia vivía solo dentro de las fórmulas del Excel; se dedujo
  * conciliando contra el Excel certificado y el usuario la confirmó el 2026-09-05.
  * Antes de este archivo estaba duplicada entre la ruta de conciliación y el
- * Cockpit, que es como la misma línea acababa valiendo dos cosas distintas.
+ * Panel, que es como la misma línea acababa valiendo dos cosas distintas.
  *
  * NO CALCULA NADA NUEVO: suma y resta cifras que los motores ya validaron. Los
  * motores (statements, ejecucion, inversiones, data) no se tocan.
@@ -178,39 +178,42 @@ export type LineaResultado = {
   nivel: "det" | "sub" | "tot";
   /** true en gastos y provisiones: superar la meta es malo. */
   esGasto?: boolean;
+  /** Fila del presupuesto que le corresponde, por `orden` (único y estable). Sin
+   *  ella la línea no lleva metas: se imprime "—", nunca un cero inventado. */
+  pptoOrden?: number;
   valor: (etq: string, modo: Modo) => number;
 };
 
 const cta = (c: string) => (e: string, m: Modo) => v(e, c, m);
 
 export const LINEAS_RESULTADO: LineaResultado[] = [
-  { etiqueta: "Ingresos por inversiones", signo: "(+)", nivel: "det", valor: cta("4150") },
-  { etiqueta: "Ingresos por comisiones", signo: "(+)", nivel: "det", valor: cta("4180") },
+  { etiqueta: "Ingresos por inversiones", signo: "(+)", nivel: "det", pptoOrden: 1, valor: cta("4150") },
+  { etiqueta: "Ingresos por comisiones", signo: "(+)", nivel: "det", pptoOrden: 2, valor: cta("4180") },
   { etiqueta: "Reintegro de provisiones", signo: "(+)", nivel: "det", valor: cta("425035") },
-  { etiqueta: "Recuperación de garantías", signo: "(+)", nivel: "det", valor: cta("425055") },
+  { etiqueta: "Recuperación de garantías", signo: "(+)", nivel: "det", pptoOrden: 3, valor: cta("425055") },
   { etiqueta: "De ejercicios anteriores", signo: "(+)", nivel: "det", valor: cta("4265") },
   /* La reserva constituida más las devoluciones en ventas (4175). El informe no le da
    * fila propia a la 4175: la pliega aquí, y así las cinco filas de ingreso sí suman su
    * subtotal. Verificado en may-2026, el único mes con devoluciones. */
-  { etiqueta: "Provisiones (reservas)", signo: "(−)", nivel: "det", esGasto: true,
+  { etiqueta: "Provisiones (reservas)", signo: "(−)", nivel: "det", pptoOrden: 4, esGasto: true,
     valor: (e, m) => v(e, COSTO_COBERTURA, m) - v(e, "4175", m) },
-  { etiqueta: "INGRESOS DE OPERACIÓN", signo: "(=)", nivel: "sub", valor: ingOperacion },
-  { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", esGasto: true, valor: gastosAdmin },
-  { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub",
+  { etiqueta: "INGRESOS DE OPERACIÓN", signo: "(=)", nivel: "sub", pptoOrden: 7, valor: ingOperacion },
+  { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", pptoOrden: 8, esGasto: true, valor: gastosAdmin },
+  { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 43,
     valor: (e, m) => ingOperacion(e, m) - gastosAdmin(e, m) },
-  { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", valor: otrosIngresos },
-  { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", esGasto: true, valor: otrosGastos },
-  { etiqueta: "EBITDA", signo: "(=)", nivel: "sub",
+  { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", pptoOrden: 44, valor: otrosIngresos },
+  { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", pptoOrden: 48, esGasto: true, valor: otrosGastos },
+  { etiqueta: "EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 59,
     // Ingresos menos gastos, sin depreciaciones ni amortizaciones. El costo de
     // cobertura SÍ es gasto: no se devuelve al resultado.
     valor: (e, m) => v(e, "4", m) - (v(e, "5", m) - DEP_AMORT.reduce((s, c) => s + v(e, c, m), 0)) },
-  { etiqueta: "Depreciaciones", signo: "(−)", nivel: "det", esGasto: true, valor: cta(DEP_AMORT[0]) },
-  { etiqueta: "Amortizaciones", signo: "(−)", nivel: "det", esGasto: true, valor: cta(DEP_AMORT[1]) },
-  { etiqueta: "UTILIDAD ANTES DE IMPUESTOS", signo: "(=)", nivel: "sub",
+  { etiqueta: "Depreciaciones", signo: "(−)", nivel: "det", pptoOrden: 60, esGasto: true, valor: cta(DEP_AMORT[0]) },
+  { etiqueta: "Amortizaciones", signo: "(−)", nivel: "det", pptoOrden: 62, esGasto: true, valor: cta(DEP_AMORT[1]) },
+  { etiqueta: "UTILIDAD ANTES DE IMPUESTOS", signo: "(=)", nivel: "sub", pptoOrden: 71,
     valor: (e, m) => v(e, "4", m) - v(e, "5", m) },
-  { etiqueta: "Impuesto de renta", signo: "(−)", nivel: "det", esGasto: true,
+  { etiqueta: "Impuesto de renta", signo: "(−)", nivel: "det", pptoOrden: 72, esGasto: true,
     valor: (e, m) => (m === "acum" ? provisionRenta(e).provision : impuestoMes(e)) },
-  { etiqueta: "UTILIDAD NETA", signo: "(=)", nivel: "tot",
+  { etiqueta: "UTILIDAD NETA", signo: "(=)", nivel: "tot", pptoOrden: 75,
     valor: (e, m) => v(e, "4", m) - v(e, "5", m)
       - (m === "acum" ? provisionRenta(e).provision : impuestoMes(e)) },
 ];

@@ -363,11 +363,11 @@ export function indicadoresClave(etq: string) {
   return indicadores(etq).filter((i) => i.clave);
 }
 
-/* Indicadores INTERPRETADOS para el Cockpit: no un número pelado, sino su
+/* Indicadores INTERPRETADOS para el Panel: no un número pelado, sino su
    lectura (palabra + meta + tendencia vs. mes anterior). Curados a los que la
    Junta necesita. Donde no hay umbral defendible, no se inventa un nivel: se
    muestra solo la tendencia (honestidad > semáforo falso). */
-export type IndCockpit = {
+export type IndPanel = {
   id: string; nombre: string; valor: number; formato: Formato;
   nivel: Nivel | null; palabra: string | null; meta: string | null;
   deltaMes: number | null; bueno?: Direccion; nota?: string;
@@ -385,7 +385,7 @@ const PALABRA_ID: Record<string, Partial<Record<Nivel, string>>> = {
   cobertura: { bien: "Saludable", regular: "Margen estrecho", mal: "Insuficiente" },
   razon_corriente: { bien: "Holgada" },
 };
-export function indicadoresCockpit(etq: string): IndCockpit[] {
+export function indicadoresPanel(etq: string): IndPanel[] {
   // ROA y no ROE: el propio catálogo advierte que el ROE de FMC sale inflado
   // (patrimonio pequeño por diseño) y que el comparable es el ROA. El ROE sigue
   // disponible en la vista completa de Indicadores, siempre con su nota.
