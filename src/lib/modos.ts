@@ -33,6 +33,10 @@ export const NAV: ItemNav[] = [
     match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
             "/estados/patrimonio", "/estados/inversiones"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
+  /* EN CONSTRUCCIÓN (2 de 7 páginas). Visible en los DOS modos a propósito: el
+     conmutador de modo no está hidratando, así que dejarlo solo en Operación lo
+     haría inalcanzable. Es además el documento que se le envía a la Junta. */
+  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
   { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
