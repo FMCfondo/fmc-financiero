@@ -177,6 +177,34 @@ function filasInformeBalance(ib: {
   return { filas, sinContrato };
 }
 
+/* Página 4: 17 líneas × 7 meses + acumulado, contra el informe certificado.
+ * El original imprime en MILLONES con un decimal, así que la tolerancia es la de su
+ * propia precisión: media décima de millón. */
+const TOL_MILLONES = 50_000;
+
+function filasInformeResultados(ir: {
+  meses: string[];
+  filas: { etiqueta: string; meses: (number | null)[]; acumulado: number | null }[];
+}, cargados: Set<string>) {
+  const filas: (Fila & { mes: string })[] = [];
+  const sinContrato: string[] = [];
+  for (const cert of ir.filas) {
+    const linea = C.LINEAS_RESULTADO.find((l) => l.etiqueta === cert.etiqueta);
+    if (!linea) { sinContrato.push(cert.etiqueta); continue; }
+    const comparar = (mes: string, control: number | null, modo: "mes" | "acum", sufijo: string) => {
+      if (control === null || control === undefined || !cargados.has(mes)) return;
+      const app = linea.valor(mes, modo) / 1e6;
+      filas.push({ grupo: "informe_resultados", concepto: cert.etiqueta + sufijo, mes,
+        control, app, diff: (app - control) * 1e6,
+        ok: Math.abs(app - control) * 1e6 <= TOL_MILLONES,
+        mapeo: `LINEAS_RESULTADO[${cert.etiqueta}] (${modo})` });
+    };
+    ir.meses.forEach((mes, i) => comparar(mes, cert.meses[i], "mes", ""));
+    comparar(ir.meses[ir.meses.length - 1], cert.acumulado, "acum", " · acumulado");
+  }
+  return { filas, sinContrato };
+}
+
 export async function GET() {
   const ruta = process.env.CIFRAS_CONTROL ?? join(process.cwd(), "db", "cifras-control.json");
   if (!existsSync(ruta))
@@ -210,6 +238,9 @@ export async function GET() {
   const bal = control.informe_balance
     ? filasInformeBalance(control.informe_balance, cargados)
     : { filas: [], sinContrato: [] };
+  const res = control.informe_resultados
+    ? filasInformeResultados(control.informe_resultados, cargados)
+    : { filas: [], sinContrato: [] };
 
   const cuenta = (fs: { ok: boolean }[]) => ({
     comparadas: fs.length, ok: fs.filter((f) => f.ok).length, fallan: fs.filter((f) => !f.ok).length });
@@ -217,10 +248,12 @@ export async function GET() {
   return NextResponse.json({
     tolerancia: TOLERANCIA,
     toleranciaInforme: TOLERANCIA_INFORME,
-    resumen: { ...cuenta([...todas, ...bal.filas]),
+    resumen: { ...cuenta([...todas, ...bal.filas, ...res.filas]),
       porPeriodo: cuenta(todas), balanceDelInforme: cuenta(bal.filas),
+      resultadosDelInforme: cuenta(res.filas),
       divergenciasDocumentadas: bal.filas.filter((f) => f.excepcion).length },
     periodos: resultado,
     informeBalance: { sinContrato: bal.sinContrato, filas: bal.filas },
+    informeResultados: { sinContrato: res.sinContrato, filas: res.filas },
   });
 }

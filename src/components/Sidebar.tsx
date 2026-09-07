@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck, type LucideIcon,
+  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, type LucideIcon,
 } from "lucide-react";
 import { NAV, MODOS, MODO_DEFAULT, CLAVE_MODO, visibleEn, type ModoApp } from "@/lib/modos";
 
-const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, Scale, ClipboardCheck };
+const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck };
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -62,7 +62,7 @@ export default function Sidebar() {
       <nav className="flex-1 py-2">
         {items.map(({ href, match, label, icono }) => {
           const Icon = ICONOS[icono] ?? Gauge;
-          const active = pathname.startsWith(match);
+          const active = (Array.isArray(match) ? match : [match]).some((m) => pathname.startsWith(m));
           return (
             <Link
               key={href}

@@ -17,10 +17,8 @@
    nunca reducir el margen ni la fuente.
    ============================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 @page { size: letter landscape; margin: 0; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
+.informe * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --navy: #13286e; --royal: #1e40af; --ink: #1a2438; --muted: #5b6b86;
   --faint: #8d9bb3; --line: #d9e0ec; --soft: #eef2f9; --tint: #f6f9fd;
@@ -28,11 +26,10 @@
   --plan: #f3f0e8; --plan-linea: #ddd6c2; --plan-texto: #6b6350;
   --pos: #157f3d; --neg: #c22626;
 }
-html, body { background: #fff; }
-body { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; color: var(--ink);
+.informe { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; color: var(--ink);
        font-variant-numeric: tabular-nums; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-.page { width: 11in; height: 8.5in; padding: .34in .42in .26in; display: flex; flex-direction: column;
+.page { background: #fff; width: 11in; height: 8.5in; padding: .34in .42in .26in; display: flex; flex-direction: column;
         page-break-after: always; position: relative; overflow: hidden; }
 .page:last-child { page-break-after: auto; }
 
@@ -47,46 +44,46 @@ body { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; color: var(--in
 .meta b { color: var(--ink); font-weight: 600; }
 
 /* Tabla contable */
-table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
-thead th { font-size: 7.3pt; font-weight: 600; color: var(--muted); text-transform: uppercase;
+.informe table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
+.informe thead th { font-size: 7.3pt; font-weight: 600; color: var(--muted); text-transform: uppercase;
            letter-spacing: .3pt; padding: 3.5pt 4pt; text-align: right; white-space: nowrap; }
-thead tr.cols th { border-bottom: 1.2pt solid var(--ink); }
-thead th.l { text-align: left; }
-thead tr.grupos th { padding: 3.5pt 4pt 3pt; text-align: center; border-bottom: none; vertical-align: bottom; }
+.informe thead tr.cols th { border-bottom: 1.2pt solid var(--ink); }
+.informe thead th.l { text-align: left; }
+.informe thead tr.grupos th { padding: 3.5pt 4pt 3pt; text-align: center; border-bottom: none; vertical-align: bottom; }
 .gtitulo { font-size: 7.6pt; font-weight: 800; letter-spacing: .55pt; color: var(--navy); display: block; }
 .gdef { font-size: 7.2pt; font-weight: 500; text-transform: none; letter-spacing: .1pt;
         color: var(--muted); display: block; margin-top: .5pt; }
 
-tbody td { font-size: 8.6pt; padding: 2.6pt 4pt; text-align: right; white-space: nowrap; }
-tbody td.l { text-align: left; white-space: normal; }
-tbody tr { border-bottom: .5pt solid var(--soft); }
-td.l .signo { display: inline-block; width: 12pt; color: var(--faint); font-size: 7.8pt; }
-td.l.s1 { padding-left: 18pt; }
-td.l.s1, tr.det.s1 td { color: #46536d; }
+.informe tbody td { font-size: 8.6pt; padding: 2.6pt 4pt; text-align: right; white-space: nowrap; }
+.informe tbody td.l { text-align: left; white-space: normal; }
+.informe tbody tr { border-bottom: .5pt solid var(--soft); }
+.informe td.l .signo { display: inline-block; width: 12pt; color: var(--faint); font-size: 7.8pt; }
+.informe td.l.s1 { padding-left: 18pt; }
+.informe td.l.s1, .informe tr.det.s1 td { color: #46536d; }
 
-tr.sub td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--tint); }
-tr.sec td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--soft); }
-tr.tot td { font-weight: 800; border-top: 1pt solid var(--ink); border-bottom: 2.6pt double var(--ink);
+.informe tr.sub td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--tint); }
+.informe tr.sec td { font-weight: 700; border-top: .7pt solid var(--ink); background: var(--soft); }
+.informe tr.tot td { font-weight: 800; border-top: 1pt solid var(--ink); border-bottom: 2.6pt double var(--ink);
             background: #e9effa; color: var(--navy); font-size: 9pt; }
-tr.hdr td { font-weight: 800; color: var(--navy); font-size: 8.4pt; letter-spacing: .8pt;
+.informe tr.hdr td { font-weight: 800; color: var(--navy); font-size: 8.4pt; letter-spacing: .8pt;
             padding-top: 5pt; border-bottom: none; }
-td.pos { color: var(--pos); } td.neg { color: var(--neg); }
-td.pct { font-weight: 700; }
-td.ref { color: var(--muted); font-weight: 400; }
-td.hoy { font-weight: 700; color: var(--navy); background: var(--tint); }
-th.hoy { color: var(--navy) !important; }
-tr.tot td.hoy { background: #dfe8fb; }
-tr.sub td.hoy, tr.sec td.hoy { background: #e8eefa; }
+.informe td.pos { color: var(--pos); } td.neg { color: var(--neg); }
+.informe td.pct { font-weight: 700; }
+.informe td.ref { color: var(--muted); font-weight: 400; }
+.informe td.hoy { font-weight: 700; color: var(--navy); background: var(--tint); }
+.informe th.hoy { color: var(--navy) !important; }
+.informe tr.tot td.hoy { background: #dfe8fb; }
+.informe tr.sub td.hoy, .informe tr.sec td.hoy { background: #e8eefa; }
 
 /* Bloques de ejecución presupuestal */
-th.gmes, td.cmes { background: var(--g1); }
-th.gacum, td.cacum { background: var(--g2); }
-th.ganio, td.canio { background: var(--g3); }
-th.gmes, th.gacum, th.ganio { border-radius: 3px 3px 0 0; }
-th.gap, td.gap { width: 5pt; background: #fff !important; padding: 0 !important; border: none !important; }
-tr.sub td.cmes { background: #e6edf9; } tr.sub td.cacum { background: #dfe8fb; } tr.sub td.canio { background: #d5e2fa; }
-tr.sec td.cmes { background: #e6edf9; } tr.sec td.cacum { background: #dfe8fb; } tr.sec td.canio { background: #d5e2fa; }
-tr.tot td.cmes { background: #e0e9f8; } tr.tot td.cacum { background: #d8e4fb; } tr.tot td.canio { background: #cddcf9; }
+.informe th.gmes, .informe td.cmes { background: var(--g1); }
+.informe th.gacum, .informe td.cacum { background: var(--g2); }
+.informe th.ganio, .informe td.canio { background: var(--g3); }
+.informe th.gmes, .informe th.gacum, .informe th.ganio { border-radius: 3px 3px 0 0; }
+.informe th.gap, .informe td.gap { width: 5pt; background: #fff !important; padding: 0 !important; border: none !important; }
+.informe tr.sub td.cmes { background: #e6edf9; } tr.sub td.cacum { background: #dfe8fb; } tr.sub td.canio { background: #d5e2fa; }
+.informe tr.sec td.cmes { background: #e6edf9; } tr.sec td.cacum { background: #dfe8fb; } tr.sec td.canio { background: #d5e2fa; }
+.informe tr.tot td.cmes { background: #e0e9f8; } tr.tot td.cacum { background: #d8e4fb; } tr.tot td.canio { background: #cddcf9; }
 
 /* Leyenda */
 .leyenda { display: flex; gap: 12pt; margin-top: 6pt; font-size: 7.6pt; color: var(--muted);
@@ -137,10 +134,10 @@ h2.sec-t { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.2pt; text-trans
 .seg-lbl.osc { color: var(--navy); }
 .dos-col { display: grid; grid-template-columns: 57% 1fr; gap: 16pt; min-width: 0; }
 .dos-col > div { min-width: 0; }
-table.mini { margin-top: 0; }
-table.mini thead th { font-size: 7.2pt; }
-table.mini tbody td { font-size: 8.3pt; padding: 3pt 3.5pt; }
-table.mini tbody tr:nth-child(odd) td { background: var(--tint); }
+.informe table.mini { margin-top: 0; }
+.informe table.mini thead th { font-size: 7.2pt; }
+.informe table.mini tbody td { font-size: 8.3pt; padding: 3pt 3.5pt; }
+.informe table.mini tbody tr:nth-child(odd) td { background: var(--tint); }
 .tipo-tag { display: inline-block; font-size: 6.8pt; font-weight: 700; letter-spacing: .3pt;
             padding: 1.5pt 4pt; border-radius: 2pt; background: #e2e8fa; color: var(--navy); }
 .conc { margin-bottom: 7pt; }
@@ -171,6 +168,10 @@ table.mini tbody tr:nth-child(odd) td { background: var(--tint); }
 @media print {
   .informe { background: none; padding: 0; gap: 0; display: block; }
   .informe .page { box-shadow: none; border-radius: 0; }
-  /* La barra lateral y cualquier control quedan fuera del papel */
-  .no-imprimir, nav, aside, header.app { display: none !important; }
+  /* La barra lateral, la cabecera y los controles quedan fuera del papel.
+     Antes decia header.app, que no existe: el layout renderiza <header> a secas. */
+  .no-imprimir, nav, aside, header { display: none !important; }
+  /* El hueco que deja la barra lateral y el relleno del contenedor no van al papel */
+  body > div { padding-left: 0 !important; }
+  main { padding: 0 !important; max-width: none !important; margin: 0 !important; }
 }

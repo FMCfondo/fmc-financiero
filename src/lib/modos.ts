@@ -17,14 +17,26 @@ export const MODOS: { id: ModoApp; label: string; desc: string }[] = [
   { id: "operacion", label: "Operación", desc: "Análisis y ciclo mensual" },
 ];
 
-/** `modos` vacío = visible en ambos. */
-export type ItemNav = { href: string; match: string; label: string; icono: string; modos?: ModoApp[] };
+/** `modos` vacío = visible en ambos.
+ *  `match` admite varias rutas porque un módulo puede tener pestañas: Estados
+ *  Financieros son cuatro rutas hermanas, y con un solo prefijo `/estados/` se
+ *  encendería también Análisis, que cuelga del mismo sitio. */
+export type ItemNav = { href: string; match: string | string[]; label: string; icono: string; modos?: ModoApp[] };
 
 export const NAV: ItemNav[] = [
   { href: "/cockpit", match: "/cockpit", label: "Cockpit Ejecutivo", icono: "Gauge" },
-  { href: "/estados/resultados", match: "/estados/resultados", label: "Estados Financieros", icono: "Landmark" },
-  { href: "/estados/situacion", match: "/estados/situacion", label: "Situación Financiera", icono: "Scale", modos: ["reuniones"] },
+  /* Una sola puerta al módulo: las cuatro pestañas se ven desde dentro. Antes había
+     además una entrada suelta a «Situación Financiera», que llevaba a la misma sección
+     y hacía saltar el resaltado entre dos entradas al cambiar de pestaña — parecían
+     módulos distintos sin serlo. */
+  { href: "/estados/resultados", label: "Estados Financieros", icono: "Landmark",
+    match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
+            "/estados/patrimonio", "/estados/inversiones"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
+  /* EN CONSTRUCCIÓN (2 de 7 páginas). Visible en los DOS modos a propósito: el
+     conmutador de modo no está hidratando, así que dejarlo solo en Operación lo
+     haría inalcanzable. Es además el documento que se le envía a la Junta. */
+  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
   { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
