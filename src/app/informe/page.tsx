@@ -13,6 +13,7 @@ import { construirInforme } from "@/lib/informe";
 import { mesNombre } from "@/lib/format";
 import PaginaBalance from "./PaginaBalance";
 import PaginaResultados from "./PaginaResultados";
+import PaginaGastos from "./PaginaGastos";
 import PaginaInteranual from "./PaginaInteranual";
 import PaginaPortafolio from "./PaginaPortafolio";
 import "./informe.css";
@@ -31,6 +32,8 @@ export default async function InformePage({
   const mesIA = prev ? `${mesNombre[prev.mes]} ${prev.anio}` : "—";
   const periodo = `${mesNombre[inf.periodo.mes].toUpperCase()} ${inf.periodo.anio}`;
   const comun = { periodo, corte: inf.periodo.corte, anio: inf.periodo.anio, mesInteranual: mesIA };
+  // La fila de total de la página 5 es la misma que ya calculó la página 4.
+  const gAdmin = inf.resultados.filas.find((f) => f.etiqueta === "Gastos de Administración");
 
   return (
     <div className="informe">
@@ -53,6 +56,17 @@ export default async function InformePage({
         mesNombre={mesNombre[inf.periodo.mes]}
         etiquetasMeses={inf.resultados.etiquetasMeses}
         filas={inf.resultados.filas}
+      />
+      <PaginaGastos
+        periodo={periodo}
+        corte={inf.periodo.corte}
+        mesActual={mesNombre[inf.periodo.mes]}
+        totalMes={gAdmin?.mes ?? 0}
+        totalAcum={gAdmin?.acumulado ?? 0}
+        totalPptoMes={gAdmin?.pptoMes ?? null}
+        totalPptoAcum={gAdmin?.pptoAcumulado ?? null}
+        totalPptoAnual={gAdmin?.pptoAnual ?? null}
+        filas={inf.gastos.filas}
       />
       <PaginaInteranual
         periodo={periodo}

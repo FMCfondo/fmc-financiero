@@ -14,7 +14,8 @@ import "server-only";
 import * as D from "./data";
 import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type LineaBalance } from "./informe-cuentas";
 import { mesNombre, mesCorto } from "./format";
-import { filaPpto, pptoAcumulado, pptoMes } from "./informe-ppto";
+import { pptoAcumulado, pptoMes } from "./informe-ppto";
+import type { Modo } from "./informe-cuentas";
 import { portafolio } from "./inversiones";
 import { CTA_BOLD } from "./informe-cuentas";
 import { esf } from "./statements";
@@ -154,6 +155,97 @@ function seccionPortafolio(etq: string): Portafolio {
   };
 }
 
+/* Página 5: el detalle de gastos, con las mismas tres ejecuciones que la página 4 pero
+ * en PESOS — aquí caben, porque son dos columnas de ejecutado y no siete.
+ *
+ * Las filas salen del ÁRBOL del presupuesto (rubros y sus subcuentas), no de una lista
+ * escrita en el código: si el analista añade un rubro al presupuesto, aparece solo. Las
+ * etiquetas son las del presupuesto, así que renombrar una línea del informe se hace
+ * editando el presupuesto, no tocando código.
+ *
+ * Solo se imprimen las filas con algo que decir: una subcuenta sin real y sin meta no
+ * aporta y el certificado tampoco la lista. Las que tienen meta pero no real llevan raya
+ * en el real — nunca un cero inventado. */
+function seccionGastos(etq: string) {
+  const p = D.periodo(etq);
+  const meses = D.periodos.filter((q) => q.anio === p.anio && q.mes <= p.mes);
+  const pct = (real: number | null, meta: number | null) =>
+    real === null || meta === null || meta === 0 ? null : (real / meta) * 100;
+
+  // El bloque de gastos del presupuesto: entre el total de administración y el EBITDA.
+  const bloque = D.presupuesto
+    .filter((l) => l.anio === p.anio && l.orden > 8 && l.orden < 43 && l.nivel >= 1)
+    .sort((a, b) => a.orden - b.orden);
+
+  /* Un rubro puede colgar de otro: «Restaurantes» es 519560, que vive dentro de
+     «Diversos» (5195), y el informe los lista por separado. Sin descontarlo, el gasto
+     aparece dos veces y el rubro padre queda inflado. Se resta cualquier OTRO rubro del
+     mismo nivel cuya cuenta sea descendiente de la propia. */
+  const hermanosDentro = (l: D.PptoLinea) =>
+    bloque.filter((o) => o.orden !== l.orden && o.nivel === l.nivel
+      && o.cuentas.some((c) => l.cuentas.some((padre) => c !== padre && c.startsWith(padre))));
+
+  const suma = (cuentas: string[], modo: Modo) =>
+    cuentas.reduce((s, c) => s + (modo === "acum" ? D.ytd(etq, c) : D.fact(etq, c)), 0);
+
+  const real = (l: D.PptoLinea, modo: Modo) => {
+    if (!l.cuentas.length) return null;
+    const propio = suma(l.cuentas, modo);
+    const dentro = hermanosDentro(l).reduce((s, o) => s + suma(o.cuentas, modo), 0);
+    return propio - dentro;
+  };
+
+  const filas: FilaResultados[] = bloque.map((l) => {
+    const mes = real(l, "mes"), acumulado = real(l, "acum");
+    const pMes = pptoMes(l, p.mes), pAcum = pptoAcumulado(l, p.mes), pAnual = l.total;
+    return {
+      etiqueta: l.etiqueta, nivel: "det" as const, esGasto: true,
+      sangria: (l.nivel >= 2 ? 1 : 0) as 0 | 1,
+      meses: meses.map((m) => (l.cuentas.length
+        ? l.cuentas.reduce((s, c) => s + D.fact(m.etiqueta, c), 0)
+          - hermanosDentro(l).reduce((s, o) => s + o.cuentas.reduce((t, c) => t + D.fact(m.etiqueta, c), 0), 0)
+        : 0)),
+      mes: mes ?? 0, acumulado: acumulado ?? 0,
+      pptoMes: pMes, pptoAcumulado: pAcum, pptoAnual: pAnual,
+      ejecMesPct: pct(mes, pMes),
+      ejecAcumuladaPct: pct(acumulado, pAcum),
+      ejecAnualPct: pct(acumulado, pAnual),
+      // Marca para que la vista imprima raya y no un cero: la línea no está mapeada.
+      signo: l.cuentas.length ? undefined : "—",
+    };
+  /* Los rubros estructuran la página y se quedan aunque estén en cero. Una SUBCUENTA sin
+     ejecución no aporta nada: el certificado tampoco la lista. */
+  }).filter((f) => (f.sangria ? f.acumulado !== 0 || f.mes !== 0
+    : f.mes !== 0 || f.acumulado !== 0 || f.pptoMes !== 0 || f.pptoAcumulado !== 0 || f.pptoAnual !== 0));
+
+  /* RESIDUAL. El presupuesto desglosa algunos rubros en subcuentas, pero no todas tienen
+     cuenta PUC mapeada. Sin esta fila, ese gasto se ve en el total del rubro y en ninguna
+     línea: dinero real escondido. Se muestra como «Otros» bajo su rubro. */
+  const conResidual: FilaResultados[] = [];
+  for (const f of filas) {
+    conResidual.push(f);
+    if (f.sangria) continue;
+    const rubro = bloque.find((l) => l.etiqueta === f.etiqueta && l.nivel === 1);
+    if (!rubro || !rubro.cuentas.length) continue;
+    const hijas = bloque.filter((l) => l.nivel === 2 && l.orden > rubro.orden
+      && l.orden < (bloque.find((o) => o.nivel === 1 && o.orden > rubro.orden)?.orden ?? 1e9));
+    if (!hijas.length) continue;
+    const mapeadas = hijas.filter((l) => l.cuentas.length);
+    if (mapeadas.length === hijas.length) continue;   // todo mapeado: no hay residual
+    const resMes = f.mes - mapeadas.reduce((s, l) => s + suma(l.cuentas, "mes"), 0);
+    const resAcum = f.acumulado - mapeadas.reduce((s, l) => s + suma(l.cuentas, "acum"), 0);
+    if (Math.round(resMes) === 0 && Math.round(resAcum) === 0) continue;
+    conResidual.push({
+      etiqueta: "Otros", nivel: "det", esGasto: true, sangria: 1,
+      meses: [], mes: resMes, acumulado: resAcum,
+      pptoMes: null, pptoAcumulado: null, pptoAnual: null,
+      ejecMesPct: null, ejecAcumuladaPct: null, ejecAnualPct: null,
+    });
+  }
+
+  return { filas: conResidual, notas: [] as Nota[] };
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);
@@ -173,7 +265,7 @@ export async function construirInforme(etq: string): Promise<Informe> {
     // --- pendientes de las siguientes tandas de la fase 1 ---
     resumen: { tarjetas: [], evolucion: [], notas: [] },
     resultados: seccionResultados(etq),
-    gastos: { filas: [], notas: [] },
+    gastos: seccionGastos(etq),
     interanual: seccionInteranual(etq),
     portafolio: seccionPortafolio(etq),
 
