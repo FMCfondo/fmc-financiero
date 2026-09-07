@@ -12,9 +12,10 @@
  */
 import "server-only";
 import * as D from "./data";
-import { LINEAS_ACTIVO, LINEAS_PASIVO, type LineaBalance } from "./informe-cuentas";
-import { mesNombre } from "./format";
-import type { FilaBalance, Informe, Nota } from "./informe-tipos";
+import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type LineaBalance } from "./informe-cuentas";
+import { mesNombre, mesCorto } from "./format";
+import { filaPpto, pptoAcumulado, pptoMes } from "./informe-ppto";
+import type { FilaBalance, FilaResultados, Informe, Nota } from "./informe-tipos";
 
 /** Ventana del balance: el período y los tres meses anteriores. En el Excel esto se hacía
  *  ocultando columnas a mano. */
@@ -53,6 +54,42 @@ function seccionBalance(
   };
 }
 
+/* Página 4: la serie del año más LAS TRES EJECUCIONES.
+ * Son tres medidas distintas y NUNCA se mezclan en la misma columna:
+ *   · del mes    → el mes contra el presupuesto de ESE mes
+ *   · acumulada  → enero..mes contra el presupuesto del mismo tramo
+ *   · del año    → enero..mes contra el presupuesto anual completo
+ * Una línea sin fila de presupuesto no lleva metas: se imprime raya, nunca un cero. */
+function seccionResultados(etq: string) {
+  const p = D.periodo(etq);
+  const meses = D.periodos.filter((q) => q.anio === p.anio && q.mes <= p.mes);
+  const ultimo = meses[meses.length - 1];
+  const pct = (real: number, meta: number | null) =>
+    meta === null || meta === 0 ? null : (real / meta) * 100;
+
+  const filas: FilaResultados[] = LINEAS_RESULTADO.map((l) => {
+    const serie = meses.map((m) => l.valor(m.etiqueta, "mes"));
+    const mes = l.valor(ultimo.etiqueta, "mes");
+    const acumulado = l.valor(ultimo.etiqueta, "acum");
+    const ppto = l.pptoOrden
+      ? D.presupuesto.find((x) => x.anio === p.anio && x.orden === l.pptoOrden) ?? null
+      : null;
+    const pMes = ppto ? pptoMes(ppto, p.mes) : null;
+    const pAcum = ppto ? pptoAcumulado(ppto, p.mes) : null;
+    const pAnual = ppto ? ppto.total : null;
+    return {
+      etiqueta: l.etiqueta, nivel: l.nivel, signo: l.signo, esGasto: l.esGasto,
+      meses: serie, mes, acumulado,
+      pptoMes: pMes, pptoAcumulado: pAcum, pptoAnual: pAnual,
+      ejecMesPct: pct(mes, pMes),
+      ejecAcumuladaPct: pct(acumulado, pAcum),
+      ejecAnualPct: pct(acumulado, pAnual),
+    };
+  });
+
+  return { etiquetasMeses: meses.map((m) => mesCorto[m.mes]), filas, notas: [] as Nota[] };
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);
@@ -71,7 +108,7 @@ export async function construirInforme(etq: string): Promise<Informe> {
 
     // --- pendientes de las siguientes tandas de la fase 1 ---
     resumen: { tarjetas: [], evolucion: [], notas: [] },
-    resultados: { etiquetasMeses: [], filas: [], notas: [] },
+    resultados: seccionResultados(etq),
     gastos: { filas: [], notas: [] },
     interanual: { disponible: false, motivo: "Pendiente de construir.", filas: [] },
     portafolio: {

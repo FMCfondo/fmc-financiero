@@ -11,6 +11,7 @@ import { ensureLoaded, resolverEtq, sameMonthPrevYear } from "@/lib/data";
 import { construirInforme } from "@/lib/informe";
 import { mesNombre } from "@/lib/format";
 import PaginaBalance from "./PaginaBalance";
+import PaginaResultados from "./PaginaResultados";
 import "./informe.css";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,14 @@ export default async function InformePage({
         etiquetasMeses={inf.balancePasivos.etiquetasMeses}
         filas={inf.balancePasivos.filas}
         {...comun}
+      />
+      <PaginaResultados
+        periodo={periodo}
+        corte={inf.periodo.corte}
+        anio={inf.periodo.anio}
+        mesNombre={mesNombre[inf.periodo.mes]}
+        etiquetasMeses={inf.resultados.etiquetasMeses}
+        filas={inf.resultados.filas}
       />
     </div>
   );
