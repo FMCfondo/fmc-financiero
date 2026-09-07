@@ -13,13 +13,14 @@
 import "server-only";
 import * as D from "./data";
 import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type LineaBalance } from "./informe-cuentas";
+import * as C from "./informe-cuentas";
 import { mesNombre, mesCorto } from "./format";
 import { pptoAcumulado, pptoMes } from "./informe-ppto";
 import type { Modo } from "./informe-cuentas";
 import { portafolio } from "./inversiones";
 import { CTA_BOLD } from "./informe-cuentas";
 import { esf } from "./statements";
-import type { FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio } from "./informe-tipos";
+import type { FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio, Tarjeta } from "./informe-tipos";
 
 /** Ventana del balance: el período y los tres meses anteriores. En el Excel esto se hacía
  *  ocultando columnas a mano. */
@@ -246,9 +247,86 @@ function seccionGastos(etq: string) {
   return { filas: conResidual, notas: [] as Nota[] };
 }
 
+/* Página 1: nueve cifras y cuatro series mensuales.
+ * Las cuatro primeras tarjetas miran el BALANCE contra el año anterior; las cuatro
+ * siguientes, el RESULTADO contra el presupuesto. Ojo con la base: ingresos y gastos se
+ * comparan contra la meta ACUMULADA a la fecha, y EBITDA y utilidad contra la ANUAL —
+ * así lo hace el informe certificado, y mezclarlas daría lecturas incomparables. */
+function seccionResumen(etq: string, res: { filas: FilaResultados[] }, port: Portafolio) {
+  const e = esf(etq);
+  const prev = D.sameMonthPrevYear(etq);
+  const fila = (n: string) => res.filas.find((f) => f.etiqueta === n);
+  const respaldo = C.disponible(etq) + C.inversionesLiquidas(etq);
+
+  const varIA = (actual: number, calcPrev: (p: string) => number) => {
+    if (!prev) return null;
+    const antes = calcPrev(prev.etiqueta);
+    return Math.abs(antes) < 1 ? null : ((actual - antes) / Math.abs(antes)) * 100;
+  };
+  const pctTxt = (v: number | null, signo = false) =>
+    v === null ? "—" : `${signo && v > 0 ? "+" : ""}${Math.round(v).toLocaleString("es-CO")}%`;
+  const pct1 = (v: number | null) =>
+    v === null ? "—" : `${v.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
+  const vActivo = varIA(e.totalActivo, (p) => esf(p).totalActivo);
+  const vPatrim = varIA(e.totalPatrim, (p) => esf(p).totalPatrim);
+  const meta = (n: string, anual: boolean) => {
+    const f = fila(n);
+    if (!f) return null;
+    const base = anual ? f.pptoAnual : f.pptoAcumulado;
+    return base ? (f.acumulado / base) * 100 : null;
+  };
+
+  const tarjetas: Tarjeta[] = [
+    { etiqueta: "Activo total", valor: e.totalActivo,
+      destacado: pctTxt(vActivo, true), contexto: prev ? `frente a ${mesNombre[prev.mes].toLowerCase()} ${prev.anio}` : "sin comparativo",
+      tono: vActivo === null ? null : vActivo >= 0 ? "pos" : "neg" },
+    { etiqueta: "Respaldo líquido", valor: respaldo,
+      contexto: `${pct1(e.totalActivo ? (respaldo / e.totalActivo) * 100 : null)} del activo total`, tono: null },
+    { etiqueta: "Reservas técnicas", valor: C.pasivosEstimados(etq),
+      contexto: `${pct1(e.totalPasivo ? (C.pasivosEstimados(etq) / e.totalPasivo) * 100 : null)} del pasivo`, tono: null },
+    { etiqueta: "Patrimonio", valor: e.totalPatrim,
+      destacado: pctTxt(vPatrim, true), contexto: "interanual",
+      tono: vPatrim === null ? null : vPatrim >= 0 ? "pos" : "neg" },
+    { etiqueta: "Ingresos acumulados", valor: fila("INGRESOS DE OPERACIÓN")?.acumulado ?? 0,
+      destacado: pctTxt(meta("INGRESOS DE OPERACIÓN", false)), contexto: `de la meta a ${mesNombre[D.periodo(etq).mes].toLowerCase()}`,
+      tono: (meta("INGRESOS DE OPERACIÓN", false) ?? 0) >= 100 ? "pos" : "neg" },
+    { etiqueta: "Gastos acumulados", valor: fila("Gastos de Administración")?.acumulado ?? 0,
+      destacado: pctTxt(meta("Gastos de Administración", false)), contexto: `de la meta a ${mesNombre[D.periodo(etq).mes].toLowerCase()}`,
+      // En gastos la lectura se invierte: pasarse de la meta no es una buena noticia.
+      tono: (meta("Gastos de Administración", false) ?? 0) <= 100 ? "pos" : "neg" },
+    { etiqueta: "EBITDA acumulado", valor: fila("EBITDA")?.acumulado ?? 0,
+      destacado: pct1(meta("EBITDA", true)), contexto: "de la meta anual",
+      tono: (meta("EBITDA", true) ?? 0) >= 100 ? "pos" : null },
+    { etiqueta: "Utilidad neta acumulada", valor: fila("UTILIDAD NETA")?.acumulado ?? 0,
+      destacado: pct1(meta("UTILIDAD NETA", true)), contexto: "de la meta anual",
+      tono: (meta("UTILIDAD NETA", true) ?? 0) >= 100 ? "pos" : null },
+    { etiqueta: "Portafolio de inversiones", valor: port.total,
+      contexto: `${port.posiciones.length} posiciones · ${port.concilia ? "concilia con el balance" : "NO concilia con el balance"}`,
+      tono: port.concilia ? null : "neg" },
+  ];
+
+  const serie = (n: string) => fila(n)?.meses ?? [];
+  const etiquetas = res.filas[0]?.meses.map((_, i) =>
+    mesCorto[D.periodos.filter((q) => q.anio === D.periodo(etq).anio && q.mes <= D.periodo(etq).mes)[i]?.mes ?? 1]) ?? [];
+
+  return {
+    tarjetas,
+    evolucion: [
+      { titulo: "Ingresos de operación", valores: serie("INGRESOS DE OPERACIÓN"), etiquetas },
+      { titulo: "Gastos de administración", valores: serie("Gastos de Administración"), etiquetas },
+      { titulo: "EBITDA", valores: serie("EBITDA"), etiquetas },
+      { titulo: "Utilidad neta", valores: serie("UTILIDAD NETA"), etiquetas },
+    ],
+    notas: [] as Nota[],
+  };
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);
+  const resultados = seccionResultados(etq);
+  const portafolioInf = seccionPortafolio(etq);
 
   return {
     periodo: {
@@ -263,11 +341,11 @@ export async function construirInforme(etq: string): Promise<Informe> {
     balancePasivos: seccionBalance(etq, LINEAS_PASIVO),
 
     // --- pendientes de las siguientes tandas de la fase 1 ---
-    resumen: { tarjetas: [], evolucion: [], notas: [] },
-    resultados: seccionResultados(etq),
+    resumen: seccionResumen(etq, resultados, portafolioInf),
+    resultados,
     gastos: seccionGastos(etq),
     interanual: seccionInteranual(etq),
-    portafolio: seccionPortafolio(etq),
+    portafolio: portafolioInf,
 
     origen: {
       fuente: `Balance de prueba de ${mesNombre[p.mes]} ${p.anio}, cargado en la aplicación`,

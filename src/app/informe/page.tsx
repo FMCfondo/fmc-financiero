@@ -11,6 +11,7 @@ import { ensureLoaded, resolverEtq, sameMonthPrevYear, fact, ytd } from "@/lib/d
 import { ING_FINANCIERO } from "@/lib/statements";
 import { construirInforme } from "@/lib/informe";
 import { mesNombre } from "@/lib/format";
+import PaginaResumen from "./PaginaResumen";
 import PaginaBalance from "./PaginaBalance";
 import PaginaResultados from "./PaginaResultados";
 import PaginaGastos from "./PaginaGastos";
@@ -35,8 +36,19 @@ export default async function InformePage({
   // La fila de total de la página 5 es la misma que ya calculó la página 4.
   const gAdmin = inf.resultados.filas.find((f) => f.etiqueta === "Gastos de Administración");
 
+  const meses = inf.resultados.etiquetasMeses;
+  const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
+
   return (
     <div className="informe">
+      <PaginaResumen
+        periodo={periodo}
+        corte={inf.periodo.corte}
+        rangoMeses={rango}
+        tarjetas={inf.resumen.tarjetas}
+        evolucion={inf.resumen.evolucion}
+        notas={inf.resumen.notas}
+      />
       <PaginaBalance
         titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
         etiquetasMeses={inf.balanceActivos.etiquetasMeses}
