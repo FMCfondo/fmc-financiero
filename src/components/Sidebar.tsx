@@ -62,7 +62,7 @@ export default function Sidebar() {
       <nav className="flex-1 py-2">
         {items.map(({ href, match, label, icono }) => {
           const Icon = ICONOS[icono] ?? Gauge;
-          const active = pathname.startsWith(match);
+          const active = (Array.isArray(match) ? match : [match]).some((m) => pathname.startsWith(m));
           return (
             <Link
               key={href}
