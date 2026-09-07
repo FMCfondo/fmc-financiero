@@ -1,6 +1,6 @@
-// Executive Financial Cockpit — contrato ÚNICO del informe para la Junta.
-// `construirCockpit()` devuelve un objeto estructurado con TODA la narrativa y
-// las cifras. La página /cockpit lo RENDERIZA; el futuro informe PDF renderizará
+// Executive Financial Panel — contrato ÚNICO del informe para la Junta.
+// `construirPanel()` devuelve un objeto estructurado con TODA la narrativa y
+// las cifras. La página /panel lo RENDERIZA; el futuro informe PDF renderizará
 // EXACTAMENTE el mismo objeto. La narrativa es un dato, no un layout.
 //
 // Solo LECTURA sobre los motores validados (statements, ejecucion, indicadores):
@@ -24,7 +24,7 @@ import * as D from "./data";
 import { provisionRenta, impuestoMes, COSTO_COBERTURA, ING_COBERTURA, ING_FINANCIERO } from "./statements";
 import { realFormula } from "./ejecucion";
 import { ingOperacion, gastosOperativos } from "./informe-cuentas";
-import { indicadoresCockpit, type IndCockpit } from "./indicadores";
+import { indicadoresPanel, type IndPanel } from "./indicadores";
 import { mesCorto, mesNombre } from "./format";
 
 export type Modo = "acum" | "mes";
@@ -49,7 +49,7 @@ export type FilaEj = {
 
 const f1 = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
 
-export function construirCockpit(etq: string, modo: Modo) {
+export function construirPanel(etq: string, modo: Modo) {
   const per = D.periodo(etq);
   const anio = per.anio, mes = per.mes;
   const meses = D.periodos.filter((p) => p.anio === anio && p.mes <= mes);
@@ -172,8 +172,8 @@ export function construirCockpit(etq: string, modo: Modo) {
   ];
 
   // ---------- indicadores, repartidos donde tienen contexto ----------
-  const ind = indicadoresCockpit(etq);
-  const pick = (ids: string[]) => ids.map((i) => ind.find((x) => x.id === i)).filter((x): x is IndCockpit => !!x);
+  const ind = indicadoresPanel(etq);
+  const pick = (ids: string[]) => ids.map((i) => ind.find((x) => x.id === i)).filter((x): x is IndPanel => !!x);
 
   // ---------- narrativa por reglas ----------
   const planUn = planAnual((l) => l.formula === "util_neta");
@@ -240,4 +240,4 @@ export function construirCockpit(etq: string, modo: Modo) {
     },
   };
 }
-export type Cockpit = ReturnType<typeof construirCockpit>;
+export type Panel = ReturnType<typeof construirPanel>;

@@ -12,11 +12,11 @@ export type FilaEjec = {
   clase: "ingreso" | "gasto" | "resultado"; nota: string | null; mapeado: boolean;
   ppto: number; real: number | null; variacion: number | null; pctEjec: number | null;
   semaforo: Semaforo;
-  formula: string | null; // clave del total estructural (ebitda, util_neta…) — la usa el Cockpit
+  formula: string | null; // clave del total estructural (ebitda, util_neta…) — la usa el Panel
 };
 
 // Totales estructurales del ER real (los detalles se leen por cuenta PUC).
-// Exportada para el Cockpit (solo lectura, misma fuente única).
+// Exportada para el Panel (solo lectura, misma fuente única).
 export function realFormula(f: string, etq: string, modo: "acum" | "mes"): number {
   const v = (c: string) => (modo === "acum" ? D.ytd(etq, c) : D.fact(etq, c));
   const dep = v("5160"), amort = v("5165");

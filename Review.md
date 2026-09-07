@@ -36,7 +36,7 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
 
 ## 2. Principios de diseño
 
-### 2.1 Cockpit — herramienta de comunicación para la Junta (no un dashboard de analista)
+### 2.1 Panel — herramienta de comunicación para la Junta (no un dashboard de analista)
 - **"Si un miembro de Junta necesita que le expliquen el gráfico, el gráfico fracasó."**
   Claridad **sobre** sofisticación. Un gráfico simple que se entiende en 5 segundos gana
   siempre a uno complejo que se ve "elegante".
@@ -58,7 +58,7 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   **Rojo** = solo lo importante/crítico. **Sin amarillos ni naranjas permanentes.**
 
 ### 2.3 Un lugar para cada cosa
-- **Cockpit** = comunicación ejecutiva (la reunión de Junta, en orden; misma estructura que
+- **Panel** = comunicación ejecutiva (la reunión de Junta, en orden; misma estructura que
   tendrá el PDF). **Estados Financieros** = las cifras y la estructura, para el detalle.
   **Análisis** (ex-Dashboard) = la caja de herramientas profunda del analista. Sin duplicar
   el mismo contenido en dos módulos.
@@ -78,7 +78,7 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
 - [ ] Lint sin hallazgos.
 - [ ] Motores sin cambios de lógica (revisar `git diff` de `src/lib`).
 - [ ] Cifras del ER **idénticas** a antes del cambio (app corriendo).
-- [ ] Rutas clave responden: `cockpit`, `estados/*`, `portafolio`, `balances` → 200; rutas eliminadas → 404.
+- [ ] Rutas clave responden: `panel`, `estados/*`, `portafolio`, `balances` → 200; rutas eliminadas → 404.
 - [ ] Sin errores de consola.
 - [ ] Verificado en el navegador — o, si el screenshot se cuelga en el entorno, por `curl` +
       texto de la página + estilos computados (`javascript_tool`).
@@ -105,7 +105,7 @@ Antes de dar por terminado un módulo:
 ## 5. Flujo de trabajo
 
 - Rama → commit → build/verificar → PR. **El usuario aprueba y mergea.** Para el trabajo de
-  diseño del Cockpit y los estados pidió explícitamente **no mergear sin su aprobación**.
+  diseño del Panel y los estados pidió explícitamente **no mergear sin su aprobación**.
 - Confirmar que **todos** los commits llegaron a `origin` antes de mergear (una vez un push
   parcial dejó un commit fuera del PR).
 
@@ -115,18 +115,18 @@ Antes de dar por terminado un módulo:
 
 > Actualizar tras cada sesión.
 
-### Cockpit
+### Panel
 - **APROBADO (2026-09-05).** Tras tres direcciones rechazadas —panel genérico, enfoque
   editorial (*"me parece un periódico… muy zombie"*) y los activos como lista de cuentas
   (*"no es algo que uno entienda al instante con solo verlo"*)— la cuarta quedó aprobada:
-  lenguaje de tarjetas + `BalanceVisual` + `BarrasCobertura`. **El Cockpit se queda.**
+  lenguaje de tarjetas + `BalanceVisual` + `BarrasCobertura`. **El Panel se queda.**
   Falta solo el visto bueno explícito del usuario para mergear el PR#26.
-- **Dos visiones para la Junta, no una que reemplaza a la otra**: el **Cockpit** es la
+- **Dos visiones para la Junta, no una que reemplaza a la otra**: el **Panel** es la
   pantalla de la reunión; el **Informe de Junta** es el documento de 7 páginas que se
   envía antes y termina en PDF. Regla que los mantiene honestos: **una sola fuente de
   cifras, dos presentaciones**. Si un número difiere entre los dos, es un bug — nunca
-  "dos versiones". El Cockpit ya no alimenta el PDF: su contrato se renombró a
-  `construirCockpit()` / `type Cockpit` para no chocar con el `Informe` del informe.
+  "dos versiones". El Panel ya no alimenta el PDF: su contrato se renombró a
+  `construirPanel()` / `type Panel` para no chocar con el `Informe` del informe.
 - Lección de esas tres iteraciones: **cada bloque debe abrir con una imagen que se
   explique sola**. Una cifra bien maquetada no sustituye a un gráfico; dos barras a la
   misma escala comunican más que un porcentaje bien calculado.
@@ -158,15 +158,15 @@ Antes de dar por terminado un módulo:
 - **URGENTE — rotar la clave de Neon.** Quedó expuesta en un chat desde julio y el repo
   es público. No depende de ninguna otra decisión; hacerlo antes que cualquier función
   nueva, y actualizar `.env.local` y Vercel.
-- **Informe PDF** para la Junta, generado desde el mismo objeto `Informe` del Cockpit
+- **Informe PDF** para la Junta, generado desde el mismo objeto `Informe` del Panel
   (el contrato único ya está listo para reutilizarse). Depende del veredicto de diseño.
-- Propagar el lenguaje visual nuevo del Cockpit al resto de estados y a Análisis.
+- Propagar el lenguaje visual nuevo del Panel al resto de estados y a Análisis.
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
-  No los introdujo el trabajo del Cockpit ni el del Informe, pero incumplen el checklist
+  No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
   de §3 — limpiarlos en un PR aparte, sin mezclarlos con trabajo de producto.
 
 ---

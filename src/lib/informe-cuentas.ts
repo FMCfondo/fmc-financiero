@@ -5,7 +5,7 @@
  * PUC. Esa correspondencia vivía solo dentro de las fórmulas del Excel; se dedujo
  * conciliando contra el Excel certificado y el usuario la confirmó el 2026-09-05.
  * Antes de este archivo estaba duplicada entre la ruta de conciliación y el
- * Cockpit, que es como la misma línea acababa valiendo dos cosas distintas.
+ * Panel, que es como la misma línea acababa valiendo dos cosas distintas.
  *
  * NO CALCULA NADA NUEVO: suma y resta cifras que los motores ya validaron. Los
  * motores (statements, ejecucion, inversiones, data) no se tocan.

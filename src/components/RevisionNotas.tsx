@@ -6,7 +6,7 @@ import { fmtCont, fmtCOP } from "@/lib/format";
 import { Check, Loader2, AlertTriangle } from "lucide-react";
 
 /* Revisión del cierre: por cada movimiento fuera de lo habitual, el analista
-   escribe la explicación. Esa nota es la que verá la Junta en el Cockpit. */
+   escribe la explicación. Esa nota es la que verá la Junta en el Panel. */
 
 export type ItemRevision = {
   codigo: string; nombre: string; valor: number; media: number;
@@ -103,7 +103,7 @@ function Fila({ anio, mes, it }: { anio: number; mes: number; it: ItemRevision }
             {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             {pending ? "Guardando…" : "Guardar nota"}
           </button>
-          {guardado === "ok" && !sucio && <span className="text-xs text-pos inline-flex items-center gap-1"><Check size={13} /> Aparecerá en el Cockpit</span>}
+          {guardado === "ok" && !sucio && <span className="text-xs text-pos inline-flex items-center gap-1"><Check size={13} /> Aparecerá en el Panel</span>}
           {guardado === "err" && <span className="text-xs text-neg inline-flex items-center gap-1"><AlertTriangle size={13} /> No se pudo guardar</span>}
           {!txt.trim() && it.notaPrevia && <span className="text-xs text-faint">Guardar con el campo vacío elimina la nota.</span>}
         </div>

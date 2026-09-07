@@ -28,20 +28,20 @@ export default function Sidebar() {
   const items = NAV.filter((i) => visibleEn(i, modo));
 
   return (
-    <aside className="group fixed left-0 top-0 z-40 h-screen w-16 hover:w-[248px] overflow-hidden brand-grad text-white transition-[width] duration-200 ease-out shadow-xl shadow-[#0b1f52]/40 flex flex-col">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-[248px] overflow-hidden brand-grad text-white shadow-xl shadow-[#0b1f52]/40 flex flex-col">
       {/* Logo */}
       <div className="h-16 flex items-center shrink-0 border-b border-white/10">
         <span className="w-16 flex justify-center shrink-0">
           <span className="h-8 w-8 rounded-lg bg-white/15 grid place-items-center text-base font-extrabold">F</span>
         </span>
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap leading-tight">
+        <span className="whitespace-nowrap leading-tight">
           <span className="block font-semibold text-sm">FMC Financiero</span>
           <span className="block text-[11px] text-white/60">Fondo Mutuo · S.A.S.</span>
         </span>
       </div>
 
       {/* Conmutador de modo: Reuniones (lo que ve la Junta) / Operación (tu trabajo) */}
-      <div className="px-3 pt-3 pb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="px-3 pt-3 pb-1">
         <div className="flex gap-1 p-1 rounded-lg bg-black/20">
           {MODOS.map((m) => (
             <button
@@ -76,14 +76,14 @@ export default function Sidebar() {
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-sky" />}
                 <Icon size={20} />
               </span>
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-sm">{label}</span>
+              <span className="whitespace-nowrap text-sm">{label}</span>
             </Link>
           );
         })}
       </nav>
 
       <div className="h-10 flex items-center shrink-0 border-t border-white/10">
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-[11px] text-white/50 pl-4">
+        <span className="whitespace-nowrap text-[11px] text-white/50 pl-4">
           FMC Financiero · v1
         </span>
       </div>

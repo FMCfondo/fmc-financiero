@@ -7,7 +7,7 @@ import { ArrowRight, Info } from "lucide-react";
 
 /* REVISIÓN DEL CIERRE — el paso que sigue a cargar el balance.
    La app señala lo que se salió de lo habitual y pide la explicación; lo que se
-   escribe aquí es lo que la Junta lee en el Cockpit. Vive en Operación. */
+   escribe aquí es lo que la Junta lee en el Panel. Vive en Operación. */
 
 export default async function RevisionPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
@@ -32,8 +32,8 @@ export default async function RevisionPage({ searchParams }: { searchParams: Pro
           <h1 className="text-xl font-semibold tracking-tight">Revisión del cierre</h1>
           <p className="text-sm text-muted mt-0.5">{etqNombre(etq)} · movimientos fuera de lo habitual</p>
         </div>
-        <Link href={`/cockpit${p ? `?p=${p}` : ""}`} className="text-xs text-accent2 hover:underline inline-flex items-center gap-1">
-          Ver el Cockpit <ArrowRight size={12} />
+        <Link href={`/panel${p ? `?p=${p}` : ""}`} className="text-xs text-accent2 hover:underline inline-flex items-center gap-1">
+          Ver el Panel <ArrowRight size={12} />
         </Link>
       </div>
 

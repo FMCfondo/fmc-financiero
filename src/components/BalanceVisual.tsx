@@ -1,5 +1,5 @@
 "use client";
-import type { ItemComp } from "@/lib/cockpit";
+import type { ItemComp } from "@/lib/panel";
 
 /* BALANCE VISUAL — dos columnas enfrentadas, a la misma altura.
    De un vistazo se ve (1) que el activo iguala al pasivo más el patrimonio,

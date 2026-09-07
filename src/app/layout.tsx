@@ -25,10 +25,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="es" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <Suspense fallback={<div className="fixed left-0 top-0 z-40 h-screen w-16 brand-grad" />}>
+        <Suspense fallback={<div className="fixed left-0 top-0 z-40 h-screen w-[248px] brand-grad" />}>
           <Sidebar />
         </Suspense>
-        <div className="pl-16 min-h-screen flex flex-col">
+        <div className="pl-[248px] min-h-screen flex flex-col">
           <header className="h-16 shrink-0 border-b border-line bg-panel/80 backdrop-blur sticky top-0 z-20 flex items-center justify-between px-6">
             <div className="flex items-center gap-2 text-sm text-muted">
               <span className="hidden sm:inline text-faint">Entidad</span>

@@ -64,7 +64,7 @@ export function fmtCompact(n: number): string {
   return `${s}${num0.format(a)}`;
 }
 
-/* Cifra ejecutiva del Cockpit: "COP 30,1 M" para montos grandes; pesos completos
+/* Cifra ejecutiva del Panel: "COP 30,1 M" para montos grandes; pesos completos
    para montos pequeños. El valor exacto va SIEMPRE en el title (hover). */
 export function fmtM(n: number): string {
   const a = Math.abs(n || 0);

@@ -6,7 +6,7 @@
    · OPERACIÓN — el trabajo del analista: cargar el balance, revisar el mes,
      analizar en profundidad y mantener la configuración.
 
-   El Cockpit vive en los dos, porque es el resumen del que arranca cualquiera
+   El Panel vive en los dos, porque es el resumen del que arranca cualquiera
    de las dos conversaciones. */
 export type ModoApp = "reuniones" | "operacion";
 export const MODO_DEFAULT: ModoApp = "reuniones";
@@ -24,7 +24,7 @@ export const MODOS: { id: ModoApp; label: string; desc: string }[] = [
 export type ItemNav = { href: string; match: string | string[]; label: string; icono: string; modos?: ModoApp[] };
 
 export const NAV: ItemNav[] = [
-  { href: "/cockpit", match: "/cockpit", label: "Cockpit Ejecutivo", icono: "Gauge" },
+  { href: "/panel", match: "/panel", label: "Panel Ejecutivo", icono: "Gauge" },
   /* Una sola puerta al módulo: las cuatro pestañas se ven desde dentro. Antes había
      además una entrada suelta a «Situación Financiera», que llevaba a la misma sección
      y hacía saltar el resaltado entre dos entradas al cambiar de pestaña — parecían

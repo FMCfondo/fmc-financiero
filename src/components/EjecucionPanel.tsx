@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import type { FilaEj } from "@/lib/cockpit";
+import type { FilaEj } from "@/lib/panel";
 
-/* Ejecución presupuestal del Cockpit: Ejecutado · Plan anual · % ejecutado ·
+/* Ejecución presupuestal del Panel: Ejecutado · Plan anual · % ejecutado ·
    vs. ritmo. La comparación es contra el plan ANUAL con el tiempo transcurrido
    como referencia (la marca en la barra), no contra el reparto mensual. */
 
@@ -12,11 +12,11 @@ const mm = (v: number) => v.toLocaleString("es-CO", {
   maximumFractionDigits: Math.abs(v) >= 100 ? 0 : 1,
 });
 
-export default function EjecucionCockpit({ filas, tiempoPct }: { filas: FilaEj[]; tiempoPct: number }) {
+export default function EjecucionPanel({ filas, tiempoPct }: { filas: FilaEj[]; tiempoPct: number }) {
   const [abierto, setAbierto] = useState<Record<string, boolean>>({});
   return (
     <div className="overflow-x-auto">
-      <table className="ck-tbl" style={{ minWidth: 620 }}>
+      <table className="ejec-tbl" style={{ minWidth: 620 }}>
         <thead>
           <tr>
             <th>Concepto</th><th>Ejecutado</th><th>Plan anual</th><th>% ejec.</th><th>vs. ritmo</th>
@@ -54,7 +54,7 @@ function Fila({ f, tiempoPct, has, open, onToggle }: {
     <tr className={cls}>
       <td>
         {has ? (
-          <button onClick={onToggle} className={`ck-exp ${open ? "on" : ""}`} aria-expanded={open}>
+          <button onClick={onToggle} className={`ejec-exp ${open ? "on" : ""}`} aria-expanded={open}>
             <ChevronRight className="cv" size={12} />{f.etiqueta}
           </button>
         ) : f.etiqueta}
@@ -62,9 +62,9 @@ function Fila({ f, tiempoPct, has, open, onToggle }: {
       <td>{f.real === null ? "—" : mm(f.real)}</td>
       <td className="text-faint">{f.planAnual ? mm(f.planAnual) : "—"}</td>
       <td>
-        <span className="ck-pc">
+        <span className="ejec-pc">
           <b>{f.pct === null ? "—" : `${f.pct.toFixed(0)}%`}</b>
-          <span className="ck-mb">
+          <span className="ejec-mb">
             <i style={{ width: `${Math.min(Math.max(f.pct ?? 0, 0), 100)}%`, background: col }} />
             <u style={{ left: `${tiempoPct}%` }} />
           </span>

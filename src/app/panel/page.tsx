@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { ensureLoaded, resolverEtq, leerNotas, type NotaPeriodo } from "@/lib/data";
-import { construirCockpit, TERMINOS, type Modo, type Cockpit } from "@/lib/cockpit";
-import type { IndCockpit } from "@/lib/indicadores";
+import { construirPanel, TERMINOS, type Modo, type Panel } from "@/lib/panel";
+import type { IndPanel } from "@/lib/indicadores";
 import { fmtCOP, fmtPct, mesNombre } from "@/lib/format";
 import { C } from "@/components/Charts";
-import { BarrasCobertura, Cobertura, Mini, DosVias, Linea } from "@/components/CockpitCharts";
+import { BarrasCobertura, Cobertura, Mini, DosVias, Linea } from "@/components/PanelCharts";
 import BalanceVisual from "@/components/BalanceVisual";
-import EjecucionCockpit from "@/components/EjecucionCockpit";
+import EjecucionPanel from "@/components/EjecucionPanel";
 import { FileSpreadsheet, Landmark, Waves, Layers, Wallet, Target, ArrowRight } from "lucide-react";
 
-/* COCKPIT EJECUTIVO — la reunión de Junta, en orden.
+/* PANEL EJECUTIVO — la reunión de Junta, en orden.
    Principio rector: si a un miembro de Junta hay que explicarle el gráfico, el
    gráfico fracasó. Cada bloque abre con una imagen que se entiende sola; las
    cifras acompañan, no encabezan. El informe de Junta NO se arma con este objeto:
@@ -23,14 +23,14 @@ const Mill = ({ v }: { v: number }) => (
   <>{mm(v)}<span className="text-[0.5em] font-semibold text-faint ml-1 align-baseline">Mill.</span></>
 );
 
-export default async function CockpitPage({ searchParams }: {
+export default async function PanelPage({ searchParams }: {
   searchParams: Promise<{ p?: string; modo?: string }>;
 }) {
   const { p, modo: qModo } = await searchParams;
   await ensureLoaded();
   const etq = resolverEtq(p);
   const modo: Modo = qModo === "mes" ? "mes" : "acum";
-  const inf = construirCockpit(etq, modo);
+  const inf = construirPanel(etq, modo);
   const notas = await leerNotas(inf.periodo.anio, inf.periodo.mes);
 
   return (
@@ -48,13 +48,13 @@ export default async function CockpitPage({ searchParams }: {
 }
 
 /* ---------- cabecera ---------- */
-function Encabezado({ inf, p }: { inf: Cockpit; p?: string }) {
+function Encabezado({ inf, p }: { inf: Panel; p?: string }) {
   const href = (m: Modo) => {
     const q = new URLSearchParams();
     if (p) q.set("p", p);
     if (m !== "acum") q.set("modo", m);
     const s = q.toString();
-    return `/cockpit${s ? "?" + s : ""}`;
+    return `/panel${s ? "?" + s : ""}`;
   };
   const chip = (act: boolean) =>
     `px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
@@ -62,7 +62,7 @@ function Encabezado({ inf, p }: { inf: Cockpit; p?: string }) {
   return (
     <div className="flex items-end justify-between gap-4 flex-wrap">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Cockpit Ejecutivo</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Panel Ejecutivo</h1>
         <p className="text-sm text-muted mt-0.5">{inf.periodo.nombre} · {inf.tramoLabel} · millones de pesos</p>
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -87,7 +87,7 @@ function Titulo({ children, sub, extra }: { children: React.ReactNode; sub?: str
 }
 
 /* ---------- portada: el estado y la misión ---------- */
-function Portada({ inf }: { inf: Cockpit }) {
+function Portada({ inf }: { inf: Panel }) {
   const m = inf.mision;
   const grave = inf.estado === "grave";
   const tono = grave ? "bg-neg" : inf.estado === "vigilar" ? "bg-gold" : "bg-pos";
@@ -138,7 +138,7 @@ function Portada({ inf }: { inf: Cockpit }) {
 }
 
 /* ---------- balance ---------- */
-function Balance({ inf }: { inf: Cockpit }) {
+function Balance({ inf }: { inf: Panel }) {
   const [act, pas, pat] = inf.balance;
   return (
     <div className="card p-6">
@@ -196,7 +196,7 @@ function Balance({ inf }: { inf: Cockpit }) {
   );
 }
 
-function Pildora({ i }: { i: IndCockpit }) {
+function Pildora({ i }: { i: IndPanel }) {
   const col = i.nivel === "bien" ? "text-pos" : i.nivel === "mal" ? "text-neg" : i.nivel === "regular" ? "text-gold" : "text-fg";
   const v = i.formato === "pct" ? fmtPct(i.valor) : i.formato === "veces" ? i.valor.toFixed(2).replace(".", ",") : mm(i.valor / 1e6);
   return (
@@ -210,7 +210,7 @@ function Pildora({ i }: { i: IndCockpit }) {
 }
 
 /* ---------- lo que genera el negocio ---------- */
-function Negocio({ inf }: { inf: Cockpit }) {
+function Negocio({ inf }: { inf: Panel }) {
   const c = inf.comisiones, r = inf.resultado;
   return (
     <div className="card p-6">
@@ -273,14 +273,14 @@ function Embudo({ k, v, sub, barra, color, destacado, proj }: {
 }
 
 /* ---------- ejecución ---------- */
-function Ejecucion({ inf }: { inf: Cockpit }) {
+function Ejecucion({ inf }: { inf: Panel }) {
   return (
     <div className="card p-6">
       <Titulo sub={`el tiempo transcurrido (${inf.tiempoPct.toFixed(0)}% del año) marca el ritmo esperado en cada barra`}
         extra={<span className="text-[11px] uppercase tracking-wider text-faint">{inf.modo === "acum" ? "vs. plan anual" : "vs. ritmo mensual"}</span>}>
         Ejecución presupuestal
       </Titulo>
-      <EjecucionCockpit filas={inf.ejecucion} tiempoPct={inf.tiempoPct} />
+      <EjecucionPanel filas={inf.ejecucion} tiempoPct={inf.tiempoPct} />
       <p className="text-[11.5px] text-faint mt-4 leading-relaxed max-w-[80ch]">
         Se compara contra el <b className="text-muted">plan anual</b> —y no contra el reparto mensual— porque el presupuesto
         se distribuyó sin una estacionalidad conocida. «vs. ritmo» es cuánto se lleva por encima o por debajo de lo esperado
@@ -291,7 +291,7 @@ function Ejecucion({ inf }: { inf: Cockpit }) {
 }
 
 /* ---------- trayectoria ---------- */
-function Trayectoria({ inf }: { inf: Cockpit }) {
+function Trayectoria({ inf }: { inf: Panel }) {
   const t = inf.trayectoria;
   const graficos = [
     { t: "Ingreso de operación y gastos", s: "la distancia entre las líneas es el EBITDA",

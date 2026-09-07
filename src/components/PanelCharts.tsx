@@ -1,7 +1,7 @@
 "use client";
 import { C } from "@/components/Charts";
 
-/* Gráficos del Cockpit — SVG a mano, sin librería: son pocos, muy específicos y
+/* Gráficos del Panel — SVG a mano, sin librería: son pocos, muy específicos y
    así se controla exactamente la densidad y las etiquetas. Reglas de la casa:
    valores SIEMPRE visibles (nunca hay que pasar el cursor para entender),
    sin tooltips, sin eje Y, y el color solo cuando significa algo. */

@@ -155,27 +155,27 @@ body {
 .ejec-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; }
 
 /* ===================================================================
-   COCKPIT EJECUTIVO — tabla de ejecución presupuestal.
-   El resto del Cockpit usa las tarjetas y utilidades de la app; aquí solo
+   PANEL EJECUTIVO — tabla de ejecución presupuestal.
+   El resto del Panel usa las tarjetas y utilidades de la app; aquí solo
    viven los estilos de la tabla, que necesita reglas contables propias.
    =================================================================== */
-.ck-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.ck-tbl th { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+.ejec-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ejec-tbl th { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--color-faint); text-align: right; padding: 0 0 9px 14px; border-bottom: 1.5px solid var(--color-royal2); }
-.ck-tbl th:first-child { text-align: left; padding-left: 0; }
-.ck-tbl td { padding: 9px 0 9px 14px; border-bottom: 1px solid var(--color-line-soft);
+.ejec-tbl th:first-child { text-align: left; padding-left: 0; }
+.ejec-tbl td { padding: 9px 0 9px 14px; border-bottom: 1px solid var(--color-line-soft);
   text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ck-tbl td:first-child { text-align: left; padding-left: 0; font-variant-numeric: normal; }
-.ck-tbl tr.tt td { background: var(--color-card2); font-weight: 700; }
-.ck-tbl tr.gr td { border-top: 1.5px solid var(--color-fg); border-bottom: 3px double var(--color-fg);
+.ejec-tbl td:first-child { text-align: left; padding-left: 0; font-variant-numeric: normal; }
+.ejec-tbl tr.tt td { background: var(--color-card2); font-weight: 700; }
+.ejec-tbl tr.gr td { border-top: 1.5px solid var(--color-fg); border-bottom: 3px double var(--color-fg);
   font-weight: 800; font-size: 14px; background: var(--color-card2); }
-.ck-tbl tr.dt td { color: var(--color-muted); font-size: 12.5px; }
-.ck-tbl tr.dt td:first-child { padding-left: 24px; }
-.ck-exp { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: inherit;
+.ejec-tbl tr.dt td { color: var(--color-muted); font-size: 12.5px; }
+.ejec-tbl tr.dt td:first-child { padding-left: 24px; }
+.ejec-exp { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: inherit;
   font: inherit; cursor: pointer; padding: 0; }
-.ck-exp .cv { width: 12px; height: 12px; color: var(--color-faint); transition: transform 0.18s ease; flex: none; }
-.ck-exp.on .cv { transform: rotate(90deg); }
-.ck-pc { display: inline-flex; align-items: center; gap: 9px; justify-content: flex-end; }
-.ck-mb { position: relative; width: 54px; height: 4px; border-radius: 99px; background: var(--color-line); flex: none; }
-.ck-mb i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; }
-.ck-mb u { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--color-royal); opacity: 0.6; text-decoration: none; }
+.ejec-exp .cv { width: 12px; height: 12px; color: var(--color-faint); transition: transform 0.18s ease; flex: none; }
+.ejec-exp.on .cv { transform: rotate(90deg); }
+.ejec-pc { display: inline-flex; align-items: center; gap: 9px; justify-content: flex-end; }
+.ejec-mb { position: relative; width: 54px; height: 4px; border-radius: 99px; background: var(--color-line); flex: none; }
+.ejec-mb i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; }
+.ejec-mb u { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--color-royal); opacity: 0.6; text-decoration: none; }

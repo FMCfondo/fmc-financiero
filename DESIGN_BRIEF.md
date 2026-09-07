@@ -50,7 +50,7 @@ Barra lateral fija (rail de 64 px que se expande al pasar el cursor) + cabecera
 superior fija con la entidad y el selector de período.
 
 ```
-Cockpit Ejecutivo        /cockpit          ← portada; "/" redirige aquí
+Panel Ejecutivo        /panel          ← portada; "/" redirige aquí
 Estados Financieros      /estados/…
   ├─ Estados Financieros  ER · ESF · Flujo · Cambios en el Patrimonio
   │    └─ (por estado)    Estado | Análisis Vertical | Análisis Horizontal |
@@ -64,7 +64,7 @@ Provisión de Impuesto    /impuesto         parámetros del cálculo de renta
 
 Hay **tres niveles de navegación**: barra lateral → pestañas de módulo → pestañas de vista.
 
-### 3.1 Cockpit Ejecutivo — la pantalla más importante
+### 3.1 Panel Ejecutivo — la pantalla más importante
 No es un dashboard: es **la reunión de Junta, en orden**. Un solo scroll narrativo,
 sin pestañas, con nueve secciones numeradas. Este mismo orden será el del informe
 PDF que se generará después.
@@ -174,7 +174,7 @@ hoja de cálculo decorada ni como un tablero de BI recargado.
 - **Densidad y espaciado**: mucha información por pantalla sin sensación de apretado.
 - **Jerarquía de las tres capas de navegación** (lateral → módulo → vista): hoy
   funciona pero compite visualmente.
-- **Tarjetas KPI**: 8 tarjetas seguidas en el Cockpit; falta jerarquía entre la métrica
+- **Tarjetas KPI**: 8 tarjetas seguidas en el Panel; falta jerarquía entre la métrica
   ancla (razón de cobertura) y las demás.
 - **Identidad**: la marca hoy es un degradado azul rey y poco más. Falta un carácter
   propio que no dependa solo del color.
@@ -196,7 +196,7 @@ significado.
 4. **Tarjetas**: KPI, indicador interpretado, panel de contenido.
 5. **Navegación**: los tres niveles y sus estados.
 6. **Gráficos**: paleta de series, tratamiento de ejes/etiquetas, mini-tendencias.
-7. Mockup de dos pantallas clave: **Cockpit Ejecutivo** y **Estado de Resultados**.
+7. Mockup de dos pantallas clave: **Panel Ejecutivo** y **Estado de Resultados**.
 
 ---
 

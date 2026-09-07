@@ -4,7 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { LineChart, FileSpreadsheet } from "lucide-react";
 
 // "Análisis" = la caja de herramientas profunda del analista (composiciones,
-// tendencias multi-año, indicadores mes a mes). La vista ejecutiva es /cockpit
+// tendencias multi-año, indicadores mes a mes). La vista ejecutiva es /panel
 // y el Portafolio tiene su propio acceso en la barra lateral.
 const TABS = [
   { id: "fin", href: "/estados/resultados", label: "Estados Financieros", icon: FileSpreadsheet },
