@@ -138,9 +138,16 @@ Antes de dar por terminado un módulo:
   manual o segunda ingesta) antes de mostrarlos.
 
 ### Informe de Junta (módulo nuevo, rama `feat/informe-junta`)
-- **Fase 0 hecha**: `/api/conciliacion` compara los motores contra el Excel certificado.
-  **52 de 52 cifras al peso**; ningún error de cálculo. Requiere el archivo de cifras de
-  control, que NO se versiona (cifras reales) — sin él la ruta responde 404 e inerte.
+- **LAS 7 PÁGINAS ESTÁN EN PANTALLA Y CONCILIADAS** contra el informe certificado de
+  julio 2026. Falta: las notas, el PDF y las barreras de exportación.
+- **El arnés `/api/conciliacion` hace 300 comparaciones**, todas en verde. Es la red de
+  seguridad del módulo: **antes de tocar cualquier composición de línea, correrlo**.
+  Requiere el archivo de cifras de control, que NO se versiona (cifras reales) — sin él la
+  ruta responde 404 e inerte.
+- La página 1 mezcla las bases de comparación **a propósito**: ingresos y gastos contra la
+  meta acumulada a la fecha, EBITDA y utilidad contra la anual. No "corregirlo".
+- La página 5 sale del **árbol del presupuesto**, no de una lista en el código: renombrar
+  una línea del informe se hace editando el presupuesto.
 - Las composiciones de línea del informe (qué cuentas forman «Clientes», «Pasivos
   estimados», «Ingresos de operación») **no coinciden con los grupos del PUC** y se
   dedujeron conciliando. Confirmadas por el usuario. Antes de tocarlas, correr la
@@ -164,6 +171,14 @@ Antes de dar por terminado un módulo:
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
+- **Módulo de presupuestos.** El editor de mapeo de cuentas ya existe (Estados Financieros
+  › Ejecución › «Editar mapeo de cuentas»). Falta poder **cargar el presupuesto de un año
+  nuevo** sin el script de Python y la consola: hará falta con el de 2027.
+- **Tasas del portafolio por período.** Los CDT tienen tasa fija y un solo campo es
+  correcto. Las fiducias y Bold rinden distinto cada mes, así que un campo único nunca
+  puede estar bien: un informe de julio consultado en octubre mostraría tasas de octubre.
+  Diseño acordado: tabla `inversion_tasa (inversión, año, mes, tasa)`, se llena en el
+  cierre junto a las notas, y si falta la del mes el informe imprime raya y bloquea el PDF.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
