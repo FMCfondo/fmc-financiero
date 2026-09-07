@@ -116,12 +116,17 @@ Antes de dar por terminado un módulo:
 > Actualizar tras cada sesión.
 
 ### Cockpit
-- **BLOQUEANTE — falta el veredicto del usuario sobre la dirección visual.** Van tres
-  direcciones rechazadas: panel genérico, enfoque editorial/informe (*"me parece un
-  periódico… muy zombie"*) y la presentación de activos como lista de cuentas con
-  porcentajes (*"no es algo que uno entienda al instante con solo verlo"*). La cuarta
-  —lenguaje de tarjetas + `BalanceVisual` + `BarrasCobertura`— está en el preview y
-  **no debe construirse el PDF encima hasta que la apruebe**.
+- **APROBADO (2026-09-05).** Tras tres direcciones rechazadas —panel genérico, enfoque
+  editorial (*"me parece un periódico… muy zombie"*) y los activos como lista de cuentas
+  (*"no es algo que uno entienda al instante con solo verlo"*)— la cuarta quedó aprobada:
+  lenguaje de tarjetas + `BalanceVisual` + `BarrasCobertura`. **El Cockpit se queda.**
+  Falta solo el visto bueno explícito del usuario para mergear el PR#26.
+- **Dos visiones para la Junta, no una que reemplaza a la otra**: el **Cockpit** es la
+  pantalla de la reunión; el **Informe de Junta** es el documento de 7 páginas que se
+  envía antes y termina en PDF. Regla que los mantiene honestos: **una sola fuente de
+  cifras, dos presentaciones**. Si un número difiere entre los dos, es un bug — nunca
+  "dos versiones". El Cockpit ya no alimenta el PDF: su contrato se renombró a
+  `construirCockpit()` / `type Cockpit` para no chocar con el `Informe` del informe.
 - Lección de esas tres iteraciones: **cada bloque debe abrir con una imagen que se
   explique sola**. Una cifra bien maquetada no sustituye a un gráfico; dos barras a la
   misma escala comunican más que un porcentaje bien calculado.
@@ -131,6 +136,19 @@ Antes de dar por terminado un módulo:
 - **KPIs propios del negocio que faltan**: *Cartera Garantizada* y *Valor de las Coberturas
   Vigentes* — **no existen en la contabilidad**; definir cómo capturarlos (dato mensual
   manual o segunda ingesta) antes de mostrarlos.
+
+### Informe de Junta (módulo nuevo, rama `feat/informe-junta`)
+- **Fase 0 hecha**: `/api/conciliacion` compara los motores contra el Excel certificado.
+  **52 de 52 cifras al peso**; ningún error de cálculo. Requiere el archivo de cifras de
+  control, que NO se versiona (cifras reales) — sin él la ruta responde 404 e inerte.
+- Las composiciones de línea del informe (qué cuentas forman «Clientes», «Pasivos
+  estimados», «Ingresos de operación») **no coinciden con los grupos del PUC** y se
+  dedujeron conciliando. Confirmadas por el usuario. Antes de tocarlas, correr la
+  conciliación.
+- **Pendiente**: guardar la composición de «Clientes» en la tabla `parametro` para que sea
+  editable desde Configuración cuando ese módulo exista (hoy no existe).
+- Las notas NO las escribe una IA: plantillas para el ~85% y el analista pone la causa.
+  Con una nota pendiente, el PDF queda bloqueado.
 
 ### Estados Financieros
 - Continuar el refinamiento de densidad tipográfica y comportamiento del scroll (sticky
@@ -146,6 +164,10 @@ Antes de dar por terminado un módulo:
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
+- **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
+  `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
+  No los introdujo el trabajo del Cockpit ni el del Informe, pero incumplen el checklist
+  de §3 — limpiarlos en un PR aparte, sin mezclarlos con trabajo de producto.
 
 ---
 

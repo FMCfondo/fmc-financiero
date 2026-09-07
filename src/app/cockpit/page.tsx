@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ensureLoaded, resolverEtq, leerNotas, type NotaPeriodo } from "@/lib/data";
-import { construirInforme, TERMINOS, type Modo, type Informe } from "@/lib/cockpit";
+import { construirCockpit, TERMINOS, type Modo, type Cockpit } from "@/lib/cockpit";
 import type { IndCockpit } from "@/lib/indicadores";
 import { fmtCOP, fmtPct, mesNombre } from "@/lib/format";
 import { C } from "@/components/Charts";
@@ -12,7 +12,8 @@ import { FileSpreadsheet, Landmark, Waves, Layers, Wallet, Target, ArrowRight } 
 /* COCKPIT EJECUTIVO — la reunión de Junta, en orden.
    Principio rector: si a un miembro de Junta hay que explicarle el gráfico, el
    gráfico fracasó. Cada bloque abre con una imagen que se entiende sola; las
-   cifras acompañan, no encabezan. El MISMO objeto `Informe` alimentará el PDF. */
+   cifras acompañan, no encabezan. El informe de Junta NO se arma con este objeto:
+   tiene su propio contrato en informe-tipos.ts. Los dos leen los mismos motores. */
 
 const mm = (v: number, d?: number) => {
   const k = d === undefined ? (Math.abs(v) >= 100 ? 0 : 1) : d;
@@ -29,7 +30,7 @@ export default async function CockpitPage({ searchParams }: {
   await ensureLoaded();
   const etq = resolverEtq(p);
   const modo: Modo = qModo === "mes" ? "mes" : "acum";
-  const inf = construirInforme(etq, modo);
+  const inf = construirCockpit(etq, modo);
   const notas = await leerNotas(inf.periodo.anio, inf.periodo.mes);
 
   return (
@@ -47,7 +48,7 @@ export default async function CockpitPage({ searchParams }: {
 }
 
 /* ---------- cabecera ---------- */
-function Encabezado({ inf, p }: { inf: Informe; p?: string }) {
+function Encabezado({ inf, p }: { inf: Cockpit; p?: string }) {
   const href = (m: Modo) => {
     const q = new URLSearchParams();
     if (p) q.set("p", p);
@@ -86,7 +87,7 @@ function Titulo({ children, sub, extra }: { children: React.ReactNode; sub?: str
 }
 
 /* ---------- portada: el estado y la misión ---------- */
-function Portada({ inf }: { inf: Informe }) {
+function Portada({ inf }: { inf: Cockpit }) {
   const m = inf.mision;
   const grave = inf.estado === "grave";
   const tono = grave ? "bg-neg" : inf.estado === "vigilar" ? "bg-gold" : "bg-pos";
@@ -137,7 +138,7 @@ function Portada({ inf }: { inf: Informe }) {
 }
 
 /* ---------- balance ---------- */
-function Balance({ inf }: { inf: Informe }) {
+function Balance({ inf }: { inf: Cockpit }) {
   const [act, pas, pat] = inf.balance;
   return (
     <div className="card p-6">
@@ -209,7 +210,7 @@ function Pildora({ i }: { i: IndCockpit }) {
 }
 
 /* ---------- lo que genera el negocio ---------- */
-function Negocio({ inf }: { inf: Informe }) {
+function Negocio({ inf }: { inf: Cockpit }) {
   const c = inf.comisiones, r = inf.resultado;
   return (
     <div className="card p-6">
@@ -272,7 +273,7 @@ function Embudo({ k, v, sub, barra, color, destacado, proj }: {
 }
 
 /* ---------- ejecución ---------- */
-function Ejecucion({ inf }: { inf: Informe }) {
+function Ejecucion({ inf }: { inf: Cockpit }) {
   return (
     <div className="card p-6">
       <Titulo sub={`el tiempo transcurrido (${inf.tiempoPct.toFixed(0)}% del año) marca el ritmo esperado en cada barra`}
@@ -290,7 +291,7 @@ function Ejecucion({ inf }: { inf: Informe }) {
 }
 
 /* ---------- trayectoria ---------- */
-function Trayectoria({ inf }: { inf: Informe }) {
+function Trayectoria({ inf }: { inf: Cockpit }) {
   const t = inf.trayectoria;
   const graficos = [
     { t: "Ingreso de operación y gastos", s: "la distancia entre las líneas es el EBITDA",

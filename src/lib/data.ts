@@ -51,10 +51,27 @@ let childrenMap = new Map<string, Cuenta[]>();
 let facts: Record<string, Record<string, number>> = {};
 let ready: Promise<void> | null = null;
 
+/* Cuenta del impuesto de renta CONTABILIZADO.
+ *
+ * NO es un gasto de operación para esta app. `provisionRenta()` estima el impuesto por
+ * su cuenta (RN2) con la estructura del analista — GMF al 50 %, no deducibles, anticipos —,
+ * así que dejar la 54 dentro de la clase 5 lo contaría DOS VECES: una como gasto y otra
+ * como provisión encima. El Excel del que salen estos estados tampoco la incluye en sus
+ * rangos de gasto; esto solo replica esa decisión.
+ *
+ * Se descuenta del TOTAL de la clase 5 y se saca del árbol de gastos. La cuenta sigue en
+ * `cuentas`, así que el balance de prueba la muestra igual: no se oculta un dato, se saca
+ * de un agregado donde no pertenece.
+ *
+ * Sin esto, el único mes con movimiento en la 54 (abr-2025, −151.725) descuadraba el
+ * balance de todo 2025 y hacía que la app no coincidiera con el Excel certificado. */
+export const CTA_IMPUESTO_RENTA = "54";
+
 function buildIndexes() {
   cuentaByCodigo = new Map(cuentas.map((c) => [c.codigo, c]));
   childrenMap = new Map();
   for (const c of cuentas) {
+    if (c.codigo === CTA_IMPUESTO_RENTA) continue;   // fuera del árbol de gastos
     if (c.padre) {
       const arr = childrenMap.get(c.padre) ?? [];
       arr.push(c);
@@ -106,6 +123,11 @@ async function loadFromNeon() {
   facts = {};
   for (const r of fa as any[]) {
     (facts[r.etiqueta] ??= {})[String(r.codigo_puc)] = Number(r.movimiento_mes);
+  }
+  // El impuesto contabilizado no engrosa el gasto: ver CTA_IMPUESTO_RENTA.
+  for (const etq of Object.keys(facts)) {
+    const imp = facts[etq][CTA_IMPUESTO_RENTA];
+    if (imp) facts[etq]["5"] = (facts[etq]["5"] ?? 0) - imp;
   }
   parametros = {};
   for (const r of pr as any[]) {

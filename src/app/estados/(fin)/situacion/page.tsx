@@ -48,8 +48,13 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
   const meses = mesesVista(etq, anio, nMeses);
   if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
   const m = esfMatrizArbol(meses);
-  const ult = m.labels.length - 1;
-  const cuadra = Math.abs(m.descuadre[ult]) < 1;
+  /* Se comprueban TODOS los meses a la vista, no solo el último: antes el rótulo
+     afirmaba "en todos los meses" mirando uno solo, y con feb y mar de 2025
+     descuadrados por el dato de origen decía que todo estaba bien. */
+  const descuadrados = m.labels
+    .map((etiqueta, i) => ({ etiqueta, valor: m.descuadre[i] }))
+    .filter((x) => Math.abs(x.valor) >= 1);
+  const cuadra = descuadrados.length === 0;
 
   return (
     <div className="space-y-3">
@@ -58,7 +63,9 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
         {!anio && <MesesSelector current={nMeses} />}
         <span className={`flex items-center gap-1.5 text-xs ${cuadra ? "text-pos" : "text-neg"}`}>
           {cuadra ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-          {cuadra ? "Ecuación contable: cuadra (A = P + K) en todos los meses" : `Descuadre: ${fmtNum(m.descuadre[ult])}`}
+          {cuadra
+            ? "Ecuación contable: cuadra (A = P + K) en todos los meses"
+            : `No cuadra en ${descuadrados.map((x) => x.etiqueta).join(", ")} — diferencia de ${fmtNum(descuadrados[0].valor)}`}
         </span>
       </div>
       <StatementMatrix
