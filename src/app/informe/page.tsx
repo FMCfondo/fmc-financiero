@@ -7,7 +7,8 @@
  * La hoja está acotada bajo `.informe`, así que no toca el resto de la app; al imprimir,
  * el bloque @media print esconde la barra lateral y la cabecera.
  */
-import { ensureLoaded, resolverEtq, sameMonthPrevYear, fact, ytd } from "@/lib/data";
+import type { Metadata } from "next";
+import { ensureLoaded, resolverEtq, periodo as periodoDe, sameMonthPrevYear, fact, ytd } from "@/lib/data";
 import { ING_FINANCIERO } from "@/lib/statements";
 import { construirInforme } from "@/lib/informe";
 import { mesNombre } from "@/lib/format";
@@ -17,9 +18,21 @@ import PaginaResultados from "./PaginaResultados";
 import PaginaGastos from "./PaginaGastos";
 import PaginaInteranual from "./PaginaInteranual";
 import PaginaPortafolio from "./PaginaPortafolio";
+import BarraInforme from "./BarraInforme";
 import "./informe.css";
 
 export const dynamic = "force-dynamic";
+
+/* El nombre del archivo que propone el navegador al guardar el PDF sale del
+ * <title>. Sin esto el informe de la Junta se descargaria como «FMC Financiero». */
+export async function generateMetadata({
+  searchParams,
+}: { searchParams: Promise<{ p?: string }> }): Promise<Metadata> {
+  const sp = await searchParams;
+  await ensureLoaded();
+  const p = periodoDe(resolverEtq(sp.p));
+  return { title: `Informe de Junta ${mesNombre[p.mes].toUpperCase()} ${p.anio} - FMC S.A.S.` };
+}
 
 export default async function InformePage({
   searchParams,
@@ -40,63 +53,66 @@ export default async function InformePage({
   const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
 
   return (
-    <div className="informe">
-      <PaginaResumen
-        periodo={periodo}
-        corte={inf.periodo.corte}
-        rangoMeses={rango}
-        tarjetas={inf.resumen.tarjetas}
-        evolucion={inf.resumen.evolucion}
-        notas={inf.resumen.notas}
-      />
-      <PaginaBalance
-        titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
-        etiquetasMeses={inf.balanceActivos.etiquetasMeses}
-        filas={inf.balanceActivos.filas}
-        {...comun}
-      />
-      <PaginaBalance
-        titulo="BALANCE GENERAL ADMINISTRATIVO · PASIVOS Y PATRIMONIO"
-        etiquetasMeses={inf.balancePasivos.etiquetasMeses}
-        filas={inf.balancePasivos.filas}
-        {...comun}
-      />
-      <PaginaResultados
-        periodo={periodo}
-        corte={inf.periodo.corte}
-        anio={inf.periodo.anio}
-        mesNombre={mesNombre[inf.periodo.mes]}
-        etiquetasMeses={inf.resultados.etiquetasMeses}
-        filas={inf.resultados.filas}
-      />
-      <PaginaGastos
-        periodo={periodo}
-        corte={inf.periodo.corte}
-        mesActual={mesNombre[inf.periodo.mes]}
-        totalMes={gAdmin?.mes ?? 0}
-        totalAcum={gAdmin?.acumulado ?? 0}
-        totalPptoMes={gAdmin?.pptoMes ?? null}
-        totalPptoAcum={gAdmin?.pptoAcumulado ?? null}
-        totalPptoAnual={gAdmin?.pptoAnual ?? null}
-        filas={inf.gastos.filas}
-      />
-      <PaginaInteranual
-        periodo={periodo}
-        corte={inf.periodo.corte}
-        mesActual={`${mesNombre[inf.periodo.mes]} ${inf.periodo.anio}`}
-        mesAnterior={mesIA}
-        disponible={inf.interanual.disponible}
-        motivo={inf.interanual.motivo}
-        filas={inf.interanual.filas}
-      />
-      <PaginaPortafolio
-        periodo={periodo}
-        corte={inf.periodo.corte}
-        mesActual={mesNombre[inf.periodo.mes]}
-        p={inf.portafolio}
-        rendimientoMes={fact(etq, ING_FINANCIERO)}
-        rendimientoAcum={ytd(etq, ING_FINANCIERO)}
-      />
-    </div>
+    <>
+      <BarraInforme periodo={periodo} />
+      <div className="informe">
+        <PaginaResumen
+          periodo={periodo}
+          corte={inf.periodo.corte}
+          rangoMeses={rango}
+          tarjetas={inf.resumen.tarjetas}
+          evolucion={inf.resumen.evolucion}
+          notas={inf.resumen.notas}
+        />
+        <PaginaBalance
+          titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
+          etiquetasMeses={inf.balanceActivos.etiquetasMeses}
+          filas={inf.balanceActivos.filas}
+          {...comun}
+        />
+        <PaginaBalance
+          titulo="BALANCE GENERAL ADMINISTRATIVO · PASIVOS Y PATRIMONIO"
+          etiquetasMeses={inf.balancePasivos.etiquetasMeses}
+          filas={inf.balancePasivos.filas}
+          {...comun}
+        />
+        <PaginaResultados
+          periodo={periodo}
+          corte={inf.periodo.corte}
+          anio={inf.periodo.anio}
+          mesNombre={mesNombre[inf.periodo.mes]}
+          etiquetasMeses={inf.resultados.etiquetasMeses}
+          filas={inf.resultados.filas}
+        />
+        <PaginaGastos
+          periodo={periodo}
+          corte={inf.periodo.corte}
+          mesActual={mesNombre[inf.periodo.mes]}
+          totalMes={gAdmin?.mes ?? 0}
+          totalAcum={gAdmin?.acumulado ?? 0}
+          totalPptoMes={gAdmin?.pptoMes ?? null}
+          totalPptoAcum={gAdmin?.pptoAcumulado ?? null}
+          totalPptoAnual={gAdmin?.pptoAnual ?? null}
+          filas={inf.gastos.filas}
+        />
+        <PaginaInteranual
+          periodo={periodo}
+          corte={inf.periodo.corte}
+          mesActual={`${mesNombre[inf.periodo.mes]} ${inf.periodo.anio}`}
+          mesAnterior={mesIA}
+          disponible={inf.interanual.disponible}
+          motivo={inf.interanual.motivo}
+          filas={inf.interanual.filas}
+        />
+        <PaginaPortafolio
+          periodo={periodo}
+          corte={inf.periodo.corte}
+          mesActual={mesNombre[inf.periodo.mes]}
+          p={inf.portafolio}
+          rendimientoMes={fact(etq, ING_FINANCIERO)}
+          rendimientoAcum={ytd(etq, ING_FINANCIERO)}
+        />
+      </div>
+    </>
   );
 }
