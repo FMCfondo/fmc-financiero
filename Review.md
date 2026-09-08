@@ -139,7 +139,31 @@ Antes de dar por terminado un módulo:
 
 ### Informe de Junta (módulo nuevo, rama `feat/informe-junta`)
 - **LAS 7 PÁGINAS ESTÁN EN PANTALLA Y CONCILIADAS** contra el informe certificado de
-  julio 2026. Falta: las notas, el PDF y las barreras de exportación.
+  julio 2026, **con sus notas y su PDF**. Falta: las tasas del portafolio por período
+  (hoy no bloquean la exportación porque el dato no existe todavía).
+- **El PDF sale del diálogo del navegador**, sobre la misma marcación de la pantalla.
+  No hay generador aparte a propósito: así el papel y la pantalla no pueden divergir.
+  El diálogo trae dos ajustes que estropean la hoja —márgenes y encabezados—, y la
+  barra los enuncia. El nombre del archivo sale del `<title>` (`generateMetadata`).
+- **CADA `.page` RECORTA EN SILENCIO** lo que no cabe (alto fijo + `overflow: hidden`).
+  Así se perdieron la fila de utilidad neta de la página 4 y la última fila de la 5,
+  sin que nada lo dijera. Dos defensas: los rótulos de grupo ya no dictan el ancho de
+  la tabla (era la causa), y la barra **mide las siete hojas al cargar y avisa** si
+  alguna se corta. **Verificar SIEMPRE imprimiendo de verdad**, no mirando la pantalla:
+  `chrome --headless=new --print-to-pdf`, y las páginas se leen con PyMuPDF (`fitz`),
+  que está instalado. La holgura vertical es escasa: la página 1 respira ~16 px y la 5
+  va a cero. Cualquier línea nueva hay que medirla.
+- Las notas se enganchan por **CLAVE, no por etiqueta** (`ClaveNota` en
+  informe-cuentas.ts): la etiqueta es texto que se imprime y puede reescribirse. Si la
+  clave falta, `construirInforme()` **lanza a propósito**.
+- La **causa** la escribe una persona en Operación › Revisión del cierre y se guarda en
+  `nota_periodo` contra una cuenta PUC; `CUENTAS_DE_LA_CAUSA` (informe.ts) dice qué
+  cuentas alimentan cada partida. Ojo: el costo de cobertura y dep/amort cuelgan del
+  grupo 51 pero **no** son gasto de administración — están excluidos.
+- **Hueco conocido**: solo tres partidas (Clientes, Impuestos por pagar, Gastos de
+  administración) pueden marcarse como pendientes. Una anomalía grande en una cuenta
+  que ninguna nota nombra —en agosto de 2026, los Certificados (1225)— no bloquea la
+  exportación. Si eso importa, hay que ampliar el mapa o cambiar la regla.
 - **El arnés `/api/conciliacion` hace 300 comparaciones**, todas en verde. Es la red de
   seguridad del módulo: **antes de tocar cualquier composición de línea, correrlo**.
   Requiere el archivo de cifras de control, que NO se versiona (cifras reales) — sin él la
