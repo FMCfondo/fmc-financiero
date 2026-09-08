@@ -14,13 +14,11 @@
  * y `overflow: hidden`, así que cuando el contenido no cabe se RECORTA EN SILENCIO.
  * Así se perdieron la fila de utilidad neta de la página 4 y la última fila de la
  * página 5, sin que nada lo dijera. Medir aquí convierte ese fallo mudo en un
- * aviso. No inhabilita el botón: una medición puede equivocarse y dejar a alguien
- * sin poder imprimir; lo que sí bloquea es una nota sin explicar, que es un hecho,
- * no una medida.
+ * aviso. Nada de lo que hay aquí inhabilita el botón: el usuario decidió que el PDF
+ * sale aunque falte una explicación (2026-09-08). La barra dice qué falta; decidir
+ * si se envía así es de quien lo envía.
  */
 import { useCallback, useEffect, useState } from "react";
-import EditorNotas from "./EditorNotas";
-import type { BloqueNota } from "@/lib/informe-tipos";
 
 /** Ancho de una hoja carta apaisada, en px de CSS. */
 const ANCHO_HOJA = 1056;
@@ -35,16 +33,13 @@ const NIVELES: { id: Zoom; label: string }[] = [
 
 type Props = {
   periodo: string;
-  anio: number;
-  mes: number;
-  comentarios: Record<BloqueNota, string>;
   /** Partidas que el detector marcó y nadie ha explicado todavía. */
   pendientes: string[];
   /** El portafolio cuadra contra las inversiones líquidas del balance. */
   portafolioConcilia: boolean;
 };
 
-export default function BarraInforme({ periodo, anio, mes, comentarios, pendientes, portafolioConcilia }: Props) {
+export default function BarraInforme({ periodo, pendientes, portafolioConcilia }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
 
   /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
@@ -106,7 +101,10 @@ export default function BarraInforme({ periodo, anio, mes, comentarios, pendient
         if (!madre) return;
         const cs = getComputedStyle(madre);
         const util = madre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-        if (t.getBoundingClientRect().width > util + 1) {
+        /* offsetWidth, NO getBoundingClientRect(): con el aumento de pantalla (zoom)
+           el rectángulo viene ampliado y clientWidth no, y comparar los dos marcaba
+           como cortada toda página con tabla. Las dos medidas de aquí van sin zoom. */
+        if (t.offsetWidth > util + 1) {
           const hoja = hojas.indexOf(t.closest<HTMLElement>(".page")!);
           if (hoja >= 0) malas.add(hoja + 1);
         }
@@ -136,7 +134,7 @@ export default function BarraInforme({ periodo, anio, mes, comentarios, pendient
     ...pendientes.map((p) => `falta la explicación de ${p}`),
     ...(portafolioConcilia ? [] : ["el portafolio no cuadra contra el balance"]),
   ];
-  const bloqueado = bloqueos.length > 0;
+  const avisar = bloqueos.length > 0;
 
   return (
     <div
@@ -178,21 +176,19 @@ export default function BarraInforme({ periodo, anio, mes, comentarios, pendient
           <button
             type="button"
             onClick={() => window.print()}
-            disabled={bloqueado}
-            className="shrink-0 rounded-md bg-royal px-4 py-2 text-sm font-semibold text-white transition hover:bg-royal2 disabled:cursor-not-allowed disabled:bg-faint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal"
+            className="shrink-0 rounded-md bg-royal px-4 py-2 text-sm font-semibold text-white transition hover:bg-royal2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-royal"
           >
             Descargar PDF
           </button>
         </div>
       </div>
 
-      <EditorNotas anio={anio} mes={mes} comentarios={comentarios} />
-
-      {bloqueado && (
+      {avisar && (
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-neg">
-          <b className="font-semibold">El informe todavía no se puede enviar:</b> {bloqueos.join(" · ")}.
+          <b className="font-semibold">Antes de enviarlo:</b> {bloqueos.join(" · ")}.
           {pendientes.length > 0 && (
-            <> La explicación se escribe en <b className="font-semibold">Operación › Revisión del cierre</b>.</>
+            <> La causa se escribe en <b className="font-semibold">Operación › Revisión del cierre</b>, o
+            directamente sobre la nota, en la hoja.</>
           )}
         </p>
       )}

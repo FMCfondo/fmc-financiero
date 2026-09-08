@@ -7,7 +7,7 @@
  * `fmtCont`. Unidad: PESOS — así lo declara la cabecera de la página. */
 import { fmtCont } from "@/lib/format";
 import type { FilaBalance, Nota } from "@/lib/informe-tipos";
-import BloqueNotas from "./BloqueNotas";
+import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
 type Props = {
   titulo: string;
@@ -18,7 +18,7 @@ type Props = {
   filas: FilaBalance[];
   mesInteranual: string;
   notas: Nota[];
-  comentario?: string;
+  edicion: EdicionNota;
 };
 
 const pct = (v: number | null) => {
@@ -28,7 +28,7 @@ const pct = (v: number | null) => {
 };
 
 export default function PaginaBalance({
-  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual, notas, comentario,
+  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual, notas, edicion,
 }: Props) {
   const ultimo = etiquetasMeses.length - 1;
   return (
@@ -80,7 +80,7 @@ export default function PaginaBalance({
         </tbody>
       </table>
 
-      <BloqueNotas notas={notas} comentario={comentario} />
+      <BloqueNotas notas={notas} edicion={edicion} />
 
       <div className="pie">
         <span>Corte: {corte}</span>

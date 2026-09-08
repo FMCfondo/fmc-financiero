@@ -3,12 +3,12 @@
  * Componente de presentación. */
 import { fmtCont } from "@/lib/format";
 import type { FilaInteranual } from "@/lib/informe-tipos";
-import BloqueNotas from "./BloqueNotas";
+import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
 type Props = {
   periodo: string; corte: string; mesActual: string; mesAnterior: string;
   disponible: boolean; motivo?: string; filas: FilaInteranual[];
-  comentario?: string;
+  edicion: EdicionNota;
 };
 
 const pct = (v: number | null) => {
@@ -18,7 +18,7 @@ const pct = (v: number | null) => {
 };
 
 export default function PaginaInteranual({
-  periodo, corte, mesActual, mesAnterior, disponible, motivo, filas, comentario,
+  periodo, corte, mesActual, mesAnterior, disponible, motivo, filas, edicion,
 }: Props) {
   return (
     <div className="page">
@@ -73,7 +73,7 @@ export default function PaginaInteranual({
         </table>
       )}
 
-      <BloqueNotas notas={[]} comentario={comentario} />
+      <BloqueNotas notas={[]} edicion={edicion} />
 
       <div className="pie">
         <span>Corte: {corte}</span>
