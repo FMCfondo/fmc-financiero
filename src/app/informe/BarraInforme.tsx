@@ -33,11 +33,29 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
 
   useEffect(() => {
     const medir = () => {
-      const malas: number[] = [];
-      document.querySelectorAll<HTMLElement>(".informe .page").forEach((p, i) => {
-        if (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth) malas.push(i + 1);
+      const hojas = Array.from(document.querySelectorAll<HTMLElement>(".informe .page"));
+      const malas = new Set<number>();
+
+      hojas.forEach((p, i) => {
+        if (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth) malas.add(i + 1);
       });
-      setCortadas(malas);
+
+      /* Una tabla puede desbordar SU COLUMNA sin desbordar la hoja: en la página del
+         portafolio se salía de su mitad y se pintaba encima del bloque vecino, y la
+         medición de arriba no la veía. Se compara cada tabla con el ancho útil de
+         quien la contiene. */
+      document.querySelectorAll<HTMLElement>(".informe .page table").forEach((t) => {
+        const madre = t.parentElement;
+        if (!madre) return;
+        const cs = getComputedStyle(madre);
+        const util = madre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        if (t.getBoundingClientRect().width > util + 1) {
+          const hoja = hojas.indexOf(t.closest<HTMLElement>(".page")!);
+          if (hoja >= 0) malas.add(hoja + 1);
+        }
+      });
+
+      setCortadas([...malas].sort((a, b) => a - b));
     };
     medir();
     // Las tipografías cambian el alto cuando terminan de cargar.
