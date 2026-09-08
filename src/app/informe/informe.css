@@ -187,6 +187,15 @@
    hoja con sombra; al imprimir, cada .page es una página real.
    ============================================================================= */
 @media screen {
+  /* Una hoja carta apaisada mide 11 in = 1.056 px, y dentro del ancho maximo con
+     que se lee el resto de la app se veia diminuta. En esta ruta el contenedor
+     deja de limitarla y la barra ofrece el aumento. */
+  main:has(.informe) { max-width: none; }
+
+  /* El aumento es SOLO de pantalla: lo pone la barra en --zoom-informe y aqui no
+     llega la impresion, asi que el PDF sale siempre a tamano real. */
+  .informe { zoom: var(--zoom-informe, 1); }
+
   .informe { background: #eef2f7; padding: 24px 0; display: flex;
              flex-direction: column; align-items: center; gap: 20px; }
   .informe .page { box-shadow: 0 2px 14px rgba(19,40,110,.13); background: #fff;
