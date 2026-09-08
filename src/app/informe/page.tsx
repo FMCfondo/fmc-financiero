@@ -69,6 +69,13 @@ export default async function InformePage({
     filas: inf.resultados.filas,
   };
 
+  /* Hasta diez meses el año entero cabe en una hoja; con once o doce, no. El corte
+     va por la mitad para que las dos hojas pesen parecido. */
+  const nMeses = inf.resultados.etiquetasMeses.length;
+  const tramosEvolucion = nMeses > 10
+    ? [{ desde: 0, hasta: Math.ceil(nMeses / 2) }, { desde: Math.ceil(nMeses / 2), hasta: nMeses }]
+    : [{ desde: 0, hasta: nMeses }];
+
   const gastos = {
     periodo,
     corte: inf.periodo.corte,
@@ -130,7 +137,12 @@ export default async function InformePage({
           edicion={edicion("pasivos")}
           {...comun}
         />
-        <PaginaResultados vista="evolucion" {...resultados} notas={[]} />
+        {/* La evolución en pesos cabe hasta diez meses; de once en adelante se parte
+            en dos hojas para no volver a millones justo en el cierre del año. */}
+        {tramosEvolucion.map((t, i) => (
+          <PaginaResultados key={i} vista="evolucion" {...resultados} notas={[]}
+            tramo={tramosEvolucion.length > 1 ? t : undefined} />
+        ))}
         <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas}
           edicion={edicion("resultados")} />
 
