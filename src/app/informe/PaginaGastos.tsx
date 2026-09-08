@@ -19,6 +19,10 @@ import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 type Props = {
   /** 1 encabeza con el total; 2 continúa la lista. */
   parte: 1 | 2;
+  /** Esta hoja CIERRA la sección, así que le toca el bloque de notas. No es lo mismo
+   *  que `parte === 2`: sin presupuesto cargado la sección cabe en una sola hoja, y
+   *  entonces las notas de gastos no aparecían en ningún sitio. */
+  cierra: boolean;
   /** Solo en la segunda: las notas cierran la sección. */
   edicion: EdicionNota;
   periodo: string; corte: string; mesActual: string;
@@ -32,7 +36,7 @@ const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v).toLocal
 const tono = (v: number | null) => (v === null ? undefined : v <= 100 ? "pos" : "neg");
 
 export default function PaginaGastos({
-  parte, edicion, periodo, corte, mesActual, totalMes, totalAcum,
+  parte, cierra, edicion, periodo, corte, mesActual, totalMes, totalAcum,
   totalPptoMes, totalPptoAcum, totalPptoAnual, filas,
 }: Props) {
   const m = mesActual.toLowerCase();
@@ -49,7 +53,7 @@ export default function PaginaGastos({
   const sinMapear = (f: FilaResultados) => f.signo === "—";
 
   return (
-    <div className="page densa">
+    <div className="page densa" style={{ "--filas": filas.length + (parte === 1 ? 1 : 0) } as React.CSSProperties}>
       <div className="band">
         <h1>DETALLE DE GASTOS DE ADMINISTRACIÓN{parte === 2 ? " · CONTINUACIÓN" : ""}</h1>
         <span className="periodo">{periodo}</span>
@@ -112,7 +116,7 @@ export default function PaginaGastos({
         ))}
       </div>
 
-      {parte === 2 && <BloqueNotas notas={[]} edicion={edicion} />}
+      {cierra && <BloqueNotas notas={[]} edicion={edicion} />}
       <div className="pie">
         <span>Corte: {corte}</span>
         <span>

@@ -191,7 +191,20 @@ Antes de dar por terminado un módulo:
 - **Pendiente**: guardar la composición de «Clientes» en la tabla `parametro` para que sea
   editable desde Configuración cuando ese módulo exista (hoy no existe).
 - Las notas NO las escribe una IA: plantillas para el ~85% y el analista pone la causa.
-  Con una nota pendiente, el PDF queda bloqueado.
+  Con una nota pendiente el PDF **ya no se bloquea** (2026-09-08): la barra avisa, y la
+  marca roja de «falta la explicación» se pinta **solo en modo Operación** — dentro del
+  documento de la Junta un rótulo rojo se lee como un defecto del informe.
+- **«SUBTOTAL EBITDA» no se imprime pero SIGUE en el contrato** (`oculta: true`). Se
+  ocultó porque confundía junto al EBITDA, y NO se borró porque el arnés la compara
+  contra el Excel certificado: al borrarla no fallaría, la saltaría en silencio y las
+  300 comparaciones pasarían a 292 sin que nadie se entere. Ocultar es presentación;
+  borrar sería renunciar a verificar una cifra.
+- **El estiramiento de las tablas tiene tope por fila**: `max-height: calc(var(--filas)
+  * 21pt + 60pt)`. Sin él, el reparto es proporcional al alto natural y una hoja con
+  pocas filas las infla —el detalle de gastos llegaba a 79 px por fila frente a 25 en
+  el resto, y un mes sin presupuesto estiraba una fila única a 557 px. Cada página
+  publica su número de filas en `--filas`; si se añade una tabla nueva, hay que
+  publicarlo o no se acota.
 
 ### Estados Financieros
 - Continuar el refinamiento de densidad tipográfica y comportamiento del scroll (sticky

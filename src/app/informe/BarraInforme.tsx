@@ -145,7 +145,7 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
         <div>
           <p className="text-sm font-semibold text-fg">Informe de Junta · {periodo}</p>
           <p className="mt-0.5 text-xs text-muted">
-            Siete páginas en carta horizontal. El PDF sale idéntico a lo que ves aquí.
+            Carta horizontal. El PDF sale idéntico a lo que ves aquí.
           </p>
         </div>
 
@@ -186,9 +186,13 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
       {avisar && (
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-neg">
           <b className="font-semibold">Antes de enviarlo:</b> {bloqueos.join(" · ")}.
+          {/* Solo ahí. Escribir el texto sobre la hoja NO apaga el pendiente: el editor
+              guarda con clave «informe:<bloque>» y la partida solo se da por explicada
+              con una nota contra su cuenta PUC. Decir lo contrario hacía creer al
+              analista que ya había explicado algo que seguía sin explicar. */}
           {pendientes.length > 0 && (
-            <> La causa se escribe en <b className="font-semibold">Operación › Revisión del cierre</b>, o
-            directamente sobre la nota, en la hoja.</>
+            <> La causa se escribe en <b className="font-semibold">Operación › Revisión del cierre</b>,
+            contra la cuenta que la motivó.</>
           )}
         </p>
       )}

@@ -75,7 +75,7 @@ function seccionResultados(etq: string) {
   const pct = (real: number, meta: number | null) =>
     meta === null || meta === 0 ? null : (real / meta) * 100;
 
-  const filas: FilaResultados[] = LINEAS_RESULTADO.map((l) => {
+  const filas: FilaResultados[] = LINEAS_RESULTADO.filter((l) => !l.oculta).map((l) => {
     const serie = meses.map((m) => l.valor(m.etiqueta, "mes"));
     const mes = l.valor(ultimo.etiqueta, "mes");
     const acumulado = l.valor(ultimo.etiqueta, "acum");
@@ -107,7 +107,7 @@ function seccionInteranual(etq: string) {
     return { disponible: false, filas: [] as FilaInteranual[],
       motivo: "No hay datos del mismo mes del año anterior." };
 
-  const filas: FilaInteranual[] = LINEAS_RESULTADO.map((l) => {
+  const filas: FilaInteranual[] = LINEAS_RESULTADO.filter((l) => !l.oculta).map((l) => {
     const anioAnterior = l.valor(prev.etiqueta, "mes");
     const anioActual = l.valor(etq, "mes");
     const varPesos = anioActual - anioAnterior;

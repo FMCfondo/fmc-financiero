@@ -74,7 +74,7 @@ export default function PaginaResultados({
   ];
 
   return (
-    <div className="page densa">
+    <div className="page densa" style={{ "--filas": filas.length } as React.CSSProperties}>
       <div className="band">
         <h1>
           ESTADO DE RESULTADOS · {esEvolucion ? "EVOLUCIÓN DEL AÑO" : "EJECUCIÓN PRESUPUESTAL"}

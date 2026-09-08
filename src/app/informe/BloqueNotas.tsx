@@ -15,9 +15,14 @@
  * o el manual—, así que se corrige lo que hay, no se parte de cero. Por qué aquí y
  * no en un panel aparte: el usuario quiso editar cada nota en su sitio (2026-09-08).
  *
- * Todo lo editable lleva `no-imprimir`: al papel van los párrafos y nada más. Una
- * nota pendiente se marca en pantalla; en el papel no, porque el usuario decidió que
- * el PDF sale aunque falte una explicación. */
+ * Todo lo editable lleva `no-imprimir`: al papel van los párrafos y nada más.
+ *
+ * La marca de «falta la explicación» es SOLO para quien tiene que actuar: se pinta
+ * en modo Operación y en ningún otro sitio. Ni en Reuniones ni en el papel — un
+ * rótulo rojo dentro del documento de la Junta no se lee como una advertencia al
+ * analista, se lee como un defecto del informe. El aviso no se pierde: sigue en la
+ * barra (que nunca se imprime) y en Operación › Revisión del cierre, que es donde se
+ * escribe la causa. */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BloqueNota, Nota } from "@/lib/informe-tipos";
@@ -49,7 +54,7 @@ export default function BloqueNotas({ notas, edicion, titulo = "Notas del perío
   const manual = edicion.manual.trim();
   const operacion = modo === "operacion";
   const parrafos = manual ? enParrafos(manual) : notas.map((n) => n.texto);
-  const pendiente = (i: number) => !manual && !!notas[i]?.requiereExplicacion;
+  const pendiente = (i: number) => operacion && !manual && !!notas[i]?.requiereExplicacion;
 
   // Sin texto y sin nadie que pueda escribirlo, el bloque no existe.
   if (!parrafos.length && !operacion) return null;

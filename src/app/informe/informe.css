@@ -47,8 +47,18 @@
 /* La tabla ESTIRA hasta llenar la hoja: cada pagina reparte entre sus filas el
    espacio que le sobra, asi que una con pocas filas respira y una llena queda
    compacta, sin tener que afinar el relleno pagina por pagina. Cuando no sobra
-   nada, no cambia nada. */
-.informe .page > table { flex: 1 1 auto; }
+   nada, no cambia nada.
+   PERO CON TOPE POR FILA. Sin el, el reparto es proporcional al alto natural y una
+   hoja con pocas filas las inflaba hasta el absurdo: el detalle de gastos llegaba a
+   filas de 79 px frente a las de 25 del resto del informe -eso es lo que se veia
+   "demasiado separado"-, y en un mes sin presupuesto cargado una fila unica se
+   estiraba a 557 px. La regla en una frase: una fila puede crecer hasta 21 pt; de
+   ahi en adelante la hoja se queda con su blanco. Cada pagina publica cuantas filas
+   trae en --filas; los 60 pt son la reserva de la cabecera (pasarse es inocuo: un
+   tope mas holgado solo acota menos).
+   max-height sobre una <table> NUNCA la encoge por debajo de su contenido -medido-,
+   asi que esto no puede recortar nada. */
+.informe .page > table { flex: 1 1 auto; max-height: calc(var(--filas, 99) * 21pt + 60pt); }
 .informe table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
 .informe thead th { font-size: 7.3pt; font-weight: 600; color: var(--muted); text-transform: uppercase;
            letter-spacing: .3pt; padding: 3.5pt 4pt; text-align: right; white-space: nowrap; }
