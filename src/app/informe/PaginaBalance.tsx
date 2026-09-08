@@ -6,7 +6,8 @@
  * paréntesis, cero como raya, regla simple sobre subtotal y doble bajo el total. Las trae
  * `fmtCont`. Unidad: PESOS — así lo declara la cabecera de la página. */
 import { fmtCont } from "@/lib/format";
-import type { FilaBalance } from "@/lib/informe-tipos";
+import type { FilaBalance, Nota } from "@/lib/informe-tipos";
+import BloqueNotas from "./BloqueNotas";
 
 type Props = {
   titulo: string;
@@ -16,6 +17,7 @@ type Props = {
   etiquetasMeses: string[];
   filas: FilaBalance[];
   mesInteranual: string;
+  notas: Nota[];
 };
 
 const pct = (v: number | null) => {
@@ -25,7 +27,7 @@ const pct = (v: number | null) => {
 };
 
 export default function PaginaBalance({
-  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual,
+  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual, notas,
 }: Props) {
   const ultimo = etiquetasMeses.length - 1;
   return (
@@ -76,6 +78,8 @@ export default function PaginaBalance({
           })}
         </tbody>
       </table>
+
+      <BloqueNotas notas={notas} />
 
       <div className="pie">
         <span>Corte: {corte}</span>

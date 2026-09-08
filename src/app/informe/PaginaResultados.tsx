@@ -9,11 +9,12 @@
  * Unidad: MILLONES. Con siete meses más seis columnas de ejecución los pesos no caben,
  * y la cabecera lo declara. Componente de presentación: no calcula nada. */
 import { fmtContMill } from "@/lib/format";
-import type { FilaResultados } from "@/lib/informe-tipos";
+import type { FilaResultados, Nota } from "@/lib/informe-tipos";
+import BloqueNotas from "./BloqueNotas";
 
 type Props = {
   periodo: string; corte: string; anio: number; mesNombre: string;
-  etiquetasMeses: string[]; filas: FilaResultados[];
+  etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[];
 };
 
 const M = fmtContMill;
@@ -28,7 +29,7 @@ const tono = (v: number | null, esGasto?: boolean) => {
 };
 
 export default function PaginaResultados({
-  periodo, corte, anio, mesNombre, etiquetasMeses, filas,
+  periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas,
 }: Props) {
   const n = etiquetasMeses.length;
   const bloques = [
@@ -101,6 +102,9 @@ export default function PaginaResultados({
           </span>
         ))}
       </div>
+
+      <BloqueNotas notas={notas} />
+
       <div className="pie">
         <span>Corte: {corte}</span>
         <span>Los tres porcentajes miden cosas distintas: no se comparan entre sí</span>

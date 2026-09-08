@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import { ensureLoaded, resolverEtq, periodo as periodoDe, sameMonthPrevYear, fact, ytd } from "@/lib/data";
 import { ING_FINANCIERO } from "@/lib/statements";
 import { construirInforme } from "@/lib/informe";
+import { puedeExportar } from "@/lib/informe-notas";
 import { mesNombre } from "@/lib/format";
 import PaginaResumen from "./PaginaResumen";
 import PaginaBalance from "./PaginaBalance";
@@ -49,12 +50,24 @@ export default async function InformePage({
   // La fila de total de la página 5 es la misma que ya calculó la página 4.
   const gAdmin = inf.resultados.filas.find((f) => f.etiqueta === "Gastos de Administración");
 
+  /* La barrera de calidad: con una nota sin explicar o con el portafolio
+     descuadrado, el informe no sale. Se evalúa sobre TODAS las notas del
+     documento, no las de una página. */
+  const barrera = puedeExportar([
+    ...inf.resumen.notas, ...inf.balanceActivos.notas, ...inf.balancePasivos.notas,
+    ...inf.resultados.notas, ...inf.gastos.notas,
+  ]);
+
   const meses = inf.resultados.etiquetasMeses;
   const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
 
   return (
     <>
-      <BarraInforme periodo={periodo} />
+      <BarraInforme
+        periodo={periodo}
+        pendientes={barrera.pendientes}
+        portafolioConcilia={inf.portafolio.concilia}
+      />
       <div className="informe">
         <PaginaResumen
           periodo={periodo}
@@ -68,12 +81,14 @@ export default async function InformePage({
           titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
           etiquetasMeses={inf.balanceActivos.etiquetasMeses}
           filas={inf.balanceActivos.filas}
+          notas={inf.balanceActivos.notas}
           {...comun}
         />
         <PaginaBalance
           titulo="BALANCE GENERAL ADMINISTRATIVO · PASIVOS Y PATRIMONIO"
           etiquetasMeses={inf.balancePasivos.etiquetasMeses}
           filas={inf.balancePasivos.filas}
+          notas={inf.balancePasivos.notas}
           {...comun}
         />
         <PaginaResultados
@@ -83,6 +98,7 @@ export default async function InformePage({
           mesNombre={mesNombre[inf.periodo.mes]}
           etiquetasMeses={inf.resultados.etiquetasMeses}
           filas={inf.resultados.filas}
+          notas={inf.resultados.notas}
         />
         <PaginaGastos
           periodo={periodo}

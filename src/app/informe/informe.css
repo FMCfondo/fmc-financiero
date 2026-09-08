@@ -61,6 +61,10 @@
 
 .informe tbody td { font-size: 8.6pt; padding: 2.6pt 4pt; text-align: right; white-space: nowrap; }
 .informe tbody td.l { text-align: left; white-space: normal; }
+/* Piso de la columna de concepto. Sin el, el reparto automatico se la come para
+   dar ancho a las columnas numericas y cada etiqueta se parte en tres lineas:
+   asi fue como la pagina 4 acabo perdiendo la fila de utilidad neta. */
+.informe th.l, .informe td.l { min-width: 112pt; }
 .informe tbody tr { border-bottom: .5pt solid var(--soft); }
 .informe td.l .signo { display: inline-block; width: 12pt; color: var(--faint); font-size: 7.8pt; }
 .informe td.l.s1 { padding-left: 18pt; }
@@ -98,7 +102,7 @@
          vertical-align: -.5pt; border: .4pt solid rgba(0,0,0,.08); }
 
 /* Notas */
-.notas { margin-top: 7pt; border-top: .6pt solid var(--line); padding-top: 5pt; }
+.notas { margin-top: 5pt; border-top: .6pt solid var(--line); padding-top: 5pt; }
 .notas h2 { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.3pt; text-transform: uppercase;
             color: var(--navy); margin-bottom: 4pt; }
 .notas .cuerpo { columns: 2; column-gap: 20pt; }
@@ -111,10 +115,17 @@
 .notas li b { color: var(--ink); }
 .notas li::before { content: "· "; color: var(--royal); font-weight: 800; }
 
+/* Nota a la que le falta la causa que escribe una persona. Se marca tambien en el
+   papel: es preferible que se vea el hueco a que la Junta lea una explicacion que
+   nadie escribio. La barrera de exportacion, ademas, impide llegar hasta aqui. */
+.notas p.pendiente { border-left: 1.5pt solid var(--neg); padding-left: 6pt; }
+.notas p.pendiente::after { content: " ⟨falta la explicación del período⟩";
+                            color: var(--neg); font-weight: 700; }
+
 /* Cifras de lectura rápida */
-.strip { display: grid; gap: 8pt; margin-top: 9pt; }
+.strip { display: grid; gap: 8pt; margin-top: 6.5pt; }
 .stat { border: .75pt solid var(--line); border-top: 2.4pt solid var(--royal); border-radius: 2px;
-        padding: 7pt 10pt 8pt; background: var(--tint); }
+        padding: 6pt 10pt 6.5pt; background: var(--tint); }
 .stat .lbl { font-size: 7.2pt; font-weight: 600; letter-spacing: .7pt; text-transform: uppercase; color: var(--muted); }
 .stat .val { font-size: 15pt; font-weight: 800; margin-top: 2pt; letter-spacing: -.2pt; }
 .stat .ctx { font-size: 7.7pt; color: var(--muted); margin-top: 1.5pt; }
@@ -132,7 +143,7 @@
 .pie { margin-top: auto; display: flex; justify-content: space-between; font-size: 7.2pt;
        color: var(--faint); border-top: .6pt solid var(--line); padding-top: 4.5pt; letter-spacing: .3pt; }
 .informe h2.sec-t { font-size: 8.2pt; font-weight: 800; letter-spacing: 1.2pt; text-transform: uppercase;
-           color: var(--navy); margin: 10pt 0 5pt; }
+           color: var(--navy); margin: 7pt 0 4pt; }
 .compo { display: flex; height: 24pt; border-radius: 3pt; overflow: hidden; gap: 2px; }
 .seg { display: flex; align-items: center; justify-content: center; }
 .seg-lbl { color: #fff; font-size: 8.4pt; font-weight: 700; letter-spacing: .4pt; }
@@ -153,7 +164,7 @@
 .conc-track { height: 7pt; background: var(--soft); border-radius: 2pt; }
 .conc-fill { display: block; height: 100%; background: var(--royal); border-radius: 2pt; }
 .conc-nota { font-size: 7.7pt; color: var(--faint); margin-top: 7pt; line-height: 1.4; }
-.grafs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10pt 14pt; }
+.grafs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7pt 14pt; }
 .graf { border: .75pt solid var(--line); border-radius: 2px; padding: 5pt 7pt 3pt; background: #fff; }
 .graf-t { font-size: 7.5pt; font-weight: 700; letter-spacing: .5pt; text-transform: uppercase;
           color: var(--muted); margin-bottom: 3pt; }
