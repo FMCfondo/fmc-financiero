@@ -32,7 +32,7 @@ export default function PaginaBalance({
 }: Props) {
   const ultimo = etiquetasMeses.length - 1;
   return (
-    <div className="page">
+    <div className="page" style={{ "--filas": filas.length } as React.CSSProperties}>
       <div className="band">
         <h1>{titulo}</h1>
         <span className="periodo">{periodo}</span>

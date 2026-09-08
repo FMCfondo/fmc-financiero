@@ -194,6 +194,12 @@ export type LineaResultado = {
   /** Fila del presupuesto que le corresponde, por `orden` (único y estable). Sin
    *  ella la línea no lleva metas: se imprime "—", nunca un cero inventado. */
   pptoOrden?: number;
+  /** La línea NO se imprime, pero sigue en el contrato. Existe para que el arnés de
+   *  conciliación pueda seguir comparándola contra el Excel certificado: si se
+   *  borrara del array, el arnés no fallaría — la saltaría en silencio y perderíamos
+   *  cobertura sin que nadie se entere. Ocultar es una decisión de presentación;
+   *  borrar sería renunciar a verificar una cifra. */
+  oculta?: boolean;
   /** Solo en las partidas que alguna nota nombra. */
   clave?: ClaveNota;
   valor: (etq: string, modo: Modo) => number;
@@ -214,7 +220,13 @@ export const LINEAS_RESULTADO: LineaResultado[] = [
     valor: (e, m) => v(e, COSTO_COBERTURA, m) - v(e, "4175", m) },
   { etiqueta: "INGRESOS DE OPERACIÓN", signo: "(=)", nivel: "sub", pptoOrden: 7, clave: "ingresosOperacion", valor: ingOperacion },
   { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", pptoOrden: 8, esGasto: true, clave: "gastosAdmin", valor: gastosAdmin },
-  { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 43,
+  /* NO se imprime desde el 2026-09-09: el usuario la encontró confusa junto al EBITDA
+     («considero que no es necesario, para no generar confusión con el EBITDA»). No es
+     una repetición —es el EBITDA ANTES de otros ingresos y otros egresos, y en julio de
+     2026 las dos cifras difieren—, pero la Junta no necesita el paso intermedio. Se
+     queda en el contrato para que el arnés la siga verificando: el informe certificado
+     sí la trae. */
+  { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 43, oculta: true,
     valor: (e, m) => ingOperacion(e, m) - gastosAdmin(e, m) },
   { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", pptoOrden: 44, valor: otrosIngresos },
   { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", pptoOrden: 48, esGasto: true, valor: otrosGastos },

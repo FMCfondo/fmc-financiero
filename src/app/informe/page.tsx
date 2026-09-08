@@ -146,10 +146,15 @@ export default async function InformePage({
         <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas}
           edicion={edicion("resultados")} />
 
-        <PaginaGastos parte={1} {...gastos} filas={inf.gastos.filas.slice(0, corteGastos)}
-          edicion={edicion("gastos")} />
-        <PaginaGastos parte={2} {...gastos} filas={inf.gastos.filas.slice(corteGastos)}
-          edicion={edicion("gastos")} />
+        <PaginaGastos parte={1} cierra={inf.gastos.filas.length <= corteGastos} {...gastos}
+          filas={inf.gastos.filas.slice(0, corteGastos)} edicion={edicion("gastos")} />
+        {/* La continuación solo existe si le toca algo. Sin presupuesto cargado el árbol
+            de gastos viene con una fila o ninguna, y la segunda hoja salía en blanco:
+            una página vacía dentro del PDF que se le envía a la Junta. */}
+        {inf.gastos.filas.length > corteGastos && (
+          <PaginaGastos parte={2} cierra {...gastos} filas={inf.gastos.filas.slice(corteGastos)}
+            edicion={edicion("gastos")} />
+        )}
         <PaginaInteranual
           periodo={periodo}
           corte={inf.periodo.corte}

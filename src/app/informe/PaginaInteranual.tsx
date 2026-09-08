@@ -21,7 +21,7 @@ export default function PaginaInteranual({
   periodo, corte, mesActual, mesAnterior, disponible, motivo, filas, edicion,
 }: Props) {
   return (
-    <div className="page">
+    <div className="page" style={{ "--filas": filas.length } as React.CSSProperties}>
       <div className="band">
         <h1>COMPARATIVO FRENTE AL MISMO MES DEL AÑO ANTERIOR</h1>
         <span className="periodo">{periodo}</span>

@@ -243,7 +243,11 @@ export function redactarNotas(d: DatosNotas) {
   };
 }
 
-/** Barrera de calidad: con alguna nota pendiente, el PDF no se genera. */
+/** Lista lo que falta explicar. Se llamó «barrera» cuando el PDF se bloqueaba con una
+ *  nota pendiente; desde el 2026-09-08 ya no se bloquea —el usuario decidió que el
+ *  informe sale igual—, así que hoy su `ok` no lo consume nadie y lo que se usa es
+ *  `pendientes`: es lo que la barra nombra en su aviso. Se conserva entera para que el
+ *  día que se quiera volver a bloquear no haya que reescribirla. */
 export function puedeExportar(notas: Nota[]): { ok: boolean; pendientes: string[] } {
   const p = notas.filter((n) => n.requiereExplicacion).map((n) => n.partida ?? n.codigoPuc ?? n.bloque);
   return { ok: p.length === 0, pendientes: p };

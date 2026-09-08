@@ -119,7 +119,9 @@ export type Nota = {
   /** Explicación humana de una variación atípica, si aplica. */
   causa?: string;
   /** true cuando el detector de anomalías marcó la partida y aún no hay causa.
-   *  Con al menos una en true, el PDF NO debe generarse. */
+   *  La hoja la marca SOLO en modo Operación: un rótulo rojo dentro del documento de
+   *  la Junta se lee como un defecto del informe, no como un recado al analista. El
+   *  PDF ya no se bloquea por esto; el aviso vive en la barra y en Revisión del cierre. */
   requiereExplicacion?: boolean;
   /** Cuenta PUC que motivó la nota (para enlazarla con nota_periodo). */
   codigoPuc?: string | null;
@@ -210,5 +212,6 @@ export type Proyeccion = {
 // 4. EL PRESUPUESTO DEL MES no existe como columna en el Excel: se deriva de
 //    ppto.meses[mes-1]. En la app ya está disponible directo en la tabla `ppto`.
 //
-// 5. BARRERAS ANTES DE EXPORTAR: portafolio.concilia === true, balance cuadrado
-//    (activo = pasivo + patrimonio) y cero notas con requiereExplicacion.
+// 5. AVISOS ANTES DE EXPORTAR: portafolio.concilia === true, balance cuadrado
+//    (activo = pasivo + patrimonio) y cero notas con requiereExplicacion. Se enuncian
+//    en la barra del informe; NINGUNO bloquea ya la exportación (2026-09-08).
