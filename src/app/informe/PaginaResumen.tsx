@@ -11,6 +11,7 @@
  * Unidad: MILLONES. Componente de presentación. */
 import { fmtContMill } from "@/lib/format";
 import type { Nota, Tarjeta } from "@/lib/informe-tipos";
+import BloqueNotas from "./BloqueNotas";
 
 type Serie = { titulo: string; valores: number[]; etiquetas: string[] };
 type Props = {
@@ -97,12 +98,7 @@ export default function PaginaResumen({
         {evolucion.map((s) => <Grafico key={s.titulo} s={s} />)}
       </div>
 
-      {notas.length > 0 && (
-        <div className="notas">
-          <h2>Situación del período</h2>
-          {notas.map((n, i) => <p key={i}>{n.texto}{n.causa ? `, ${n.causa}` : ""}</p>)}
-        </div>
-      )}
+      <BloqueNotas notas={notas} titulo="Situación del período" />
 
       <div className="pie">
         <span>Corte: {corte}</span>

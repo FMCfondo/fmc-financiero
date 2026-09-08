@@ -10,6 +10,8 @@
 // nunca una fórmula nueva. Los motores no se tocan.
 // =============================================================================
 
+import type { ClaveNota } from "./informe-cuentas";
+
 /** Una línea impresa de un estado financiero. */
 export type FilaEstado = {
   etiqueta: string;
@@ -22,6 +24,10 @@ export type FilaEstado = {
   signo?: string;
   /** Cuentas PUC que componen la línea — para trazabilidad y para el detalle. */
   cuentas?: string[];
+  /** Nombre estable de la partida cuando alguna nota la menciona. Las notas se
+   *  redactan contra la clave, no contra la etiqueta: la etiqueta se imprime y
+   *  puede reescribirse. Definida en informe-cuentas.ts. */
+  clave?: ClaveNota;
 };
 
 /** Fila del balance: ventana de meses + comparación interanual. */
@@ -110,6 +116,9 @@ export type Nota = {
   requiereExplicacion?: boolean;
   /** Cuenta PUC que motivó la nota (para enlazarla con nota_periodo). */
   codigoPuc?: string | null;
+  /** Nombre llano de la partida, para poder decir QUÉ falta explicar sin
+   *  enseñarle un código PUC a quien no tiene por qué conocerlo. */
+  partida?: string;
 };
 
 /** Cifra de la franja del resumen ejecutivo. */

@@ -12,14 +12,16 @@
  */
 import "server-only";
 import * as D from "./data";
-import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type LineaBalance } from "./informe-cuentas";
+import { LINEAS_ACTIVO, LINEAS_PASIVO, LINEAS_RESULTADO, type ClaveNota, type LineaBalance } from "./informe-cuentas";
+import { detectarAnomalias } from "./anomalias";
+import { redactarNotas, type DatosNotas } from "./informe-notas";
 import * as C from "./informe-cuentas";
 import { mesNombre, mesCorto } from "./format";
 import { pptoAcumulado, pptoMes } from "./informe-ppto";
 import type { Modo } from "./informe-cuentas";
 import { portafolio } from "./inversiones";
 import { CTA_BOLD } from "./informe-cuentas";
-import { esf } from "./statements";
+import { esf, COSTO_COBERTURA, DEP_AMORT } from "./statements";
 import type { FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio, Tarjeta } from "./informe-tipos";
 
 /** Ventana del balance: el período y los tres meses anteriores. En el Excel esto se hacía
@@ -41,6 +43,7 @@ function seccionBalance(
     return {
       etiqueta: l.etiqueta,
       nivel: l.nivel,
+      clave: l.clave,
       meses: valores,
       interanual,
       varIAPesos,
@@ -55,7 +58,7 @@ function seccionBalance(
   return {
     etiquetasMeses: meses.map((m) => mesNombre[m.mes]),
     filas,
-    notas: [], // fase 3: las escribe informe-notas.ts
+    notas: [] as Nota[], // las pone construirInforme() desde informe-notas.ts
   };
 }
 
@@ -83,7 +86,7 @@ function seccionResultados(etq: string) {
     const pAcum = ppto ? pptoAcumulado(ppto, p.mes) : null;
     const pAnual = ppto ? ppto.total : null;
     return {
-      etiqueta: l.etiqueta, nivel: l.nivel, signo: l.signo, esGasto: l.esGasto,
+      etiqueta: l.etiqueta, nivel: l.nivel, signo: l.signo, esGasto: l.esGasto, clave: l.clave,
       meses: serie, mes, acumulado,
       pptoMes: pMes, pptoAcumulado: pAcum, pptoAnual: pAnual,
       ejecMesPct: pct(mes, pMes),
@@ -322,11 +325,125 @@ function seccionResumen(etq: string, res: { filas: FilaResultados[] }, port: Por
   };
 }
 
+/* ------------------------------------------------------------------ notas ---
+ * Las notas del período NO las escribe una IA. informe-notas.ts las redacta con
+ * plantillas deterministas sobre las cifras que estas mismas secciones ya
+ * conciliaron; la CAUSA de una variación atípica la escribe una persona en
+ * Operación › Revisión del cierre, y se guarda en `nota_periodo` contra una
+ * cuenta PUC. Aquí solo se juntan las dos mitades.
+ *
+ * Una partida queda PENDIENTE cuando el detector de anomalías marcó alguna de sus
+ * cuentas y nadie ha escrito la explicación. Con una sola pendiente el informe no
+ * debe exportarse: eso lo decide `puedeExportar()`.
+ */
+const CUENTAS_DE_LA_CAUSA: Record<string, (codigo: string) => boolean> = {
+  clientes: (c) => c.startsWith("13"),          // la cartera del informe cuelga del 13
+  impuestosPorPagar: (c) => c.startsWith("24"),
+  /* Gastos de administración = grupo 51 SIN el costo de cobertura ni dep/amort,
+     que cuelgan del mismo grupo pero llevan fila propia en el informe. Sin esta
+     resta, un movimiento del costo de cobertura bloqueaba el informe pidiendo
+     explicar unos gastos administrativos que no se habían movido. */
+  gastosAdmin: (c) =>
+    c.startsWith("51") && !c.startsWith(COSTO_COBERTURA)
+    && !DEP_AMORT.some((d) => c.startsWith(d)),
+};
+
+async function notasDelInforme(
+  etq: string,
+  activos: FilaBalance[],
+  pasivos: FilaBalance[],
+  resultados: FilaResultados[],
+) {
+  const p = D.periodo(etq);
+  const escritas = await D.leerNotas(p.anio, p.mes);
+  const anomalias = detectarAnomalias(etq);
+
+  const causas: Record<string, string> = {};
+  const pendientes: string[] = [];
+  for (const [clave, esDeLaPartida] of Object.entries(CUENTAS_DE_LA_CAUSA)) {
+    const texto = escritas
+      .filter((n) => n.codigo && esDeLaPartida(n.codigo) && n.cuerpo.trim())
+      .map((n) => n.cuerpo.trim())
+      .join(" ");
+    if (texto) causas[clave] = texto;
+    else if (anomalias.some((a) => esDeLaPartida(a.codigo))) pendientes.push(clave);
+  }
+
+  /* Si una clave no aparece es que alguien tocó las líneas sin actualizar el
+     contrato. Se rompe aquí a propósito: una nota que imprima cero a la Junta es
+     peor que una página que no carga. */
+  const falta = (clave: ClaveNota): never => {
+    throw new Error(`El informe no encuentra la partida «${clave}». Revisar la clave en informe-cuentas.ts.`);
+  };
+
+  const partida = (filas: FilaBalance[], clave: ClaveNota) => {
+    const f = filas.find((x) => x.clave === clave) ?? falta(clave);
+    const actual = f.meses[f.meses.length - 1] ?? 0;
+    const anterior = f.meses[f.meses.length - 2] ?? 0;
+    return { actual, anterior, interanual: f.interanual,
+             varMesPesos: actual - anterior, varIAPesos: f.varIAPesos, varIAPct: f.varIAPct };
+  };
+
+  const linea = (clave: ClaveNota) => {
+    const f = resultados.find((x) => x.clave === clave) ?? falta(clave);
+    return { mes: f.mes, acumulado: f.acumulado, pptoAcumulado: f.pptoAcumulado,
+             pptoAnual: f.pptoAnual, cumplAcumPct: f.ejecAcumuladaPct, ejecAnualPct: f.ejecAnualPct };
+  };
+
+  const balance = {
+    activoTotal: partida(activos, "activoTotal"),
+    inversionesLiquidas: partida(activos, "inversionesLiquidas"),
+    disponible: partida(activos, "disponible"),
+    totalDisponibleInversiones: partida(activos, "totalDisponibleInversiones"),
+    clientes: partida(activos, "clientes"),
+    anticipoImpuestos: partida(activos, "anticipoImpuestos"),
+    ppeNeto: partida(activos, "ppeNeto"),
+    activosDiferidos: partida(activos, "activosDiferidos"),
+    pasivoTotal: partida(pasivos, "pasivoTotal"),
+    pasivosEstimados: partida(pasivos, "pasivosEstimados"),
+    impuestosPorPagar: partida(pasivos, "impuestosPorPagar"),
+    patrimonioTotal: partida(pasivos, "patrimonioTotal"),
+    utilidadNetaBalance: partida(pasivos, "utilidadNetaBalance"),
+  };
+
+  // Los mismos dos porcentajes que imprimen las tarjetas de la página 1.
+  const sobre = (parte: number, todo: number) => (Math.abs(todo) < 1 ? 0 : (parte / todo) * 100);
+
+  const datos: DatosNotas = {
+    mes: p.mes,
+    anio: p.anio,
+    balance,
+    resultados: {
+      ingresosOperacion: linea("ingresosOperacion"),
+      gastosAdmin: linea("gastosAdmin"),
+      utilidadNeta: linea("utilidadNeta"),
+      ebitda: linea("ebitda"),
+    },
+    indicadores: {
+      pctRespaldoSobreActivo: sobre(balance.totalDisponibleInversiones.actual, balance.activoTotal.actual),
+      pctReservasSobrePasivo: sobre(balance.pasivosEstimados.actual, balance.pasivoTotal.actual),
+    },
+    causas,
+    pendientes,
+  };
+
+  return redactarNotas(datos);
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);
   const resultados = seccionResultados(etq);
   const portafolioInf = seccionPortafolio(etq);
+  const balanceActivos = seccionBalance(etq, LINEAS_ACTIVO);
+  const balancePasivos = seccionBalance(etq, LINEAS_PASIVO);
+  const resumen = seccionResumen(etq, resultados, portafolioInf);
+
+  const notas = await notasDelInforme(etq, balanceActivos.filas, balancePasivos.filas, resultados.filas);
+  resumen.notas = notas.situacion;
+  balanceActivos.notas = notas.activos;
+  balancePasivos.notas = notas.pasivos;
+  resultados.notas = notas.resultados;
 
   return {
     periodo: {
@@ -337,11 +454,10 @@ export async function construirInforme(etq: string): Promise<Informe> {
     },
 
     // --- páginas 2 y 3, conciliadas al peso contra el informe certificado ---
-    balanceActivos: seccionBalance(etq, LINEAS_ACTIVO),
-    balancePasivos: seccionBalance(etq, LINEAS_PASIVO),
+    balanceActivos,
+    balancePasivos,
 
-    // --- pendientes de las siguientes tandas de la fase 1 ---
-    resumen: seccionResumen(etq, resultados, portafolioInf),
+    resumen,
     resultados,
     gastos: seccionGastos(etq),
     interanual: seccionInteranual(etq),

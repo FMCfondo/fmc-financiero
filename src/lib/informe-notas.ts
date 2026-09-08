@@ -70,7 +70,13 @@ const necesitaCausa = (d: DatosNotas, clave: string) =>
 
 const conCausa = (d: DatosNotas, clave: string, base: string) => {
   const c = (d.causas ?? {})[clave];
-  return c ? `${base.replace(/\.$/, "")}, ${c.replace(/^,\s*/, "")}` : base;
+  if (!c) return base;
+  /* La causa se cose DENTRO de la frase, no se pega detrás: se le quita el punto a
+     la base, se enlaza con coma y se cierra la frase. Sin ese punto final la nota
+     seguía con mayúscula pegada a la palabra anterior ("…de las mutuales Los
+     Anticipos de Impuestos…"), que es como se leía antes de este arreglo. */
+  const causa = c.trim().replace(/^,\s*/, "").replace(/[.\s]+$/, "");
+  return `${base.replace(/[.\s]+$/, "")}, ${causa}.`;
 };
 
 // ----------------------------------------------------------------- notas ---
@@ -106,6 +112,7 @@ export function notasActivos(d: DatosNotas): Nota[] {
   out.push({
     bloque: "activos",
     codigoPuc: "13",
+    partida: "Clientes",
     texto: conCausa(d, "clientes",
       `En las partidas operativas, la cartera de Clientes ${verbo} ${money(cli.actual)} ` +
       `(desde ${money(cli.anterior)} en ${mesAnt}).`) +
@@ -148,6 +155,7 @@ export function notasPasivos(d: DatosNotas): Nota[] {
     {
       bloque: "pasivos",
       codigoPuc: "24",
+      partida: "Impuestos por pagar",
       texto: conCausa(d, "impuestosPorPagar",
         `En el mes, los Impuestos por Pagar ${b.impuestosPorPagar.varMesPesos >= 0 ? "se incrementaron a" : "se redujeron a"} ` +
         `${money(b.impuestosPorPagar.actual)}.`),
@@ -181,6 +189,7 @@ export function notasResultados(d: DatosNotas): Nota[] {
     {
       bloque: "resultados",
       codigoPuc: "51",
+      partida: "Gastos de administración",
       texto: conCausa(d, "gastosAdmin",
         `Los gastos de administración del mes cerraron en ${money(gas.mes)}.`) +
         ` En el acumulado, los gastos suman ${money(gas.acumulado)}, equivalente al ` +
@@ -236,6 +245,6 @@ export function redactarNotas(d: DatosNotas) {
 
 /** Barrera de calidad: con alguna nota pendiente, el PDF no se genera. */
 export function puedeExportar(notas: Nota[]): { ok: boolean; pendientes: string[] } {
-  const p = notas.filter((n) => n.requiereExplicacion).map((n) => n.codigoPuc ?? n.bloque);
+  const p = notas.filter((n) => n.requiereExplicacion).map((n) => n.partida ?? n.codigoPuc ?? n.bloque);
   return { ok: p.length === 0, pendientes: p };
 }

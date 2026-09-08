@@ -1,8 +1,13 @@
-/* Página 5: el detalle de gastos de administración.
+/* Páginas 6 y 7 del informe: el detalle de gastos de administración, en DOS hojas.
  *
- * Mismas tres ejecuciones que la página 4, pero en PESOS: aquí caben porque el ejecutado
- * son dos columnas —mes y acumulado— y no siete. Encabeza la fila del total, y debajo los
- * rubros con sus subcuentas sangradas.
+ * Van en dos porque el árbol del presupuesto no cabía en una: veinticinco filas con
+ * etiquetas de varios renglones llegaban justo al borde del papel -sin sitio para
+ * notas- y cualquier rubro nuevo la habría cortado. El corte se hace en un rubro de
+ * primer nivel, nunca separando un rubro de sus subcuentas.
+ *
+ * Mismas tres ejecuciones que el estado de resultados, pero en PESOS: aquí caben porque
+ * el ejecutado son dos columnas -mes y acumulado-. La primera hoja encabeza con la fila
+ * del total; la segunda continúa la lista y lo dice al pie.
  *
  * Una subcuenta sin cuenta PUC mapeada imprime RAYA en el real, nunca un cero: el
  * presupuesto la tiene desglosada y la contabilidad no, y decir "0" sería afirmar que no
@@ -11,6 +16,8 @@ import { fmtCont } from "@/lib/format";
 import type { FilaResultados } from "@/lib/informe-tipos";
 
 type Props = {
+  /** 1 encabeza con el total; 2 continúa la lista. */
+  parte: 1 | 2;
   periodo: string; corte: string; mesActual: string;
   totalMes: number; totalAcum: number;
   totalPptoMes: number | null; totalPptoAcum: number | null; totalPptoAnual: number | null;
@@ -22,7 +29,7 @@ const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v).toLocal
 const tono = (v: number | null) => (v === null ? undefined : v <= 100 ? "pos" : "neg");
 
 export default function PaginaGastos({
-  periodo, corte, mesActual, totalMes, totalAcum,
+  parte, periodo, corte, mesActual, totalMes, totalAcum,
   totalPptoMes, totalPptoAcum, totalPptoAnual, filas,
 }: Props) {
   const m = mesActual.toLowerCase();
@@ -41,7 +48,7 @@ export default function PaginaGastos({
   return (
     <div className="page densa">
       <div className="band">
-        <h1>DETALLE DE GASTOS DE ADMINISTRACIÓN</h1>
+        <h1>DETALLE DE GASTOS DE ADMINISTRACIÓN{parte === 2 ? " · CONTINUACIÓN" : ""}</h1>
         <span className="periodo">{periodo}</span>
       </div>
       <div className="meta">
@@ -68,6 +75,7 @@ export default function PaginaGastos({
           </tr>
         </thead>
         <tbody>
+          {parte === 1 && (
           <tr className="sec">
             <td className="l">Gastos de Administración</td>
             <td className="hoy">{fmtCont(totalMes)}</td>
@@ -80,6 +88,7 @@ export default function PaginaGastos({
                 pct={pct(x.e)} tono={tono(x.e)} />
             ))}
           </tr>
+          )}
           {filas.map((f) => (
             <tr key={f.etiqueta} className="det">
               <td className={`l${f.sangria ? " s1" : ""}`}>{f.etiqueta}</td>
@@ -101,7 +110,11 @@ export default function PaginaGastos({
       </div>
       <div className="pie">
         <span>Corte: {corte}</span>
-        <span>Una raya en el ejecutado significa que el presupuesto desglosa lo que la contabilidad no</span>
+        <span>
+          {parte === 1
+            ? "El detalle continúa en la página siguiente"
+            : "Una raya en el ejecutado significa que el presupuesto desglosa lo que la contabilidad no"}
+        </span>
       </div>
     </div>
   );
