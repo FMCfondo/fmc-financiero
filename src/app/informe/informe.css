@@ -124,12 +124,38 @@
 .notas li b { color: var(--ink); }
 .notas li::before { content: "· "; color: var(--royal); font-weight: 800; }
 
-/* Nota a la que le falta la causa que escribe una persona. Se marca tambien en el
-   papel: es preferible que se vea el hueco a que la Junta lea una explicacion que
-   nadie escribio. La barrera de exportacion, ademas, impide llegar hasta aqui. */
+/* Nota a la que le falta la causa que escribe una persona. Se marca en PANTALLA;
+   en el papel no: el usuario decidio que el PDF sale aunque falte (2026-09-08), y un
+   rotulo rojo en un documento para la Junta no es una advertencia sino un defecto. */
 .notas p.pendiente { border-left: 1.5pt solid var(--neg); padding-left: 6pt; }
 .notas p.pendiente::after { content: " ⟨falta la explicación del período⟩";
                             color: var(--neg); font-weight: 700; }
+@media print {
+  .notas p.pendiente { border-left: 0; padding-left: 0; }
+  .notas p.pendiente::after { content: none; }
+}
+
+/* Edicion sobre la hoja: SOLO pantalla y solo en Operacion. El bloque se edita donde
+   se lee, en vez de en un panel aparte, por decision del usuario. */
+.notas-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8pt; }
+.notas .controles { display: inline-flex; gap: 8pt; align-items: baseline; font-size: 7.6pt;
+                    letter-spacing: 0; text-transform: none; }
+.notas .controles button { font: inherit; font-weight: 700; color: var(--royal); background: none;
+                           border: 0; cursor: pointer; }
+.notas .controles button:hover { text-decoration: underline; }
+.notas .controles button:disabled { color: var(--faint); cursor: default; }
+.notas .controles .manual { color: var(--neg); font-weight: 600; }
+.notas .editor textarea { display: block; width: 100%; box-sizing: border-box; font: inherit;
+                          font-size: 8.6pt; line-height: 1.45; color: var(--ink); background: #fff;
+                          border: 1pt solid var(--royal); border-radius: 2pt; padding: 5pt 6pt;
+                          resize: vertical; }
+.notas .editor .acciones { display: flex; gap: 8pt; align-items: center; margin-top: 4pt; font-size: 7.8pt; }
+.notas .editor .acciones button { font: inherit; font-weight: 700; border: 0; cursor: pointer;
+                                  padding: 3pt 9pt; border-radius: 2pt; }
+.notas .editor .acciones button:disabled { opacity: .6; cursor: default; }
+.notas .editor .acciones .guardar { background: var(--royal); color: #fff; }
+.notas .editor .acciones .cancelar { background: var(--soft); color: var(--ink); }
+.notas .editor .acciones .aviso { color: var(--muted); }
 
 /* Cifras de lectura rápida */
 .strip { display: grid; gap: 8pt; margin-top: 6.5pt; }

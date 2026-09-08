@@ -20,6 +20,8 @@ import PaginaGastos from "./PaginaGastos";
 import PaginaInteranual from "./PaginaInteranual";
 import PaginaPortafolio from "./PaginaPortafolio";
 import BarraInforme from "./BarraInforme";
+import { type EdicionNota } from "./BloqueNotas";
+import type { BloqueNota } from "@/lib/informe-tipos";
 import "./informe.css";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +89,11 @@ export default async function InformePage({
     return i;
   })();
 
+  /* Lo que cada bloque de notas necesita para poder editarse sobre la hoja: a qué
+     página pertenece, de qué período es y si ya hay un texto escrito a mano. */
+  const edicion = (bloque: BloqueNota): EdicionNota =>
+    ({ bloque, anio: inf.periodo.anio, mes: inf.periodo.mes, manual: inf.textos[bloque] });
+
   const meses = inf.resultados.etiquetasMeses;
   const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
 
@@ -94,9 +101,6 @@ export default async function InformePage({
     <>
       <BarraInforme
         periodo={periodo}
-        anio={inf.periodo.anio}
-        mes={inf.periodo.mes}
-        comentarios={inf.comentarios}
         pendientes={barrera.pendientes}
         portafolioConcilia={inf.portafolio.concilia}
       />
@@ -108,14 +112,14 @@ export default async function InformePage({
           tarjetas={inf.resumen.tarjetas}
           evolucion={inf.resumen.evolucion}
           notas={inf.resumen.notas}
-          comentario={inf.comentarios.situacion}
+          edicion={edicion("situacion")}
         />
         <PaginaBalance
           titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
           etiquetasMeses={inf.balanceActivos.etiquetasMeses}
           filas={inf.balanceActivos.filas}
           notas={inf.balanceActivos.notas}
-          comentario={inf.comentarios.activos}
+          edicion={edicion("activos")}
           {...comun}
         />
         <PaginaBalance
@@ -123,16 +127,17 @@ export default async function InformePage({
           etiquetasMeses={inf.balancePasivos.etiquetasMeses}
           filas={inf.balancePasivos.filas}
           notas={inf.balancePasivos.notas}
-          comentario={inf.comentarios.pasivos}
+          edicion={edicion("pasivos")}
           {...comun}
         />
         <PaginaResultados vista="evolucion" {...resultados} notas={[]} />
         <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas}
-          comentario={inf.comentarios.resultados} />
+          edicion={edicion("resultados")} />
 
-        <PaginaGastos parte={1} {...gastos} filas={inf.gastos.filas.slice(0, corteGastos)} />
+        <PaginaGastos parte={1} {...gastos} filas={inf.gastos.filas.slice(0, corteGastos)}
+          edicion={edicion("gastos")} />
         <PaginaGastos parte={2} {...gastos} filas={inf.gastos.filas.slice(corteGastos)}
-          comentario={inf.comentarios.gastos} />
+          edicion={edicion("gastos")} />
         <PaginaInteranual
           periodo={periodo}
           corte={inf.periodo.corte}
@@ -141,7 +146,7 @@ export default async function InformePage({
           disponible={inf.interanual.disponible}
           motivo={inf.interanual.motivo}
           filas={inf.interanual.filas}
-          comentario={inf.comentarios.interanual}
+          edicion={edicion("interanual")}
         />
         <PaginaPortafolio
           periodo={periodo}
@@ -150,7 +155,7 @@ export default async function InformePage({
           p={inf.portafolio}
           rendimientoMes={fact(etq, ING_FINANCIERO)}
           rendimientoAcum={ytd(etq, ING_FINANCIERO)}
-          comentario={inf.comentarios.portafolio}
+          edicion={edicion("portafolio")}
         />
       </div>
     </>

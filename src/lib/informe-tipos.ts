@@ -162,10 +162,12 @@ export type Informe = {
 
   portafolio: Portafolio;
 
-  /* Lo que el analista quiso explicar y ninguna plantilla podía deducir. Se escribe
-     desde el propio informe, en modo Operación, y se imprime como último párrafo del
-     bloque de notas de su página. Cadena vacía = no hay comentario. */
-  comentarios: Record<BloqueNota, string>;
+  /* El texto de las notas de cada página cuando el analista lo escribió A MANO: se
+     edita sobre la propia hoja, en modo Operación, y REEMPLAZA al redactado desde
+     las cifras. Cadena vacía = manda el texto automático, que se actualiza solo.
+     El precio de escribirlo a mano es ese: deja de actualizarse con los datos, y
+     la hoja lo advierte mientras se está en Operación. */
+  textos: Record<BloqueNota, string>;
 
   /** Trazabilidad: de dónde salió cada cosa. Se imprime en el pie. */
   origen: { fuente: string; generado: string };

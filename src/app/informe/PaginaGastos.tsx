@@ -14,13 +14,13 @@
  * hubo gasto. Componente de presentación. */
 import { fmtCont } from "@/lib/format";
 import type { FilaResultados } from "@/lib/informe-tipos";
-import BloqueNotas from "./BloqueNotas";
+import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
 type Props = {
   /** 1 encabeza con el total; 2 continúa la lista. */
   parte: 1 | 2;
-  /** Solo en la segunda: el comentario cierra la sección. */
-  comentario?: string;
+  /** Solo en la segunda: las notas cierran la sección. */
+  edicion: EdicionNota;
   periodo: string; corte: string; mesActual: string;
   totalMes: number; totalAcum: number;
   totalPptoMes: number | null; totalPptoAcum: number | null; totalPptoAnual: number | null;
@@ -32,7 +32,7 @@ const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v).toLocal
 const tono = (v: number | null) => (v === null ? undefined : v <= 100 ? "pos" : "neg");
 
 export default function PaginaGastos({
-  parte, comentario, periodo, corte, mesActual, totalMes, totalAcum,
+  parte, edicion, periodo, corte, mesActual, totalMes, totalAcum,
   totalPptoMes, totalPptoAcum, totalPptoAnual, filas,
 }: Props) {
   const m = mesActual.toLowerCase();
@@ -112,7 +112,7 @@ export default function PaginaGastos({
         ))}
       </div>
 
-      <BloqueNotas notas={[]} comentario={parte === 2 ? comentario : undefined} />
+      {parte === 2 && <BloqueNotas notas={[]} edicion={edicion} />}
       <div className="pie">
         <span>Corte: {corte}</span>
         <span>

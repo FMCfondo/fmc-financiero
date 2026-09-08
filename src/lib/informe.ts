@@ -348,20 +348,20 @@ const CUENTAS_DE_LA_CAUSA: Record<string, (codigo: string) => boolean> = {
     && !DEP_AMORT.some((d) => c.startsWith(d)),
 };
 
-/* Los comentarios del analista viven en la misma tabla que las causas, con una clave
-   propia -«informe:activos»- para no chocar con las cuentas PUC. Se guardan desde el
-   informe, en modo Operación. */
-export const CLAVE_COMENTARIO = "informe:";
+/* Los textos escritos a mano viven en la misma tabla que las causas, con una clave
+   propia -«informe:activos»- para no chocar con las cuentas PUC. Se guardan desde la
+   propia hoja, en modo Operación, y sustituyen al texto redactado desde las cifras. */
+export const CLAVE_TEXTO = "informe:";
 const BLOQUES: BloqueNota[] = ["situacion", "activos", "pasivos", "resultados",
                                "gastos", "interanual", "portafolio"];
 
-async function comentariosDelInforme(etq: string): Promise<Record<BloqueNota, string>> {
+async function textosDelInforme(etq: string): Promise<Record<BloqueNota, string>> {
   const p = D.periodo(etq);
   const escritas = await D.leerNotas(p.anio, p.mes);
   const out = Object.fromEntries(BLOQUES.map((b) => [b, ""])) as Record<BloqueNota, string>;
   for (const n of escritas) {
-    if (!n.codigo?.startsWith(CLAVE_COMENTARIO)) continue;
-    const b = n.codigo.slice(CLAVE_COMENTARIO.length) as BloqueNota;
+    if (!n.codigo?.startsWith(CLAVE_TEXTO)) continue;
+    const b = n.codigo.slice(CLAVE_TEXTO.length) as BloqueNota;
     if (BLOQUES.includes(b)) out[b] = n.cuerpo.trim();
   }
   return out;
@@ -459,7 +459,7 @@ export async function construirInforme(etq: string): Promise<Informe> {
   const resumen = seccionResumen(etq, resultados, portafolioInf);
 
   const notas = await notasDelInforme(etq, balanceActivos.filas, balancePasivos.filas, resultados.filas);
-  const comentarios = await comentariosDelInforme(etq);
+  const textos = await textosDelInforme(etq);
   resumen.notas = notas.situacion;
   balanceActivos.notas = notas.activos;
   balancePasivos.notas = notas.pasivos;
@@ -483,7 +483,7 @@ export async function construirInforme(etq: string): Promise<Informe> {
     interanual: seccionInteranual(etq),
     portafolio: portafolioInf,
 
-    comentarios,
+    textos,
 
     origen: {
       fuente: `Balance de prueba de ${mesNombre[p.mes]} ${p.anio}, cargado en la aplicación`,

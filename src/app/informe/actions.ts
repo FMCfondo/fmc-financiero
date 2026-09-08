@@ -1,13 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { ensureLoaded, guardarNotaDb } from "@/lib/data";
-import { CLAVE_COMENTARIO } from "@/lib/informe";
+import { CLAVE_TEXTO } from "@/lib/informe";
 import type { BloqueNota } from "@/lib/informe-tipos";
 
-/* El comentario que el analista escribe para una página del informe. Vive en la
-   misma tabla que las causas de los movimientos raros -`nota_periodo`- pero con una
-   clave propia («informe:activos»), que no puede chocar con una cuenta PUC.
-   Cuerpo vacío = se borra la fila; guardarNotaDb ya lo resuelve así. */
+/* El texto de las notas de una página, escrito a mano desde la propia hoja. Vive en
+   `nota_periodo` con clave propia («informe:activos»), que no puede chocar con una
+   cuenta PUC, y REEMPLAZA al texto redactado desde las cifras. Cuerpo vacío = se
+   borra la fila y vuelve a mandar el automático; guardarNotaDb ya lo resuelve así. */
 
 const TITULO: Record<BloqueNota, string> = {
   situacion: "Informe · Situación del período",
@@ -19,7 +19,7 @@ const TITULO: Record<BloqueNota, string> = {
   portafolio: "Informe · Portafolio",
 };
 
-export async function guardarComentario(input: {
+export async function guardarTextoNota(input: {
   anio: number; mes: number; bloque: BloqueNota; cuerpo: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const titulo = TITULO[input.bloque];
@@ -28,7 +28,7 @@ export async function guardarComentario(input: {
     await ensureLoaded();
     await guardarNotaDb({
       anio: input.anio, mes: input.mes,
-      codigo: `${CLAVE_COMENTARIO}${input.bloque}`,
+      codigo: `${CLAVE_TEXTO}${input.bloque}`,
       titulo, cifra: null, cuerpo: input.cuerpo.trim(),
     });
   } catch (e) {

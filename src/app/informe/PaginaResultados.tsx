@@ -17,14 +17,14 @@
  * vistas se alimentan de las MISMAS filas, así que no pueden discrepar. */
 import { fmtContMill } from "@/lib/format";
 import type { FilaResultados, Nota } from "@/lib/informe-tipos";
-import BloqueNotas from "./BloqueNotas";
+import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
 type Vista = "evolucion" | "ejecucion";
 
 type Props = {
   vista: Vista;
   periodo: string; corte: string; anio: number; mesNombre: string;
-  etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[]; comentario?: string;
+  etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[]; edicion?: EdicionNota;
 };
 
 const M = fmtContMill;
@@ -39,7 +39,7 @@ const tono = (v: number | null, esGasto?: boolean) => {
 };
 
 export default function PaginaResultados({
-  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas, comentario,
+  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas, edicion,
 }: Props) {
   const n = etiquetasMeses.length;
   const mes = mesNombre.toLowerCase();
@@ -122,7 +122,7 @@ export default function PaginaResultados({
         </div>
       )}
 
-      <BloqueNotas notas={notas} comentario={comentario} />
+      {edicion && <BloqueNotas notas={notas} edicion={edicion} />}
 
       <div className="pie">
         <span>Corte: {corte}</span>

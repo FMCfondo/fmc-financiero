@@ -11,12 +11,12 @@
  * Unidad: MILLONES. Componente de presentación. */
 import { fmtContMill } from "@/lib/format";
 import type { Nota, Tarjeta } from "@/lib/informe-tipos";
-import BloqueNotas from "./BloqueNotas";
+import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
 type Serie = { titulo: string; valores: number[]; etiquetas: string[] };
 type Props = {
   periodo: string; corte: string; rangoMeses: string;
-  tarjetas: Tarjeta[]; evolucion: Serie[]; notas: Nota[]; comentario?: string;
+  tarjetas: Tarjeta[]; evolucion: Serie[]; notas: Nota[]; edicion: EdicionNota;
 };
 
 const mill = (v: number) => {
@@ -76,7 +76,7 @@ function Franja({ t }: { t: Tarjeta[] }) {
 }
 
 export default function PaginaResumen({
-  periodo, corte, rangoMeses, tarjetas, evolucion, notas, comentario,
+  periodo, corte, rangoMeses, tarjetas, evolucion, notas, edicion,
 }: Props) {
   return (
     <div className="page">
@@ -98,7 +98,7 @@ export default function PaginaResumen({
         {evolucion.map((s) => <Grafico key={s.titulo} s={s} />)}
       </div>
 
-      <BloqueNotas notas={notas} comentario={comentario} titulo="Situación del período" />
+      <BloqueNotas notas={notas} edicion={edicion} titulo="Situación del período" />
 
       <div className="pie">
         <span>Corte: {corte}</span>
