@@ -15,7 +15,7 @@
  *
  * Unidad: MILLONES, y la cabecera lo declara. Componente de presentación: las dos
  * vistas se alimentan de las MISMAS filas, así que no pueden discrepar. */
-import { fmtContMill } from "@/lib/format";
+import { fmtCont } from "@/lib/format";
 import type { FilaResultados, Nota } from "@/lib/informe-tipos";
 import BloqueNotas, { type EdicionNota } from "./BloqueNotas";
 
@@ -25,9 +25,11 @@ type Props = {
   vista: Vista;
   periodo: string; corte: string; anio: number; mesNombre: string;
   etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[]; edicion?: EdicionNota;
+  /** Tramo de meses de ESTA hoja. La evolución se parte en dos cuando el año ya no
+   *  cabe en pesos —a partir de once meses—; hasta entonces va entera. */
+  tramo?: { desde: number; hasta: number };
 };
 
-const M = fmtContMill;
 const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v).toLocaleString("es-CO")}%`);
 
 /** Verde cuando supera la meta; rojo cuando no. En gastos y provisiones la lectura se
@@ -39,11 +41,25 @@ const tono = (v: number | null, esGasto?: boolean) => {
 };
 
 export default function PaginaResultados({
-  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas, edicion,
+  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas, edicion, tramo,
 }: Props) {
   const n = etiquetasMeses.length;
   const mes = mesNombre.toLowerCase();
   const esEvolucion = vista === "evolucion";
+
+  /* Los meses de esta hoja. El acumulado del año solo acompaña al tramo que TERMINA
+     en el mes del corte: junto a enero–junio sería el acumulado de todo el año al
+     lado de medio año, que es justo lo que hace dudar a quien lee. */
+  const desde = esEvolucion ? tramo?.desde ?? 0 : 0;
+  const hasta = esEvolucion ? tramo?.hasta ?? n : n;
+  const meses = etiquetasMeses.slice(desde, hasta);
+  const traeAcumulado = !esEvolucion || hasta === n;
+  const parcial = esEvolucion && (desde > 0 || hasta < n);
+
+  /* Las dos hojas en PESOS: es la misma cuenta partida en dos y la Junta no debería
+     ver la misma línea en dos unidades. Cabe -medido- porque la ejecución tiene
+     columnas fijas y la evolución se parte cuando el año ya no entra. */
+  const M = fmtCont;
 
   const bloques = [
     { k: "mes" as const, clase: "cmes", th: "gmes", titulo: "EJECUCIÓN DEL MES",
@@ -60,19 +76,22 @@ export default function PaginaResultados({
   return (
     <div className="page densa">
       <div className="band">
-        <h1>ESTADO DE RESULTADOS · {esEvolucion ? "EVOLUCIÓN DEL AÑO" : "EJECUCIÓN PRESUPUESTAL"}</h1>
+        <h1>
+          ESTADO DE RESULTADOS · {esEvolucion ? "EVOLUCIÓN DEL AÑO" : "EJECUCIÓN PRESUPUESTAL"}
+          {parcial && ` · ${meses[0].toUpperCase()}–${meses[meses.length - 1].toUpperCase()}`}
+        </h1>
         <span className="periodo">{periodo}</span>
       </div>
       <div className="meta">
         <span>FMC S.A.S. · Fondo Mutuo de Cobertura</span>
-        <span>Cifras en millones de pesos</span>
+        <span>Cifras en pesos colombianos</span>
       </div>
 
       <table>
         <thead>
           <tr className="grupos">
             <th className="l" />
-            <th colSpan={esEvolucion ? n + 1 : 2}>
+            <th colSpan={esEvolucion ? meses.length + (traeAcumulado ? 1 : 0) : 2}>
               {esEvolucion ? `EVOLUCIÓN MENSUAL ${anio}` : "EJECUTADO"}
             </th>
             {!esEvolucion && bloques.map((b) => (
@@ -82,11 +101,11 @@ export default function PaginaResultados({
           <tr className="cols">
             <th className="l">Concepto</th>
             {esEvolucion
-              ? etiquetasMeses.map((m, i) => (
-                  <th key={m} className={i === n - 1 ? "hoy" : undefined}>{m}</th>
+              ? meses.map((m, i) => (
+                  <th key={m} className={desde + i === n - 1 ? "hoy" : undefined}>{m}</th>
                 ))
               : <th className="hoy">{mesNombre}</th>}
-            <th className={esEvolucion ? undefined : "hoy"}>Acum.</th>
+            {traeAcumulado && <th className={esEvolucion ? undefined : "hoy"}>Acum.</th>}
             {!esEvolucion && bloques.map((b) => <Cabeceras key={b.k} clase={b.th} />)}
           </tr>
         </thead>
@@ -95,11 +114,11 @@ export default function PaginaResultados({
             <tr key={f.etiqueta} className={f.nivel}>
               <td className="l"><span className="signo">{f.signo}</span>{f.etiqueta}</td>
               {esEvolucion
-                ? f.meses.map((v, i) => (
-                    <td key={i} className={i === n - 1 ? "hoy" : undefined}>{M(v)}</td>
+                ? f.meses.slice(desde, hasta).map((v, i) => (
+                    <td key={i} className={desde + i === n - 1 ? "hoy" : undefined}>{M(v)}</td>
                   ))
                 : <td className="hoy">{M(f.mes)}</td>}
-              <td className="hoy">{M(f.acumulado)}</td>
+              {traeAcumulado && <td className="hoy">{M(f.acumulado)}</td>}
               {!esEvolucion && bloques.map((b) => {
                 const meta = b.ppto(f); const e = b.ej(f);
                 return (
@@ -127,9 +146,11 @@ export default function PaginaResultados({
       <div className="pie">
         <span>Corte: {corte}</span>
         <span>
-          {esEvolucion
-            ? "La ejecución contra el presupuesto va en la página siguiente"
-            : "Los tres porcentajes miden cosas distintas: no se comparan entre sí"}
+          {!esEvolucion
+            ? "Los tres porcentajes miden cosas distintas: no se comparan entre sí"
+            : hasta < n
+              ? "La evolución del año continúa en la página siguiente"
+              : "La ejecución contra el presupuesto va en la página siguiente"}
         </span>
       </div>
     </div>
