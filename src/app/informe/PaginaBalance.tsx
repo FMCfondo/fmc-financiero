@@ -18,6 +18,7 @@ type Props = {
   filas: FilaBalance[];
   mesInteranual: string;
   notas: Nota[];
+  comentario?: string;
 };
 
 const pct = (v: number | null) => {
@@ -27,7 +28,7 @@ const pct = (v: number | null) => {
 };
 
 export default function PaginaBalance({
-  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual, notas,
+  titulo, periodo, corte, anio, etiquetasMeses, filas, mesInteranual, notas, comentario,
 }: Props) {
   const ultimo = etiquetasMeses.length - 1;
   return (
@@ -79,7 +80,7 @@ export default function PaginaBalance({
         </tbody>
       </table>
 
-      <BloqueNotas notas={notas} />
+      <BloqueNotas notas={notas} comentario={comentario} />
 
       <div className="pie">
         <span>Corte: {corte}</span>

@@ -47,3 +47,22 @@ export const NAV: ItemNav[] = [
 ];
 
 export const visibleEn = (item: ItemNav, modo: ModoApp) => !item.modos || item.modos.includes(modo);
+
+/* El modo se recuerda en el navegador de quien mira, pero DENTRO de la misma pestaña
+   nadie se entera de que cambió: `storage` solo avisa a las demás. Por eso quien lo
+   cambia lo anuncia, y cualquier componente que dependa del modo puede escucharlo.
+   Lo necesita el informe, que muestra el editor de notas solo en Operación. */
+export const EVENTO_MODO = "fmc:modo-cambiado";
+
+export function leerModo(): ModoApp {
+  try {
+    const g = localStorage.getItem(CLAVE_MODO);
+    if (g === "reuniones" || g === "operacion") return g;
+  } catch { /* noop */ }
+  return MODO_DEFAULT;
+}
+
+export function escribirModo(m: ModoApp): void {
+  try { localStorage.setItem(CLAVE_MODO, m); } catch { /* noop */ }
+  window.dispatchEvent(new CustomEvent<ModoApp>(EVENTO_MODO, { detail: m }));
+}

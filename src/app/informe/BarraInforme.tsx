@@ -19,6 +19,8 @@
  * no una medida.
  */
 import { useCallback, useEffect, useState } from "react";
+import EditorNotas from "./EditorNotas";
+import type { BloqueNota } from "@/lib/informe-tipos";
 
 /** Ancho de una hoja carta apaisada, en px de CSS. */
 const ANCHO_HOJA = 1056;
@@ -33,13 +35,16 @@ const NIVELES: { id: Zoom; label: string }[] = [
 
 type Props = {
   periodo: string;
+  anio: number;
+  mes: number;
+  comentarios: Record<BloqueNota, string>;
   /** Partidas que el detector marcó y nadie ha explicado todavía. */
   pendientes: string[];
   /** El portafolio cuadra contra las inversiones líquidas del balance. */
   portafolioConcilia: boolean;
 };
 
-export default function BarraInforme({ periodo, pendientes, portafolioConcilia }: Props) {
+export default function BarraInforme({ periodo, anio, mes, comentarios, pendientes, portafolioConcilia }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
 
   /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
@@ -113,7 +118,18 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
     // Las tipografías cambian el alto cuando terminan de cargar.
     document.fonts?.ready.then(medir).catch(() => {});
     window.addEventListener("resize", medir);
-    return () => window.removeEventListener("resize", medir);
+
+    /* Y se vuelve a medir cuando cambia el contenido: al guardar una explicación,
+       el servidor redibuja las hojas y hay que saber en el acto si la nueva línea
+       cabe. Sin esto, el aviso se quedaría con la medida de la carga inicial. */
+    const hoja = document.querySelector(".informe");
+    const vigia = hoja ? new MutationObserver(() => medir()) : null;
+    vigia?.observe(hoja!, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      window.removeEventListener("resize", medir);
+      vigia?.disconnect();
+    };
   }, []);
 
   const bloqueos = [
@@ -169,6 +185,8 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
           </button>
         </div>
       </div>
+
+      <EditorNotas anio={anio} mes={mes} comentarios={comentarios} />
 
       {bloqueado && (
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-neg">

@@ -24,7 +24,7 @@ type Vista = "evolucion" | "ejecucion";
 type Props = {
   vista: Vista;
   periodo: string; corte: string; anio: number; mesNombre: string;
-  etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[];
+  etiquetasMeses: string[]; filas: FilaResultados[]; notas: Nota[]; comentario?: string;
 };
 
 const M = fmtContMill;
@@ -39,7 +39,7 @@ const tono = (v: number | null, esGasto?: boolean) => {
 };
 
 export default function PaginaResultados({
-  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas,
+  vista, periodo, corte, anio, mesNombre, etiquetasMeses, filas, notas, comentario,
 }: Props) {
   const n = etiquetasMeses.length;
   const mes = mesNombre.toLowerCase();
@@ -122,7 +122,7 @@ export default function PaginaResultados({
         </div>
       )}
 
-      <BloqueNotas notas={notas} />
+      <BloqueNotas notas={notas} comentario={comentario} />
 
       <div className="pie">
         <span>Corte: {corte}</span>

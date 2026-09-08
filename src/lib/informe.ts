@@ -22,7 +22,7 @@ import type { Modo } from "./informe-cuentas";
 import { portafolio } from "./inversiones";
 import { CTA_BOLD } from "./informe-cuentas";
 import { esf, COSTO_COBERTURA, DEP_AMORT } from "./statements";
-import type { FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio, Tarjeta } from "./informe-tipos";
+import type { BloqueNota, FilaBalance, FilaInteranual, FilaResultados, Informe, Nota, Portafolio, Tarjeta } from "./informe-tipos";
 
 /** Ventana del balance: el período y los tres meses anteriores. En el Excel esto se hacía
  *  ocultando columnas a mano. */
@@ -348,6 +348,25 @@ const CUENTAS_DE_LA_CAUSA: Record<string, (codigo: string) => boolean> = {
     && !DEP_AMORT.some((d) => c.startsWith(d)),
 };
 
+/* Los comentarios del analista viven en la misma tabla que las causas, con una clave
+   propia -«informe:activos»- para no chocar con las cuentas PUC. Se guardan desde el
+   informe, en modo Operación. */
+export const CLAVE_COMENTARIO = "informe:";
+const BLOQUES: BloqueNota[] = ["situacion", "activos", "pasivos", "resultados",
+                               "gastos", "interanual", "portafolio"];
+
+async function comentariosDelInforme(etq: string): Promise<Record<BloqueNota, string>> {
+  const p = D.periodo(etq);
+  const escritas = await D.leerNotas(p.anio, p.mes);
+  const out = Object.fromEntries(BLOQUES.map((b) => [b, ""])) as Record<BloqueNota, string>;
+  for (const n of escritas) {
+    if (!n.codigo?.startsWith(CLAVE_COMENTARIO)) continue;
+    const b = n.codigo.slice(CLAVE_COMENTARIO.length) as BloqueNota;
+    if (BLOQUES.includes(b)) out[b] = n.cuerpo.trim();
+  }
+  return out;
+}
+
 async function notasDelInforme(
   etq: string,
   activos: FilaBalance[],
@@ -440,6 +459,7 @@ export async function construirInforme(etq: string): Promise<Informe> {
   const resumen = seccionResumen(etq, resultados, portafolioInf);
 
   const notas = await notasDelInforme(etq, balanceActivos.filas, balancePasivos.filas, resultados.filas);
+  const comentarios = await comentariosDelInforme(etq);
   resumen.notas = notas.situacion;
   balanceActivos.notas = notas.activos;
   balancePasivos.notas = notas.pasivos;
@@ -462,6 +482,8 @@ export async function construirInforme(etq: string): Promise<Informe> {
     gastos: seccionGastos(etq),
     interanual: seccionInteranual(etq),
     portafolio: portafolioInf,
+
+    comentarios,
 
     origen: {
       fuente: `Balance de prueba de ${mesNombre[p.mes]} ${p.anio}, cargado en la aplicación`,

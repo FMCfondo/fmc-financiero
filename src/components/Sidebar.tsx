@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, type LucideIcon,
 } from "lucide-react";
-import { NAV, MODOS, MODO_DEFAULT, CLAVE_MODO, visibleEn, type ModoApp } from "@/lib/modos";
+import { NAV, MODOS, MODO_DEFAULT, escribirModo, leerModo, visibleEn, type ModoApp } from "@/lib/modos";
 
 const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck };
 
@@ -15,15 +15,10 @@ export default function Sidebar() {
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
   // El modo es una preferencia de vista, no un permiso: se recuerda en el navegador.
   const [modo, setModo] = useState<ModoApp>(MODO_DEFAULT);
-  useEffect(() => {
-    try {
-      const g = localStorage.getItem(CLAVE_MODO) as ModoApp | null;
-      if (g === "reuniones" || g === "operacion") setModo(g);
-    } catch { /* noop */ }
-  }, []);
+  useEffect(() => { setModo(leerModo()); }, []);
   const cambiar = (m: ModoApp) => {
     setModo(m);
-    try { localStorage.setItem(CLAVE_MODO, m); } catch { /* noop */ }
+    escribirModo(m);   // avisa a quien dependa del modo en esta misma pestaña
   };
   const items = NAV.filter((i) => visibleEn(i, modo));
 

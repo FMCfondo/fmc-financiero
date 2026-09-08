@@ -16,7 +16,7 @@ import BloqueNotas from "./BloqueNotas";
 type Serie = { titulo: string; valores: number[]; etiquetas: string[] };
 type Props = {
   periodo: string; corte: string; rangoMeses: string;
-  tarjetas: Tarjeta[]; evolucion: Serie[]; notas: Nota[];
+  tarjetas: Tarjeta[]; evolucion: Serie[]; notas: Nota[]; comentario?: string;
 };
 
 const mill = (v: number) => {
@@ -76,7 +76,7 @@ function Franja({ t }: { t: Tarjeta[] }) {
 }
 
 export default function PaginaResumen({
-  periodo, corte, rangoMeses, tarjetas, evolucion, notas,
+  periodo, corte, rangoMeses, tarjetas, evolucion, notas, comentario,
 }: Props) {
   return (
     <div className="page">
@@ -98,7 +98,7 @@ export default function PaginaResumen({
         {evolucion.map((s) => <Grafico key={s.titulo} s={s} />)}
       </div>
 
-      <BloqueNotas notas={notas} titulo="Situación del período" />
+      <BloqueNotas notas={notas} comentario={comentario} titulo="Situación del período" />
 
       <div className="pie">
         <span>Corte: {corte}</span>

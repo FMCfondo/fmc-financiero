@@ -94,6 +94,9 @@ export default async function InformePage({
     <>
       <BarraInforme
         periodo={periodo}
+        anio={inf.periodo.anio}
+        mes={inf.periodo.mes}
+        comentarios={inf.comentarios}
         pendientes={barrera.pendientes}
         portafolioConcilia={inf.portafolio.concilia}
       />
@@ -105,12 +108,14 @@ export default async function InformePage({
           tarjetas={inf.resumen.tarjetas}
           evolucion={inf.resumen.evolucion}
           notas={inf.resumen.notas}
+          comentario={inf.comentarios.situacion}
         />
         <PaginaBalance
           titulo="BALANCE GENERAL ADMINISTRATIVO · ACTIVOS"
           etiquetasMeses={inf.balanceActivos.etiquetasMeses}
           filas={inf.balanceActivos.filas}
           notas={inf.balanceActivos.notas}
+          comentario={inf.comentarios.activos}
           {...comun}
         />
         <PaginaBalance
@@ -118,13 +123,16 @@ export default async function InformePage({
           etiquetasMeses={inf.balancePasivos.etiquetasMeses}
           filas={inf.balancePasivos.filas}
           notas={inf.balancePasivos.notas}
+          comentario={inf.comentarios.pasivos}
           {...comun}
         />
         <PaginaResultados vista="evolucion" {...resultados} notas={[]} />
-        <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas} />
+        <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas}
+          comentario={inf.comentarios.resultados} />
 
         <PaginaGastos parte={1} {...gastos} filas={inf.gastos.filas.slice(0, corteGastos)} />
-        <PaginaGastos parte={2} {...gastos} filas={inf.gastos.filas.slice(corteGastos)} />
+        <PaginaGastos parte={2} {...gastos} filas={inf.gastos.filas.slice(corteGastos)}
+          comentario={inf.comentarios.gastos} />
         <PaginaInteranual
           periodo={periodo}
           corte={inf.periodo.corte}
@@ -133,6 +141,7 @@ export default async function InformePage({
           disponible={inf.interanual.disponible}
           motivo={inf.interanual.motivo}
           filas={inf.interanual.filas}
+          comentario={inf.comentarios.interanual}
         />
         <PaginaPortafolio
           periodo={periodo}
@@ -141,6 +150,7 @@ export default async function InformePage({
           p={inf.portafolio}
           rendimientoMes={fact(etq, ING_FINANCIERO)}
           rendimientoAcum={ytd(etq, ING_FINANCIERO)}
+          comentario={inf.comentarios.portafolio}
         />
       </div>
     </>

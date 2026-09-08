@@ -103,10 +103,17 @@ export type Portafolio = {
   concilia: boolean;
 };
 
+/** Los bloques del informe que pueden llevar texto al pie. Los cuatro primeros
+ *  los redacta informe-notas.ts; los tres últimos solo admiten el comentario que
+ *  escribe una persona. */
+export type BloqueNota =
+  | "situacion" | "activos" | "pasivos" | "resultados"
+  | "gastos" | "interanual" | "portafolio";
+
 /** Una nota del informe. `causa` es lo ÚNICO que escribe una persona. */
 export type Nota = {
   /** A qué bloque del informe pertenece. */
-  bloque: "activos" | "pasivos" | "resultados" | "gastos" | "situacion";
+  bloque: BloqueNota;
   /** Texto generado por el redactor determinístico (sin IA). */
   texto: string;
   /** Explicación humana de una variación atípica, si aplica. */
@@ -154,6 +161,11 @@ export type Informe = {
   interanual: { disponible: boolean; motivo?: string; filas: FilaInteranual[] };
 
   portafolio: Portafolio;
+
+  /* Lo que el analista quiso explicar y ninguna plantilla podía deducir. Se escribe
+     desde el propio informe, en modo Operación, y se imprime como último párrafo del
+     bloque de notas de su página. Cadena vacía = no hay comentario. */
+  comentarios: Record<BloqueNota, string>;
 
   /** Trazabilidad: de dónde salió cada cosa. Se imprime en el pie. */
   origen: { fuente: string; generado: string };

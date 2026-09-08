@@ -31,7 +31,12 @@ export default async function PanelPage({ searchParams }: {
   const etq = resolverEtq(p);
   const modo: Modo = qModo === "mes" ? "mes" : "acum";
   const inf = construirPanel(etq, modo);
-  const notas = await leerNotas(inf.periodo.anio, inf.periodo.mes);
+  /* Las explicaciones que se escriben DENTRO del informe llevan clave propia
+     («informe:activos») y son narrativa de una página concreta: fuera de ella no se
+     entienden, así que no entran al Panel. Aquí solo las causas de los movimientos
+     fuera de lo habitual, que es lo que esta pantalla explica. */
+  const notas = (await leerNotas(inf.periodo.anio, inf.periodo.mes))
+    .filter((n) => !n.codigo?.startsWith("informe:"));
 
   return (
     <div className="max-w-[1180px] space-y-6">

@@ -7,13 +7,19 @@
  *
  * Una nota pendiente se marca a la vista —y también en el papel, si alguien
  * saltara la barrera de exportación—: es preferible que se vea el hueco a que
- * la Junta lea una explicación que nadie escribió. */
+ * la Junta lea una explicación que nadie escribió.
+ *
+ * El `comentario` es lo que el analista escribió a mano para esta página, y va al
+ * final: primero lo que se deduce de las cifras, después lo que solo sabe una
+ * persona. Hay páginas que solo tienen comentario -gastos, interanual, portafolio-
+ * porque ninguna plantilla redacta sobre ellas. */
 import type { Nota } from "@/lib/informe-tipos";
 
-export default function BloqueNotas({ notas, titulo = "Notas del período" }: {
-  notas: Nota[]; titulo?: string;
+export default function BloqueNotas({ notas, comentario, titulo = "Notas del período" }: {
+  notas: Nota[]; comentario?: string; titulo?: string;
 }) {
-  if (!notas.length) return null;
+  const propio = comentario?.trim();
+  if (!notas.length && !propio) return null;
   return (
     <div className="notas">
       <h2>{titulo}</h2>
@@ -21,6 +27,7 @@ export default function BloqueNotas({ notas, titulo = "Notas del período" }: {
         {notas.map((n, i) => (
           <p key={i} className={n.requiereExplicacion ? "pendiente" : undefined}>{n.texto}</p>
         ))}
+        {propio && <p>{propio}</p>}
       </div>
     </div>
   );

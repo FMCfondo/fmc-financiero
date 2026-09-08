@@ -6,10 +6,12 @@
  * Componente de presentación. */
 import { fmtCont, fmtContMill } from "@/lib/format";
 import type { Portafolio } from "@/lib/informe-tipos";
+import BloqueNotas from "./BloqueNotas";
 
 type Props = {
   periodo: string; corte: string; mesActual: string;
   p: Portafolio; rendimientoMes: number; rendimientoAcum: number;
+  comentario?: string;
 };
 
 const pct1 = (v: number) => `${(v * 100).toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -25,7 +27,7 @@ const mill = (v: number) => {
 };
 
 export default function PaginaPortafolio({
-  periodo, corte, mesActual, p, rendimientoMes, rendimientoAcum,
+  periodo, corte, mesActual, p, rendimientoMes, rendimientoAcum, comentario,
 }: Props) {
   const entidades = new Set(p.posiciones.map((x) => x.entidad)).size;
   const porTipo = ["FIDUCIA", "CDT"].map((tipo) => {
@@ -120,6 +122,8 @@ export default function PaginaPortafolio({
           </p>
         </div>
       </div>
+
+      <BloqueNotas notas={[]} comentario={comentario} />
 
       <div className="pie">
         <span>Corte: {corte}</span>
