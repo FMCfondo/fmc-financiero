@@ -44,6 +44,11 @@
 .meta b { color: var(--ink); font-weight: 600; }
 
 /* Tabla contable */
+/* La tabla ESTIRA hasta llenar la hoja: cada pagina reparte entre sus filas el
+   espacio que le sobra, asi que una con pocas filas respira y una llena queda
+   compacta, sin tener que afinar el relleno pagina por pagina. Cuando no sobra
+   nada, no cambia nada. */
+.informe .page > table { flex: 1 1 auto; }
 .informe table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
 .informe thead th { font-size: 7.3pt; font-weight: 600; color: var(--muted); text-transform: uppercase;
            letter-spacing: .3pt; padding: 3.5pt 4pt; text-align: right; white-space: nowrap; }

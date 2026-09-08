@@ -58,6 +58,35 @@ export default async function InformePage({
     ...inf.resultados.notas, ...inf.gastos.notas,
   ]);
 
+  const resultados = {
+    periodo,
+    corte: inf.periodo.corte,
+    anio: inf.periodo.anio,
+    mesNombre: mesNombre[inf.periodo.mes],
+    etiquetasMeses: inf.resultados.etiquetasMeses,
+    filas: inf.resultados.filas,
+  };
+
+  const gastos = {
+    periodo,
+    corte: inf.periodo.corte,
+    mesActual: mesNombre[inf.periodo.mes],
+    totalMes: gAdmin?.mes ?? 0,
+    totalAcum: gAdmin?.acumulado ?? 0,
+    totalPptoMes: gAdmin?.pptoMes ?? null,
+    totalPptoAcum: gAdmin?.pptoAcumulado ?? null,
+    totalPptoAnual: gAdmin?.pptoAnual ?? null,
+  };
+
+  /* El árbol de gastos se parte por la mitad, pero el corte baja hasta el siguiente
+     rubro de primer nivel: separar un rubro de sus subcuentas sangradas dejaría
+     huérfanas unas cifras que solo se entienden bajo su padre. */
+  const corteGastos = (() => {
+    let i = Math.ceil(inf.gastos.filas.length / 2);
+    while (i < inf.gastos.filas.length && inf.gastos.filas[i].sangria) i++;
+    return i;
+  })();
+
   const meses = inf.resultados.etiquetasMeses;
   const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
 
@@ -91,26 +120,11 @@ export default async function InformePage({
           notas={inf.balancePasivos.notas}
           {...comun}
         />
-        <PaginaResultados
-          periodo={periodo}
-          corte={inf.periodo.corte}
-          anio={inf.periodo.anio}
-          mesNombre={mesNombre[inf.periodo.mes]}
-          etiquetasMeses={inf.resultados.etiquetasMeses}
-          filas={inf.resultados.filas}
-          notas={inf.resultados.notas}
-        />
-        <PaginaGastos
-          periodo={periodo}
-          corte={inf.periodo.corte}
-          mesActual={mesNombre[inf.periodo.mes]}
-          totalMes={gAdmin?.mes ?? 0}
-          totalAcum={gAdmin?.acumulado ?? 0}
-          totalPptoMes={gAdmin?.pptoMes ?? null}
-          totalPptoAcum={gAdmin?.pptoAcumulado ?? null}
-          totalPptoAnual={gAdmin?.pptoAnual ?? null}
-          filas={inf.gastos.filas}
-        />
+        <PaginaResultados vista="evolucion" {...resultados} notas={[]} />
+        <PaginaResultados vista="ejecucion" {...resultados} notas={inf.resultados.notas} />
+
+        <PaginaGastos parte={1} {...gastos} filas={inf.gastos.filas.slice(0, corteGastos)} />
+        <PaginaGastos parte={2} {...gastos} filas={inf.gastos.filas.slice(corteGastos)} />
         <PaginaInteranual
           periodo={periodo}
           corte={inf.periodo.corte}

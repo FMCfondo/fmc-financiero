@@ -145,14 +145,26 @@ Antes de dar por terminado un módulo:
   No hay generador aparte a propósito: así el papel y la pantalla no pueden divergir.
   El diálogo trae dos ajustes que estropean la hoja —márgenes y encabezados—, y la
   barra los enuncia. El nombre del archivo sale del `<title>` (`generateMetadata`).
+- **EL INFORME TIENE NUEVE PÁGINAS, NO SIETE** (2026-09-08, decisión del usuario: *«no
+  está muy bien optimizado… lo mejor será dividirlo y darle más aire»*). El estado de
+  resultados se partió en **evolución del año** (la serie mes a mes) y **ejecución
+  presupuestal** (las tres ejecuciones + las notas); el detalle de gastos, en dos mitades
+  cortadas en un rubro de primer nivel —nunca separando un rubro de sus subcuentas—.
+  Las dos vistas de resultados se alimentan de las MISMAS filas: no pueden discrepar.
+- **La tabla estira hasta llenar la hoja** (`.page > table { flex: 1 1 auto }`): cada
+  página reparte entre sus filas el espacio que le sobra, así que una con pocas filas
+  respira y una llena queda compacta, sin afinar el relleno página por página. `.densa`
+  quedó como **piso** de densidad, no como aspecto final. Si se vuelve a apretar, NO
+  bajar la fuente ni el margen: partir la página, como se hizo aquí.
 - **CADA `.page` RECORTA EN SILENCIO** lo que no cabe (alto fijo + `overflow: hidden`).
   Así se perdieron la fila de utilidad neta de la página 4 y la última fila de la 5,
   sin que nada lo dijera. Dos defensas: los rótulos de grupo ya no dictan el ancho de
   la tabla (era la causa), y la barra **mide las siete hojas al cargar y avisa** si
   alguna se corta. **Verificar SIEMPRE imprimiendo de verdad**, no mirando la pantalla:
   `chrome --headless=new --print-to-pdf`, y las páginas se leen con PyMuPDF (`fitz`),
-  que está instalado. La holgura vertical es escasa: la página 1 respira ~16 px y la 5
-  va a cero. Cualquier línea nueva hay que medirla.
+  que está instalado. Medido en los dos extremos —agosto de 2026 (8 meses) y
+  diciembre de 2025 (12)— sin desborde. La página 1 es la única sin margen: respira
+  ~16 px, así que cualquier nota más larga la parte.
 - Las notas se enganchan por **CLAVE, no por etiqueta** (`ClaveNota` en
   informe-cuentas.ts): la etiqueta es texto que se imprime y puede reescribirse. Si la
   clave falta, `construirInforme()` **lanza a propósito**.
