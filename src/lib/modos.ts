@@ -33,12 +33,13 @@ export const NAV: ItemNav[] = [
     match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
             "/estados/patrimonio", "/estados/inversiones"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
-  /* Vivió en Operación mientras se armaba, para que la Junta no viera un módulo a
-     medias. Ya está completo —nueve páginas conciliadas— y es EL documento que se le
-     envía, así que su sitio es Reuniones. Lo que el analista hace para prepararlo
-     -escribir la causa de lo que se salió de lo habitual- vive en Revisión del
-     cierre, que sí es Operación. */
-  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText", modos: ["reuniones"] },
+  /* En LOS DOS modos, igual que el Panel, y por la misma razón: es donde arrancan las
+     dos conversaciones. En Reuniones es el documento que se le envía a la Junta; en
+     Operación es donde el analista escribe las notas, sobre la propia hoja.
+     Estuvo un rato solo en Reuniones y eso dejó el editor INALCANZABLE: para verlo
+     había que estar ya en /informe y cambiar de modo sin moverse, porque en Operación
+     la entrada del menú desaparecía. Quien lo edita tiene que poder llegar. */
+  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
   { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
