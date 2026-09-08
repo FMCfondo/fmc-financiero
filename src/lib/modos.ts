@@ -25,13 +25,15 @@ export type ItemNav = { href: string; match: string | string[]; label: string; i
 
 export const NAV: ItemNav[] = [
   { href: "/panel", match: "/panel", label: "Panel Ejecutivo", icono: "Gauge" },
-  /* Una sola puerta al módulo: las cuatro pestañas se ven desde dentro. Antes había
-     además una entrada suelta a «Situación Financiera», que llevaba a la misma sección
-     y hacía saltar el resaltado entre dos entradas al cambiar de pestaña — parecían
-     módulos distintos sin serlo. */
+  /* Una sola puerta al módulo. Dentro, `estados/layout` ya ofrece las dos mitades
+     -Estados Financieros y Análisis- y bajo la primera sus cuatro pestañas.
+     Hubo dos entradas sueltas más en la barra que llevaban aquí mismo:
+     «Situación Financiera» y «Análisis». Las dos hacían saltar el resaltado entre
+     entradas al cambiar de pestaña y parecían módulos distintos sin serlo, así que
+     `match` lista TODAS las rutas de dentro y la entrada es una sola. */
   { href: "/estados/resultados", label: "Estados Financieros", icono: "Landmark",
     match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
-            "/estados/patrimonio", "/estados/inversiones"] },
+            "/estados/patrimonio", "/estados/inversiones", "/estados/dashboard"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
   /* En LOS DOS modos, igual que el Panel, y por la misma razón: es donde arrancan las
      dos conversaciones. En Reuniones es el documento que se le envía a la Junta; en
@@ -40,7 +42,6 @@ export const NAV: ItemNav[] = [
      había que estar ya en /informe y cambiar de modo sin moverse, porque en Operación
      la entrada del menú desaparecía. Quien lo edita tiene que poder llegar. */
   { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
-  { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
   { href: "/revision", match: "/revision", label: "Revisión del cierre", icono: "ClipboardCheck", modos: ["operacion"] },
