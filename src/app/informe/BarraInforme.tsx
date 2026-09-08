@@ -18,32 +18,118 @@
  * sin poder imprimir; lo que sí bloquea es una nota sin explicar, que es un hecho,
  * no una medida.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import EditorNotas from "./EditorNotas";
+import type { BloqueNota } from "@/lib/informe-tipos";
+
+/** Ancho de una hoja carta apaisada, en px de CSS. */
+const ANCHO_HOJA = 1056;
+const CLAVE_ZOOM = "fmc:informe:zoom";
+type Zoom = "ajustar" | number;
+const NIVELES: { id: Zoom; label: string }[] = [
+  { id: "ajustar", label: "Ajustar" },
+  { id: 1, label: "100%" },
+  { id: 1.25, label: "125%" },
+  { id: 1.5, label: "150%" },
+];
 
 type Props = {
   periodo: string;
+  anio: number;
+  mes: number;
+  comentarios: Record<BloqueNota, string>;
   /** Partidas que el detector marcó y nadie ha explicado todavía. */
   pendientes: string[];
   /** El portafolio cuadra contra las inversiones líquidas del balance. */
   portafolioConcilia: boolean;
 };
 
-export default function BarraInforme({ periodo, pendientes, portafolioConcilia }: Props) {
+export default function BarraInforme({ periodo, anio, mes, comentarios, pendientes, portafolioConcilia }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
+
+  /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
+     aumento es una preferencia de quien mira -se recuerda en su navegador- y no
+     toca el documento: `informe.css` solo lo aplica en @media screen, asi que el
+     PDF sale siempre a tamano real. */
+  const [zoom, setZoom] = useState<Zoom>("ajustar");
+  const [factor, setFactor] = useState(1);
+
+  useEffect(() => {
+    try {
+      const g = localStorage.getItem(CLAVE_ZOOM);
+      if (g === "ajustar") setZoom("ajustar");
+      else if (g && Number(g) > 0) setZoom(Number(g));
+    } catch { /* noop */ }
+  }, []);
+
+  const elegir = (z: Zoom) => {
+    setZoom(z);
+    try { localStorage.setItem(CLAVE_ZOOM, String(z)); } catch { /* noop */ }
+  };
+
+  const aplicar = useCallback(() => {
+    const hoja = document.querySelector<HTMLElement>(".informe");
+    const madre = hoja?.parentElement;
+    if (!hoja || !madre) return;
+    let z = typeof zoom === "number" ? zoom : 1;
+    if (zoom === "ajustar") {
+      const cs = getComputedStyle(madre);
+      const util = madre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      // Nunca por debajo de 1: encoger el papel lo haria ilegible, mejor que se corte.
+      z = Math.min(1.8, Math.max(1, Math.floor((util / ANCHO_HOJA) * 100) / 100));
+    }
+    hoja.style.setProperty("--zoom-informe", String(z));
+    setFactor(z);
+  }, [zoom]);
+
+  useEffect(() => {
+    aplicar();
+    window.addEventListener("resize", aplicar);
+    return () => window.removeEventListener("resize", aplicar);
+  }, [aplicar]);
 
   useEffect(() => {
     const medir = () => {
-      const malas: number[] = [];
-      document.querySelectorAll<HTMLElement>(".informe .page").forEach((p, i) => {
-        if (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth) malas.push(i + 1);
+      const hojas = Array.from(document.querySelectorAll<HTMLElement>(".informe .page"));
+      const malas = new Set<number>();
+
+      hojas.forEach((p, i) => {
+        if (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth) malas.add(i + 1);
       });
-      setCortadas(malas);
+
+      /* Una tabla puede desbordar SU COLUMNA sin desbordar la hoja: en la página del
+         portafolio se salía de su mitad y se pintaba encima del bloque vecino, y la
+         medición de arriba no la veía. Se compara cada tabla con el ancho útil de
+         quien la contiene. */
+      document.querySelectorAll<HTMLElement>(".informe .page table").forEach((t) => {
+        const madre = t.parentElement;
+        if (!madre) return;
+        const cs = getComputedStyle(madre);
+        const util = madre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        if (t.getBoundingClientRect().width > util + 1) {
+          const hoja = hojas.indexOf(t.closest<HTMLElement>(".page")!);
+          if (hoja >= 0) malas.add(hoja + 1);
+        }
+      });
+
+      setCortadas([...malas].sort((a, b) => a - b));
     };
     medir();
     // Las tipografías cambian el alto cuando terminan de cargar.
     document.fonts?.ready.then(medir).catch(() => {});
     window.addEventListener("resize", medir);
-    return () => window.removeEventListener("resize", medir);
+
+    /* Y se vuelve a medir cuando cambia el contenido: al guardar una explicación,
+       el servidor redibuja las hojas y hay que saber en el acto si la nueva línea
+       cabe. Sin esto, el aviso se quedaría con la medida de la carga inicial. */
+    const hoja = document.querySelector(".informe");
+    const vigia = hoja ? new MutationObserver(() => medir()) : null;
+    vigia?.observe(hoja!, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      window.removeEventListener("resize", medir);
+      vigia?.disconnect();
+    };
   }, []);
 
   const bloqueos = [
@@ -53,7 +139,10 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
   const bloqueado = bloqueos.length > 0;
 
   return (
-    <div className="no-imprimir mx-auto mb-5 max-w-[11in] rounded-lg border border-line bg-panel shadow-sm">
+    <div
+      className="no-imprimir mx-auto mb-5 rounded-lg border border-line bg-panel shadow-sm"
+      style={{ maxWidth: `${ANCHO_HOJA * factor}px` }}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
         <div>
           <p className="text-sm font-semibold text-fg">Informe de Junta · {periodo}</p>
@@ -63,6 +152,24 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-faint">Tamaño</span>
+            <div className="flex overflow-hidden rounded-md border border-line">
+              {NIVELES.map((n) => (
+                <button
+                  key={String(n.id)}
+                  type="button"
+                  onClick={() => elegir(n.id)}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition ${
+                    zoom === n.id ? "bg-accentdim text-royal" : "text-muted hover:bg-card2"
+                  }`}
+                >
+                  {n.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <p className="max-w-[19rem] text-xs leading-snug text-muted">
             En el diálogo elige <b className="font-semibold text-fg">Guardar como PDF</b>, márgenes{" "}
             <b className="font-semibold text-fg">Ninguno</b> y desactiva{" "}
@@ -78,6 +185,8 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
           </button>
         </div>
       </div>
+
+      <EditorNotas anio={anio} mes={mes} comentarios={comentarios} />
 
       {bloqueado && (
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-neg">

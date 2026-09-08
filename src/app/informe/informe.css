@@ -68,8 +68,12 @@
 .informe tbody td.l { text-align: left; white-space: normal; }
 /* Piso de la columna de concepto. Sin el, el reparto automatico se la come para
    dar ancho a las columnas numericas y cada etiqueta se parte en tres lineas:
-   asi fue como la pagina 4 acabo perdiendo la fila de utilidad neta. */
-.informe th.l, .informe td.l { min-width: 112pt; }
+   asi fue como la pagina 4 acabo perdiendo la fila de utilidad neta.
+   SOLO la primera columna y SOLO en las tablas de estado: la tabla `mini` del
+   portafolio tiene tres columnas de texto -id, tipo y entidad- y con un piso en
+   cada una se salia de su mitad de la hoja y se pintaba encima del bloque vecino. */
+.informe table:not(.mini) th.l:first-child,
+.informe table:not(.mini) td.l:first-child { min-width: 112pt; }
 .informe tbody tr { border-bottom: .5pt solid var(--soft); }
 .informe td.l .signo { display: inline-block; width: 12pt; color: var(--faint); font-size: 7.8pt; }
 .informe td.l.s1 { padding-left: 18pt; }
@@ -131,9 +135,12 @@
 .strip { display: grid; gap: 8pt; margin-top: 6.5pt; }
 .stat { border: .75pt solid var(--line); border-top: 2.4pt solid var(--royal); border-radius: 2px;
         padding: 6pt 10pt 6.5pt; background: var(--tint); }
-.stat .lbl { font-size: 7.2pt; font-weight: 600; letter-spacing: .7pt; text-transform: uppercase; color: var(--muted); }
-.stat .val { font-size: 15pt; font-weight: 800; margin-top: 2pt; letter-spacing: -.2pt; }
-.stat .ctx { font-size: 7.7pt; color: var(--muted); margin-top: 1.5pt; }
+/* En bloque, no en linea: la pagina del portafolio los escribe con <span> y el
+   rotulo salia pegado a la cifra ("TOTAL INVERTIDO$1.739 millones"). Que lo
+   garantice la hoja de estilos y no la etiqueta que use cada pagina. */
+.stat .lbl { display: block; font-size: 7.2pt; font-weight: 600; letter-spacing: .7pt; text-transform: uppercase; color: var(--muted); }
+.stat .val { display: block; font-size: 15pt; font-weight: 800; margin-top: 2pt; letter-spacing: -.2pt; }
+.stat .ctx { display: block; font-size: 7.7pt; color: var(--muted); margin-top: 1.5pt; }
 .stat .ctx b { font-weight: 700; }
 .stat .ctx b.pos { color: var(--pos); } .stat .ctx b.neg { color: var(--neg); }
 
@@ -180,6 +187,15 @@
    hoja con sombra; al imprimir, cada .page es una página real.
    ============================================================================= */
 @media screen {
+  /* Una hoja carta apaisada mide 11 in = 1.056 px, y dentro del ancho maximo con
+     que se lee el resto de la app se veia diminuta. En esta ruta el contenedor
+     deja de limitarla y la barra ofrece el aumento. */
+  main:has(.informe) { max-width: none; }
+
+  /* El aumento es SOLO de pantalla: lo pone la barra en --zoom-informe y aqui no
+     llega la impresion, asi que el PDF sale siempre a tamano real. */
+  .informe { zoom: var(--zoom-informe, 1); }
+
   .informe { background: #eef2f7; padding: 24px 0; display: flex;
              flex-direction: column; align-items: center; gap: 20px; }
   .informe .page { box-shadow: 0 2px 14px rgba(19,40,110,.13); background: #fff;
