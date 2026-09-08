@@ -33,10 +33,12 @@ export const NAV: ItemNav[] = [
     match: ["/estados/resultados", "/estados/situacion", "/estados/flujo",
             "/estados/patrimonio", "/estados/inversiones"] },
   { href: "/portafolio", match: "/portafolio", label: "Portafolio", icono: "Wallet" },
-  /* EN CONSTRUCCIÓN (2 de 7 páginas): vive en Operación mientras se arma, para que
-     la Junta no vea un módulo a medias. Cuando esté completo pasa a los dos modos —
-     es el documento que se le envía. */
-  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText", modos: ["operacion"] },
+  /* Vivió en Operación mientras se armaba, para que la Junta no viera un módulo a
+     medias. Ya está completo —nueve páginas conciliadas— y es EL documento que se le
+     envía, así que su sitio es Reuniones. Lo que el analista hace para prepararlo
+     -escribir la causa de lo que se salió de lo habitual- vive en Revisión del
+     cierre, que sí es Operación. */
+  { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText", modos: ["reuniones"] },
   { href: "/estados/dashboard", match: "/estados/dashboard", label: "Análisis", icono: "LineChart", modos: ["operacion"] },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
