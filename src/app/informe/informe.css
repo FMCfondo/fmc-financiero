@@ -49,7 +49,12 @@
            letter-spacing: .3pt; padding: 3.5pt 4pt; text-align: right; white-space: nowrap; }
 .informe thead tr.cols th { border-bottom: 1.2pt solid var(--ink); }
 .informe thead th.l { text-align: left; }
-.informe thead tr.grupos th { padding: 3.5pt 4pt 3pt; text-align: center; border-bottom: none; vertical-align: bottom; }
+.informe thead tr.grupos th { padding: 3.5pt 4pt 3pt; text-align: center; border-bottom: none; vertical-align: bottom;
+           /* Sin esto heredan el nowrap de `thead th` y las tres definiciones largas
+              dictan el ancho de la tabla: la empujan fuera de la hoja y estrangulan la
+              columna de concepto, que parte cada etiqueta en tres lineas y desborda
+              tambien a lo alto. Al poder partirse, el ancho lo decide el dato. */
+           white-space: normal; }
 .gtitulo { font-size: 7.6pt; font-weight: 800; letter-spacing: .55pt; color: var(--navy); display: block; }
 .gdef { font-size: 7.2pt; font-weight: 500; text-transform: none; letter-spacing: .1pt;
         color: var(--muted); display: block; margin-top: .5pt; }
