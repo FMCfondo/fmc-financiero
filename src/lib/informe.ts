@@ -152,7 +152,11 @@ function seccionPortafolio(etq: string): Portafolio {
     concentracion: [...porEntidad.entries()]
       .map(([entidad, monto]) => ({ entidad, monto, pct: total ? monto / total : 0 }))
       .sort((a, b) => b.monto - a.monto),
-    tasaPonderada: total ? activas.reduce((s, x) => s + x.monto * x.tasaEa, 0) / total : 0,
+    // La misma regla del motor: sin la tasa de una posición con saldo, no hay ponderada.
+    tasaPonderada: p.tasasFaltantes.length || !total
+      ? null
+      : activas.reduce((s, x) => s + x.monto * (x.tasaEa ?? 0), 0) / total,
+    tasasFaltantes: p.tasasFaltantes,
     pctActivo: activo ? total / activo : 0,
     // Barrera: el total del portafolio tiene que ser el de Inversiones líquidas.
     concilia: Math.abs(total - (D.fact(etq, "12") + D.fact(etq, CTA_BOLD))) <= 1,

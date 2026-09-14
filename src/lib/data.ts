@@ -36,6 +36,21 @@ export type Inversion = {
 };
 export let inversiones: Inversion[] = [];
 
+/* Tasa de cada MES para las posiciones A LA VISTA (fiducias y bolsillos), cuya
+   rentabilidad cambia mes a mes. Un campo único por inversión nunca podía estar
+   bien: el informe de agosto consultado en octubre mostraba las tasas de octubre.
+   Los CDT pactan tasa fija por todo el plazo y la suya sigue en `inversion.tasa_ea`.
+   Clave del mapa: "INV-009|2026|8". */
+export let tasasPeriodo: Map<string, number> = new Map();
+export const claveTasa = (id: string, anio: number, mes: number) => `${id}|${anio}|${mes}`;
+/** A la vista = sin vencimiento. Es la misma regla con la que el motor mide liquidez. */
+export const esALaVista = (inv: Inversion) => inv.fechaVencimiento === null;
+/** La tasa que rige para una inversión en un mes dado; null cuando falta capturarla. */
+export function tasaDe(inv: Inversion, anio: number, mes: number): number | null {
+  if (!esALaVista(inv)) return inv.tasaEa;
+  return tasasPeriodo.get(claveTasa(inv.id, anio, mes)) ?? null;
+}
+
 /* Presupuesto (tabla `ppto`): el Estado de Resultados presupuestado, cargado TAL
    CUAL de la hoja PPTO del Excel. `cuentas`/`formula` mapean cada línea al real
    para la ejecución presupuestal. `meses` = 12 valores ENE..DIC. */
@@ -180,6 +195,15 @@ async function cargarInversiones(sql: any): Promise<void> {
   } catch {
     inversiones = [];
   }
+  // La tabla puede no existir aún (migración pendiente): sin ella no hay tasas y el
+  // informe lo dice con una raya, no con un cero.
+  try {
+    const ts = await sql`select inversion_id, anio, mes, tasa_ea from inversion_tasa`;
+    tasasPeriodo = new Map((ts as any[]).map((r) =>
+      [claveTasa(r.inversion_id, Number(r.anio), Number(r.mes)), Number(r.tasa_ea)]));
+  } catch {
+    tasasPeriodo = new Map();
+  }
 }
 
 /* Los parámetros de la provisión se refrescan en cada request (consulta mínima):
@@ -236,6 +260,26 @@ export async function guardarInversionDb(inv: Inversion): Promise<void> {
   const idx = inversiones.findIndex((x) => x.id === inv.id);
   if (idx >= 0) inversiones[idx] = inv;
   else inversiones = [...inversiones, inv].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Guarda las tasas de un mes para las posiciones a la vista. `null` borra la del
+ *  mes: la posición vuelve a "sin tasa" y el informe la marca. Actualiza la copia en
+ *  memoria de esta instancia; las demás la recogen con la marca de frescura. */
+export async function guardarTasasPeriodoDb(anio: number, mes: number, tasas: Record<string, number | null>): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  for (const [id, tasa] of Object.entries(tasas)) {
+    if (tasa === null) {
+      await sql`delete from inversion_tasa where inversion_id = ${id} and anio = ${anio} and mes = ${mes}`;
+      tasasPeriodo.delete(claveTasa(id, anio, mes));
+    } else {
+      await sql`insert into inversion_tasa (inversion_id, anio, mes, tasa_ea) values (${id}, ${anio}, ${mes}, ${tasa})
+                on conflict (inversion_id, anio, mes) do update set tasa_ea = excluded.tasa_ea, capturada_en = now()`;
+      tasasPeriodo.set(claveTasa(id, anio, mes), tasa);
+    }
+  }
 }
 
 /** Guarda parámetros en Neon y actualiza la copia en memoria de esta instancia. */

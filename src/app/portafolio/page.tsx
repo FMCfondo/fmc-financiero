@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
-import { ensureLoaded, inversiones, paramNum, resolverEtq } from "@/lib/data";
+import { ensureLoaded, inversiones, paramNum, resolverEtq, periodo, esALaVista, tasaDe } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import InversionesMantenimiento from "@/components/InversionesMantenimiento";
@@ -13,6 +13,18 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
   await ensureLoaded();
   const etq = resolverEtq(p);
   const d = portafolio(etq);
+
+  /* Las tasas del mes seleccionado para las posiciones a la vista, con la del mes
+     anterior al lado como referencia. Los CDT no entran: su tasa es fija. */
+  const per = periodo(etq);
+  const [anioAnt, mesAnt] = per.mes === 1 ? [per.anio - 1, 12] : [per.anio, per.mes - 1];
+  const tasasMes = inversiones
+    .filter((i) => i.activa && esALaVista(i))
+    .map((i) => ({
+      id: i.id, entidad: i.entidad, tipo: i.tipo,
+      actual: tasaDe(i, per.anio, per.mes),
+      anterior: tasaDe(i, anioAnt, mesAnt),
+    }));
 
   return (
     <div className="space-y-5">
@@ -34,6 +46,8 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
           inversiones={inversiones}
           benchPct={+(paramNum("bench_cdt180", 0) * 100).toFixed(2)}
           ipcPct={+(paramNum("ipc_12m", 0) * 100).toFixed(2)}
+          periodo={{ anio: per.anio, mes: per.mes, nombre: etqNombre(etq) }}
+          tasasMes={tasasMes}
         />
       ) : (
         <PortafolioResumen d={d} />

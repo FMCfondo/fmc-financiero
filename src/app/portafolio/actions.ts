@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { guardarInversionDb, guardarParametros, cuentaByCodigo, ensureLoaded, type Inversion } from "@/lib/data";
+import { guardarInversionDb, guardarParametros, guardarTasasPeriodoDb, cuentaByCodigo, ensureLoaded, inversiones, esALaVista, type Inversion } from "@/lib/data";
 
 /* Mantenimiento del portafolio: guarda los datos manuales de una inversión.
    El monto NO se edita nunca — sale del balance del mes. */
@@ -46,5 +46,30 @@ export async function guardarReferencias(input: { benchPct: number; ipcPct: numb
     ipc_12m: Math.min(Math.max(input.ipcPct, 0), 100) / 100,
   });
   revalidatePath("/portafolio");
+  return { ok: true };
+}
+
+/** Las tasas de UN mes para las posiciones a la vista. Una casilla vacía (null) borra
+ *  la del mes: la posición vuelve a «sin tasa» y el informe la marca con raya. Los CDT
+ *  no pasan por aquí: pactan tasa fija y esa se edita en la propia inversión. */
+export async function guardarTasasPeriodo(input: {
+  anio: number; mes: number; tasas: { id: string; pct: number | null }[];
+}): Promise<{ ok: boolean; error?: string }> {
+  await ensureLoaded();
+  if (!(input.mes >= 1 && input.mes <= 12) || input.anio < 2000) return { ok: false, error: "Período inválido." };
+
+  const tasas: Record<string, number | null> = {};
+  for (const t of input.tasas) {
+    const inv = inversiones.find((i) => i.id === t.id);
+    if (!inv) return { ok: false, error: `La inversión ${t.id} no existe.` };
+    if (!esALaVista(inv)) return { ok: false, error: `${inv.entidad} es un CDT: su tasa es fija y se edita en la inversión.` };
+    if (t.pct === null || Number.isNaN(t.pct)) { tasas[t.id] = null; continue; }
+    if (t.pct < 0 || t.pct > 100) return { ok: false, error: `La tasa de ${inv.entidad} debe estar entre 0 y 100 %.` };
+    tasas[t.id] = t.pct / 100;
+  }
+  await guardarTasasPeriodoDb(input.anio, input.mes, tasas);
+  revalidatePath("/portafolio");
+  revalidatePath("/informe");
+  revalidatePath("/estados/inversiones");
   return { ok: true };
 }
