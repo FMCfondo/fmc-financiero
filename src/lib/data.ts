@@ -345,6 +345,27 @@ export async function guardarMapeoPptoDb(anio: number, orden: number, cuentas: s
   if (i >= 0) presupuesto[i] = { ...presupuesto[i], cuentas };
 }
 
+/** Reemplaza el presupuesto de un año completo. Borrado e inserción van en UNA
+ *  transacción: un fallo a mitad no puede dejar el año medio cargado. Después se
+ *  invalida el dataset, igual que tras una ingesta: es un cambio estructural. */
+export async function guardarPresupuestoAnioDb(anio: number, filas: Omit<PptoLinea, "anio">[]): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  await sql.transaction([
+    sql`delete from ppto where anio = ${anio}`,
+    ...filas.map((f) => sql`
+      insert into ppto (anio, orden, nivel, etiqueta, tipo, clase, nota, meses, total, cuentas, formula)
+      values (${anio}, ${f.orden}, ${f.nivel}, ${f.etiqueta}, ${f.tipo}, ${f.clase}, ${f.nota},
+              ${f.meses}, ${f.total}, ${f.cuentas}, ${f.formula})`),
+  ]);
+  presupuesto = [
+    ...presupuesto.filter((l) => l.anio !== anio),
+    ...filas.map((f) => ({ ...f, anio })),
+  ].sort((a, b) => a.anio - b.anio || a.orden - b.orden);
+}
+
 /** Invalida el dataset en memoria: la próxima petición recarga todo de Neon.
  *  Se llama tras cargar un período nuevo desde la ingesta. */
 export function invalidateDatos(): void {

@@ -44,6 +44,7 @@ export const NAV: ItemNav[] = [
   { href: "/informe", match: "/informe", label: "Informe de Junta", icono: "FileText" },
   { href: "/balances", match: "/balances", label: "Balances / Resumen", icono: "Table2", modos: ["operacion"] },
   { href: "/ingesta", match: "/ingesta", label: "Cargar Balance", icono: "Upload", modos: ["operacion"] },
+  { href: "/presupuesto", match: "/presupuesto", label: "Presupuesto", icono: "Target", modos: ["operacion"] },
   { href: "/revision", match: "/revision", label: "Revisión del cierre", icono: "ClipboardCheck", modos: ["operacion"] },
   { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icono: "Percent", modos: ["operacion"] },
 ];
