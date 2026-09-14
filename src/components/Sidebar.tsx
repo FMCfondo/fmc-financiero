@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, Target, type LucideIcon,
+  Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, Target, Settings, type LucideIcon,
 } from "lucide-react";
 import { NAV, MODOS, MODO_DEFAULT, escribirModo, leerModo, visibleEn, type ModoApp } from "@/lib/modos";
 
-const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, Target };
+const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, Target, Settings };
 
 /* La barra recibe del servidor QUÉ puede ver este usuario (`modulos`, ya filtrado por
    rol y por lo que el administrador habilitó). Aquí solo se pinta:

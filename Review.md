@@ -189,7 +189,7 @@ Antes de dar por terminado un módulo:
   dedujeron conciliando. Confirmadas por el usuario. Antes de tocarlas, correr la
   conciliación.
 - **Pendiente**: guardar la composición de «Clientes» en la tabla `parametro` para que sea
-  editable desde Configuración cuando ese módulo exista (hoy no existe).
+  editable desde Configuración (el módulo ya existe; falta el editor de esta composición).
 - Las notas NO las escribe una IA: plantillas para el ~85% y el analista pone la causa.
   Con una nota pendiente el PDF **ya no se bloquea** (2026-09-08): la barra avisa, y la
   marca roja de «falta la explicación» se pinta **solo en modo Operación** — dentro del
@@ -244,10 +244,20 @@ Antes de dar por terminado un módulo:
   quien refresca los parámetros desde la base; evaluados antes, un cambio en
   `junta_modulos` tardaba una petición en aplicarse por instancia (se vio en la prueba:
   el primer aterrizaje tras el login aún mostraba los cuatro módulos).
-- **PENDIENTE (PR 3)**: Configuración — usuarios (crear con clave generada, desactivar,
-  restablecer), interruptores de `junta_modulos`, parámetros y auditoría. **Del lado del usuario**: apagar la Protección de
-  Despliegue de Vercel al desplegar (si no, la Junta choca con esa pantalla antes que con
-  la nuestra) y rotar la clave de Neon.
+- **PR 3 — Configuración, HECHO (2026-09-14).** `/configuracion` (solo administrador,
+  `soloAdmin()`), cuatro pestañas por `?v=`: **Usuarios** (crear con clave generada,
+  cambiar rol, activar/desactivar, restablecer clave, último acceso), **Lo que ve la
+  Junta** (interruptores de `junta_modulos`), **Parámetros** (solo lectura: qué hay y
+  dónde se edita; no duplica editores) y **Auditoría** (últimos 200 eventos, con nombre
+  de persona en vez de identificador). Todo con formularios clásicos, probado sin
+  hidratar. **La clave generada nunca viaja en la URL**: la acción la deja cinco minutos
+  en una cookie httpOnly con `path=/configuracion` (`COOKIE_CLAVE`, en `auth-cookie.ts`
+  porque un módulo "use server" solo exporta funciones) y el administrador la oculta
+  cuando la copió. Uno no puede desactivarse ni quitarse el rol a sí mismo
+  (`error=timismo`). No se borran usuarios: se desactivan, para conservar la auditoría.
+  **Del lado del usuario**: crear el primer administrador en `/entrar`, apagar la
+  Protección de Despliegue de Vercel (si no, la Junta choca con esa pantalla antes que
+  con la nuestra) y rotar la clave de Neon.
 
 ### Estados Financieros
 - Continuar el refinamiento de densidad tipográfica y comportamiento del scroll (sticky
