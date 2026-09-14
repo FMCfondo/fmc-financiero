@@ -220,9 +220,21 @@ Antes de dar por terminado un módulo:
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
-- **Módulo de presupuestos.** El editor de mapeo de cuentas ya existe (Estados Financieros
-  › Ejecución › «Editar mapeo de cuentas»). Falta poder **cargar el presupuesto de un año
-  nuevo** sin el script de Python y la consola: hará falta con el de 2027.
+- **Módulo de presupuestos — HECHO (2026-09-14).** `/presupuesto` (Operación): estado de
+  cada año cargado y carga de uno nuevo desde la hoja «PPTO <año>» del libro de la Junta,
+  en dos pasos (revisar → confirmar), como la ingesta. La idea que lo hizo posible sin el
+  extractor Python: **del Excel salen solo etiqueta, nivel de agrupación (el outline de
+  Excel, `!rows[].level` en SheetJS con `cellStyles`), doce meses y total; la estructura
+  —total/detalle, clase, fórmula— y el MAPEO DE CUENTAS se heredan del año base por
+  (nivel, etiqueta)**, con segunda pasada sin años ni paréntesis. Año base = el mismo si
+  ya existe (recargar conserva el mapeo), si no el anterior. Lo que no casa entra como
+  detalle nuevo sin cuentas y se reporta. Antes de escribir se verifica que
+  `ing_operacion`, `gastos_admin`, `util_neta` queden una vez y que exista «EBITDA»
+  exacto: si un rótulo estructural cambió, la carga se detiene. El corte es «hasta
+  UTILIDAD NETA»: los «Margen …» de abajo son porcentajes y se ignoran. Escritura en UNA
+  transacción (delete + inserts). Lógica pura en `src/lib/presupuesto-carga.ts`,
+  probada contra la hoja real: reproduce las 75 filas de 2026 con estructura y totales
+  idénticos. `scripts/migrate-ppto.mjs` queda solo para el PRIMER año de una base vacía.
 - **Tasas del portafolio por período — HECHO (2026-09-14).** Tabla `inversion_tasa
   (inversion_id, anio, mes, tasa_ea)`, creada por `scripts/migrate-inversion-tasa.mjs`.
   La regla: **a la vista = sin vencimiento** (la misma con la que el motor mide

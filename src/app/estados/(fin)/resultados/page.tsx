@@ -44,7 +44,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
       {current === "presupuesto" && <VistaPresupuesto etq={etq} />}
-      {current === "mapeo" && <VistaMapeo etq={etq} />}
+      {current === "mapeo" && <VistaMapeo etq={etq} anioForzado={Number(anio) || undefined} />}
       {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" />}
       {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" />}
     </div>
@@ -227,8 +227,11 @@ function VistaPresupuesto({ etq }: { etq: string }) {
 }
 
 /* ---------- Editor del mapeo presupuesto → cuentas PUC ---------- */
-function VistaMapeo({ etq }: { etq: string }) {
-  const ANIO = periodo(etq).anio;
+function VistaMapeo({ etq, anioForzado }: { etq: string; anioForzado?: number }) {
+  /* El año sale del período seleccionado, salvo que venga en la URL: un presupuesto
+     recién cargado (2027 en diciembre de 2026) aún no tiene períodos y sin esto su
+     mapeo sería inalcanzable. Desde /presupuesto se llega con ?anio=. */
+  const ANIO = anioForzado ?? periodo(etq).anio;
   const lineas = lineasMapeo(ANIO, periodo(etq).mes, "acum");
   return (
     <div className="space-y-3">

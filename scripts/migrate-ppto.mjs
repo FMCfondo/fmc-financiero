@@ -1,3 +1,8 @@
+// SOLO PARA EL PRIMER AÑO DE UNA BASE VACÍA. Desde 2026-09-14 el presupuesto de un año
+// nuevo se carga desde la app (Operación > Presupuesto): lee la hoja PPTO y hereda la
+// estructura y el mapeo del año anterior (src/lib/presupuesto-carga.ts). Este script
+// necesita el JSON del extractor Python, que ya no existe.
+//
 // Crea la tabla `ppto` y la puebla con el Presupuesto 2026 (Estado de Resultados),
 // extraído TAL CUAL de la hoja "PPTO 2026" del libro de la Junta. El extractor
 // Python (scratchpad/gen_ppto.py) emite el JSON con el mapeo PUC auto-sembrado;
