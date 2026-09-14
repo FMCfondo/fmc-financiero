@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { ensureLoaded, invalidateDatos } from "@/lib/data";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /*
   Carga de un período del Balance de Prueba a Neon.
@@ -51,6 +52,7 @@ async function conectar() {
 export async function cargarPeriodo(input: {
   anio: number; mes: number; archivo: string; filas: FilaIn[]; confirmar: boolean;
 }): Promise<{ ok: boolean; error?: string; resumen?: ResumenCarga; cargado?: boolean }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   const { anio, mes, archivo, confirmar } = input;
   if (!Number.isInteger(anio) || anio < 2020 || anio > 2100 || !Number.isInteger(mes) || mes < 1 || mes > 12) {
     return { ok: false, error: "Período inválido." };

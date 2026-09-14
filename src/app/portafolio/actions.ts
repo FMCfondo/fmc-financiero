@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { guardarInversionDb, guardarParametros, guardarTasasPeriodoDb, cuentaByCodigo, ensureLoaded, inversiones, esALaVista, type Inversion } from "@/lib/data";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /* Mantenimiento del portafolio: guarda los datos manuales de una inversión.
    El monto NO se edita nunca — sale del balance del mes. */
@@ -9,6 +10,7 @@ export async function guardarInversion(input: {
   tasaEaPct: number; fechaApertura: string; fechaVencimiento: string;
   calificacion: string; renovar: string; observaciones: string; activa: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await ensureLoaded();
 
   const id = input.id.trim().toUpperCase();
@@ -41,6 +43,7 @@ export async function guardarInversion(input: {
 
 /** Tasas de referencia del módulo (manuales, hasta integrar la serie del BanRep). */
 export async function guardarReferencias(input: { benchPct: number; ipcPct: number }) {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await guardarParametros({
     bench_cdt180: Math.min(Math.max(input.benchPct, 0), 100) / 100,
     ipc_12m: Math.min(Math.max(input.ipcPct, 0), 100) / 100,
@@ -55,6 +58,7 @@ export async function guardarReferencias(input: { benchPct: number; ipcPct: numb
 export async function guardarTasasPeriodo(input: {
   anio: number; mes: number; tasas: { id: string; pct: number | null }[];
 }): Promise<{ ok: boolean; error?: string }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await ensureLoaded();
   if (!(input.mes >= 1 && input.mes <= 12) || input.anio < 2000) return { ok: false, error: "Período inválido." };
 

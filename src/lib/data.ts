@@ -24,6 +24,11 @@ export let cuentaByCodigo = new Map<string, Cuenta>();
 export let parametros: Record<string, number> = {};
 export const paramNum = (clave: string, def = 0): number =>
   Number.isFinite(parametros[clave]) ? parametros[clave] : def;
+/* La misma tabla guarda también valores que no son números (listas, objetos): los
+   módulos habilitados para la Junta, por ejemplo. Van aparte para que `paramNum` siga
+   siendo solo números. */
+export let parametrosJson: Record<string, unknown> = {};
+export const paramJson = (clave: string): unknown => parametrosJson[clave];
 
 /* Portafolio de inversiones (tabla `inversion`): los datos MANUALES de cada
    posición (tasa EA, fechas, observaciones) + su mapeo a auxiliares del PUC.
@@ -145,7 +150,9 @@ async function loadFromNeon() {
     if (imp) facts[etq]["5"] = (facts[etq]["5"] ?? 0) - imp;
   }
   parametros = {};
+  parametrosJson = {};
   for (const r of pr as any[]) {
+    parametrosJson[String(r.clave)] = r.valor;
     const v = Number(r.valor);
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
@@ -227,7 +234,9 @@ async function refreshParametros(): Promise<void> {
   }
   const pr = await sql`select clave, valor from parametro`;
   parametros = {};
+  parametrosJson = {};
   for (const r of pr as any[]) {
+    parametrosJson[String(r.clave)] = r.valor;
     const v = Number(r.valor);
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
@@ -280,6 +289,18 @@ export async function guardarTasasPeriodoDb(anio: number, mes: number, tasas: Re
       tasasPeriodo.set(claveTasa(id, anio, mes), tasa);
     }
   }
+}
+
+/** Guarda un parámetro que NO es un número (lista u objeto) y actualiza la copia en
+ *  memoria. Las demás instancias lo recogen con la marca de frescura. */
+export async function guardarParametroJson(clave: string, valor: unknown): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta DATABASE_URL.");
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  await sql`insert into parametro (clave, valor) values (${clave}, ${JSON.stringify(valor)}::jsonb)
+            on conflict (clave) do update set valor = excluded.valor`;
+  parametrosJson[clave] = valor;
 }
 
 /** Guarda parámetros en Neon y actualiza la copia en memoria de esta instancia. */

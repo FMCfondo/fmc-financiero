@@ -228,10 +228,24 @@ Antes de dar por terminado un módulo:
   primer_admin; luego los cambios de usuarios y parámetros.
 - Los formularios de entrar/salir/cambiar clave son `<form action={acción}>`: funcionan sin
   JavaScript y por eso se probaron de punta a punta en el panel.
-- **PENDIENTE (PR 2 y 3)**: lo que ve cada rol aplicado en servidor —menú, conmutador
-  Reuniones/Operación y TODAS las acciones que escriben con `exigirAdmin()`—, y que el
-  admin pueda habilitar/deshabilitar módulos para la Junta; después Configuración
-  (usuarios, parámetros, auditoría). **Del lado del usuario**: apagar la Protección de
+- **Roles aplicados en servidor (PR 2, 2026-09-14).** `src/lib/permisos.ts`: `modulosDe(u)`
+  (qué ve), `rutaPermitida(u, ruta)` (el layout raíz la aplica en cada petición y manda a
+  `destinoInicial`), `soloAdmin()` para páginas o partes de página, y
+  `exigirAdminAccion()` para acciones: **devuelve** `{ok:false,error}` en vez de lanzar,
+  porque un `throw` en una acción llega al navegador sin mensaje. **Toda acción nueva que
+  escriba debe empezar por `const denegado = await exigirAdminAccion(); if (denegado)
+  return denegado;`.** Lo que la Junta ve es el parámetro JSON `junta_modulos` (lista de
+  rutas; por defecto los cuatro módulos de Reuniones; nunca Operación). La barra lateral
+  recibe `rol` y `modulos` del layout; la Junta no tiene conmutador y su modo se fija en
+  Reuniones. Dentro de páginas visibles, las partes que escriben (Mantenimiento del
+  portafolio, editor de mapeo, editor de notas del informe) se gatean por rol desde el
+  servidor: `puedeEditar` viaja dentro de `EdicionNota`.
+- **Orden en el layout raíz: `ensureLoaded()` ANTES de evaluar permisos.** El dataset es
+  quien refresca los parámetros desde la base; evaluados antes, un cambio en
+  `junta_modulos` tardaba una petición en aplicarse por instancia (se vio en la prueba:
+  el primer aterrizaje tras el login aún mostraba los cuatro módulos).
+- **PENDIENTE (PR 3)**: Configuración — usuarios (crear con clave generada, desactivar,
+  restablecer), interruptores de `junta_modulos`, parámetros y auditoría. **Del lado del usuario**: apagar la Protección de
   Despliegue de Vercel al desplegar (si no, la Junta choca con esa pantalla antes que con
   la nuestra) y rotar la clave de Neon.
 

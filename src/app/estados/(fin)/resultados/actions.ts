@@ -1,11 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { guardarMapeoPptoDb, cuentaByCodigo, ensureLoaded } from "@/lib/data";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /* Editor del mapeo presupuestal: guarda a qué cuentas PUC apunta una línea del
    presupuesto para calcular su "Real". Vacío = la línea muestra solo el
    presupuesto (—) y su real vive a nivel del grupo que sí mapea. */
 export async function guardarMapeoPpto(input: { anio: number; orden: number; cuentas: string }): Promise<{ ok: boolean; error?: string; nombres?: string[] }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await ensureLoaded();
   const cuentas = input.cuentas.split(/[,\s]+/).map((c) => c.trim()).filter(Boolean);
   const nombres: string[] = [];

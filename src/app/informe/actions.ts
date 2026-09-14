@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { ensureLoaded, guardarNotaDb } from "@/lib/data";
 import { CLAVE_TEXTO } from "@/lib/informe";
 import type { BloqueNota } from "@/lib/informe-tipos";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /* El texto de las notas de una página, escrito a mano desde la propia hoja. Vive en
    `nota_periodo` con clave propia («informe:activos»), que no puede chocar con una
@@ -22,6 +23,7 @@ const TITULO: Record<BloqueNota, string> = {
 export async function guardarTextoNota(input: {
   anio: number; mes: number; bloque: BloqueNota; cuerpo: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   const titulo = TITULO[input.bloque];
   if (!titulo) return { ok: false, error: "Ese bloque del informe no existe." };
   try {

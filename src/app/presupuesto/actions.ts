@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { ensureLoaded, guardarPresupuestoAnioDb, invalidateDatos, presupuesto } from "@/lib/data";
 import { proponerCarga, type FilaLeida, type FilaPropuesta } from "@/lib/presupuesto-carga";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /* Carga del presupuesto de un año, en DOS PASOS como la ingesta: primero se revisa
    (no escribe nada, devuelve qué heredó, qué es nuevo y qué impide cargar); el
@@ -54,6 +55,7 @@ const saneadas = (filas: FilaLeida[]): FilaLeida[] =>
     }));
 
 export async function revisarPresupuesto(input: { anio: number; filas: FilaLeida[] }): Promise<{ ok: boolean; error?: string; resumen?: ResumenRevision }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await ensureLoaded();
   const anio = Number(input.anio);
   if (!Number.isInteger(anio) || anio < 2020 || anio > 2100) return { ok: false, error: "Año inválido." };
@@ -84,6 +86,7 @@ export async function revisarPresupuesto(input: { anio: number; filas: FilaLeida
 }
 
 export async function confirmarPresupuesto(input: { anio: number; filas: FilaLeida[] }): Promise<{ ok: boolean; error?: string; filas?: number }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   await ensureLoaded();
   const anio = Number(input.anio);
   if (!Number.isInteger(anio) || anio < 2020 || anio > 2100) return { ok: false, error: "Año inválido." };

@@ -39,9 +39,12 @@ type Props = {
   portafolioConcilia: boolean;
   /** Posiciones a la vista sin la tasa de ESTE mes: la página 9 las imprime con raya. */
   tasasFaltantes: string[];
+  /** Los avisos (explicaciones que faltan, tasas, hojas cortadas) son recados para
+   *  quien puede arreglarlos. A la Junta se le muestra el documento y su descarga. */
+  mostrarAvisos: boolean;
 };
 
-export default function BarraInforme({ periodo, pendientes, portafolioConcilia, tasasFaltantes }: Props) {
+export default function BarraInforme({ periodo, pendientes, portafolioConcilia, tasasFaltantes, mostrarAvisos }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
 
   /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
@@ -139,7 +142,7 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
       ? [`falta la tasa de ${periodo.toLowerCase()} de ${tasasFaltantes.join(", ")} (Portafolio › Mantenimiento › Tasas del mes)`]
       : []),
   ];
-  const avisar = bloqueos.length > 0;
+  const avisar = mostrarAvisos && bloqueos.length > 0;
 
   return (
     <div
@@ -202,7 +205,7 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
         </p>
       )}
 
-      {cortadas.length > 0 && (
+      {mostrarAvisos && cortadas.length > 0 && (
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-neg">
           <b className="font-semibold">
             {cortadas.length === 1 ? `La página ${cortadas[0]} se está cortando` : `Se están cortando las páginas ${cortadas.join(", ")}`}:
