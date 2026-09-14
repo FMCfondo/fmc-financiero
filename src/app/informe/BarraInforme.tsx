@@ -37,9 +37,11 @@ type Props = {
   pendientes: string[];
   /** El portafolio cuadra contra las inversiones líquidas del balance. */
   portafolioConcilia: boolean;
+  /** Posiciones a la vista sin la tasa de ESTE mes: la página 9 las imprime con raya. */
+  tasasFaltantes: string[];
 };
 
-export default function BarraInforme({ periodo, pendientes, portafolioConcilia }: Props) {
+export default function BarraInforme({ periodo, pendientes, portafolioConcilia, tasasFaltantes }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
 
   /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
@@ -133,6 +135,9 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia }
   const bloqueos = [
     ...pendientes.map((p) => `falta la explicación de ${p}`),
     ...(portafolioConcilia ? [] : ["el portafolio no cuadra contra el balance"]),
+    ...(tasasFaltantes.length
+      ? [`falta la tasa de ${periodo.toLowerCase()} de ${tasasFaltantes.join(", ")} (Portafolio › Mantenimiento › Tasas del mes)`]
+      : []),
   ];
   const avisar = bloqueos.length > 0;
 

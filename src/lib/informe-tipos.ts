@@ -85,7 +85,9 @@ export type PosicionPortafolio = {
   entidad: string;
   monto: number;
   diasPlazo: number | null;   // null ⇒ "a la vista"
-  tasaEA: number;             // fracción: 0.12 significa 12 % E.A.
+  /** Fracción: 0.12 significa 12 % E.A. La del MES del corte para las posiciones a la
+   *  vista; null cuando falta capturarla — se imprime raya, nunca un cero. */
+  tasaEA: number | null;
 };
 
 export type Portafolio = {
@@ -94,8 +96,11 @@ export type Portafolio = {
   /** Ordenada de mayor a menor. La barra se escala contra la mayor, no contra
    *  el total: así se comparan entre sí. */
   concentracion: { entidad: string; monto: number; pct: number }[];
-  /** Ponderada POR MONTO (no el promedio simple). Ver nota abajo. */
-  tasaPonderada: number;
+  /** Ponderada POR MONTO (no el promedio simple). Ver nota abajo. null si a alguna
+   *  posición con saldo le falta la tasa del mes: no se afirma una media incompleta. */
+  tasaPonderada: number | null;
+  /** Entidades a las que les falta la tasa del mes. Con alguna, la barra avisa. */
+  tasasFaltantes: string[];
   /** % del activo total que representa el portafolio. */
   pctActivo: number;
   /** Debe ser true: el total tiene que cuadrar con Inversiones líquidas del

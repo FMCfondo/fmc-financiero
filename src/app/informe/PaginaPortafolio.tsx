@@ -15,7 +15,9 @@ type Props = {
 };
 
 const pct1 = (v: number) => `${(v * 100).toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-const pct2 = (v: number) => `${(v * 100).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+/** Raya cuando falta la tasa del mes: una cifra que no se capturó no se inventa. */
+const pct2 = (v: number | null) =>
+  v === null ? "—" : `${(v * 100).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 /* Estilo de la casa (plantillas del informe): por encima de mil millones se imprime sin
    decimales, por debajo con uno. Un decimal en una cifra de cuatro dígitos es ruido. */
 const mill = (v: number) => {
@@ -39,7 +41,10 @@ export default function PaginaPortafolio({
 
   const tarjetas = [
     { l: "Total invertido", v: mill(p.total), c: `${pct1(p.pctActivo)} del activo total` },
-    { l: "Tasa ponderada por monto", v: pct2(p.tasaPonderada), c: "efectiva anual" },
+    { l: "Tasa ponderada por monto", v: pct2(p.tasaPonderada),
+      c: p.tasasFaltantes.length
+        ? `falta la tasa del mes en ${p.tasasFaltantes.length} ${p.tasasFaltantes.length === 1 ? "posición" : "posiciones"}`
+        : "efectiva anual" },
     { l: "Posiciones", v: String(p.posiciones.length), c: `en ${entidades} entidades vigiladas` },
     { l: `Rendimientos de ${mesActual.toLowerCase()}`, v: mill(rendimientoMes),
       c: `${mill(rendimientoAcum)} acumulados en el año` },

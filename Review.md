@@ -223,11 +223,17 @@ Antes de dar por terminado un módulo:
 - **Módulo de presupuestos.** El editor de mapeo de cuentas ya existe (Estados Financieros
   › Ejecución › «Editar mapeo de cuentas»). Falta poder **cargar el presupuesto de un año
   nuevo** sin el script de Python y la consola: hará falta con el de 2027.
-- **Tasas del portafolio por período.** Los CDT tienen tasa fija y un solo campo es
-  correcto. Las fiducias y Bold rinden distinto cada mes, así que un campo único nunca
-  puede estar bien: un informe de julio consultado en octubre mostraría tasas de octubre.
-  Diseño acordado: tabla `inversion_tasa (inversión, año, mes, tasa)`, se llena en el
-  cierre junto a las notas, y si falta la del mes el informe imprime raya y bloquea el PDF.
+- **Tasas del portafolio por período — HECHO (2026-09-14).** Tabla `inversion_tasa
+  (inversion_id, anio, mes, tasa_ea)`, creada por `scripts/migrate-inversion-tasa.mjs`.
+  La regla: **a la vista = sin vencimiento** (la misma con la que el motor mide
+  liquidez) ⇒ la tasa que rige es la del MES, capturada en Portafolio › Mantenimiento ›
+  «Tasas del mes» para el período seleccionado; los CDT pactan tasa fija y siguen en
+  `inversion.tasa_ea`. `D.tasaDe(inv, anio, mes)` es la única puerta. Si falta la del
+  mes: la posición imprime **raya**, la ponderada es **null** (no se promedia lo que
+  hay: parecería completa) y la barra del informe avisa. No bloquea el PDF, como el
+  resto de avisos. Solo agosto de 2026 quedó sembrado —con las tasas que el usuario
+  corrigió ese cierre—; **los meses anteriores no tienen tasa y lo dicen**. Si hace
+  falta un informe viejo con tasas, se capturan para ese mes desde el mismo panel.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist

@@ -110,6 +110,7 @@ export default async function InformePage({
         periodo={periodo}
         pendientes={barrera.pendientes}
         portafolioConcilia={inf.portafolio.concilia}
+        tasasFaltantes={inf.portafolio.tasasFaltantes}
       />
       <div className="informe">
         <PaginaResumen

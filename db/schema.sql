@@ -125,6 +125,25 @@ create table fact_inversion (
 );
 
 -- ===== SOPORTE =====
+-- Portafolio: lo MANUAL de cada posicion. La crea scripts/migrate-inversiones.mjs
+-- (el monto nunca se guarda: sale de los auxiliares del balance del mes).
+--   inversion (id text pk, tipo, entidad, cuentas text[], tasa_ea numeric(9,6),
+--              fecha_apertura date, fecha_vencimiento date, calificacion, renovar,
+--              observaciones, activa boolean)
+--   tasa_ea es la tasa PACTADA de los CDT. Para las posiciones A LA VISTA (fiducias
+--   y bolsillos, fecha_vencimiento null) la que rige es la de CADA MES:
+create table if not exists inversion_tasa (        -- scripts/migrate-inversion-tasa.mjs
+  inversion_id text     not null references inversion(id) on delete cascade,
+  anio         smallint not null,
+  mes          smallint not null,                  -- 1..12
+  tasa_ea      numeric(9,6) not null,              -- fraccion: 0.1267 = 12,67 % E.A.
+  capturada_en timestamptz not null default now(),
+  primary key (inversion_id, anio, mes)
+);
+-- Sin la fila del mes, el informe imprime raya y la barra avisa: una tasa que no
+-- se capturo no se inventa, y un campo unico por inversion hacia que el informe de
+-- agosto consultado en octubre mostrara las tasas de octubre.
+
 create table parametro (clave text primary key, valor jsonb not null, descripcion text);
 create table perfil (user_id uuid primary key, rol text not null default 'editor');
 create table auditoria (
