@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { guardarParametros } from "@/lib/data";
+import { exigirAdminAccion } from "@/lib/permisos";
 
 /* Guarda los parámetros de la provisión de renta en la tabla `parametro` (Neon).
    Al guardarse, TODA la app recalcula: estados, dashboard e indicadores leen la
@@ -8,6 +9,7 @@ import { guardarParametros } from "@/lib/data";
 export async function guardarProvision(input: {
   tasaPct: number; otrosND: number; anticipoRet: number; anticipoSig: number;
 }) {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
   const num = (v: number) => (Number.isFinite(v) ? v : 0);
   await guardarParametros({
     // El GMF ya NO es parámetro: se calcula automático (50% de la cuenta 53152001).

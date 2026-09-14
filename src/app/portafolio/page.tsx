@@ -2,6 +2,8 @@ import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
 import { ensureLoaded, inversiones, paramNum, resolverEtq, periodo, esALaVista, tasaDe } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
+import { obtenerSesion } from "@/lib/auth";
+import { soloAdmin } from "@/lib/permisos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import InversionesMantenimiento from "@/components/InversionesMantenimiento";
 import { Settings2, LayoutDashboard } from "lucide-react";
@@ -10,6 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function PortafolioPage({ searchParams }: { searchParams: Promise<{ p?: string; v?: string }> }) {
   const { p, v } = await searchParams;
+  // Mantenimiento (tasas, fechas, mapeo de auxiliares) es de administrador; la Junta
+  // vuelve al resumen. La pestaña tampoco se le muestra, pero esconder no es proteger.
+  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
+  if (v === "mantenimiento" && !esAdmin) await soloAdmin(`/portafolio${p ? `?p=${p}` : ""}`);
   await ensureLoaded();
   const etq = resolverEtq(p);
   const d = portafolio(etq);
@@ -35,7 +41,9 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
         </div>
         <div className="flex gap-1.5">
           <Tab href={`/portafolio${p ? `?p=${p}` : ""}`} active={v !== "mantenimiento"} icon={<LayoutDashboard size={14} />}>Portafolio</Tab>
-          <Tab href={`/portafolio?${p ? `p=${p}&` : ""}v=mantenimiento`} active={v === "mantenimiento"} icon={<Settings2 size={14} />}>Mantenimiento</Tab>
+          {esAdmin && (
+            <Tab href={`/portafolio?${p ? `p=${p}&` : ""}v=mantenimiento`} active={v === "mantenimiento"} icon={<Settings2 size={14} />}>Mantenimiento</Tab>
+          )}
         </div>
       </div>
 

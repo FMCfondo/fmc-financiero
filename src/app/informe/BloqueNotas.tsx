@@ -30,7 +30,12 @@ import { EVENTO_MODO, MODO_DEFAULT, leerModo, type ModoApp } from "@/lib/modos";
 import { guardarTextoNota } from "./actions";
 
 /** Lo que una página necesita para que su bloque de notas se pueda editar. */
-export type EdicionNota = { bloque: BloqueNota; anio: number; mes: number; manual: string };
+export type EdicionNota = {
+  bloque: BloqueNota; anio: number; mes: number; manual: string;
+  /** Lo decide el servidor por el rol: la Junta lee, no edita. Sin esto, un modo
+   *  «Operación» recordado en el navegador bastaría para ofrecer el botón. */
+  puedeEditar: boolean;
+};
 
 type Props = { notas: Nota[]; edicion: EdicionNota; titulo?: string };
 
@@ -52,7 +57,7 @@ export default function BloqueNotas({ notas, edicion, titulo = "Notas del perío
   }, []);
 
   const manual = edicion.manual.trim();
-  const operacion = modo === "operacion";
+  const operacion = modo === "operacion" && edicion.puedeEditar;
   const parrafos = manual ? enParrafos(manual) : notas.map((n) => n.texto);
   const pendiente = (i: number) => operacion && !manual && !!notas[i]?.requiereExplicacion;
 

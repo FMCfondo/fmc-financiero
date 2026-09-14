@@ -12,6 +12,7 @@ import { ensureLoaded, resolverEtq, periodo as periodoDe, sameMonthPrevYear, fac
 import { ING_FINANCIERO } from "@/lib/statements";
 import { construirInforme } from "@/lib/informe";
 import { puedeExportar } from "@/lib/informe-notas";
+import { obtenerSesion } from "@/lib/auth";
 import { mesNombre } from "@/lib/format";
 import PaginaResumen from "./PaginaResumen";
 import PaginaBalance from "./PaginaBalance";
@@ -98,8 +99,9 @@ export default async function InformePage({
 
   /* Lo que cada bloque de notas necesita para poder editarse sobre la hoja: a qué
      página pertenece, de qué período es y si ya hay un texto escrito a mano. */
+  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
   const edicion = (bloque: BloqueNota): EdicionNota =>
-    ({ bloque, anio: inf.periodo.anio, mes: inf.periodo.mes, manual: inf.textos[bloque] });
+    ({ bloque, anio: inf.periodo.anio, mes: inf.periodo.mes, manual: inf.textos[bloque], puedeEditar: esAdmin });
 
   const meses = inf.resultados.etiquetasMeses;
   const rango = meses.length > 1 ? `${meses[0].toLowerCase()}–${meses[meses.length - 1].toLowerCase()}` : meses[0] ?? "";
@@ -111,6 +113,7 @@ export default async function InformePage({
         pendientes={barrera.pendientes}
         portafolioConcilia={inf.portafolio.concilia}
         tasasFaltantes={inf.portafolio.tasasFaltantes}
+        mostrarAvisos={esAdmin}
       />
       <div className="informe">
         <PaginaResumen

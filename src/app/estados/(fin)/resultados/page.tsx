@@ -3,6 +3,8 @@ import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadP
 import { type FilaEjec } from "@/lib/ejecucion";
 import { presupuestoArbol, ejecucionArbol, lineasMapeo } from "@/lib/presupuesto";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
+import { obtenerSesion } from "@/lib/auth";
+import { soloAdmin } from "@/lib/permisos";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum, fmtCont, fmtM } from "@/lib/format";
@@ -21,6 +23,9 @@ import { Info, SlidersHorizontal, ArrowLeft } from "lucide-react";
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
   const current = vista || "estado";
+  // El editor de mapeo escribe en el presupuesto: solo administrador.
+  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
+  if (current === "mapeo" && !esAdmin) await soloAdmin("/estados/resultados?vista=ejec-acum");
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
@@ -45,8 +50,8 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
       {current === "presupuesto" && <VistaPresupuesto etq={etq} />}
       {current === "mapeo" && <VistaMapeo etq={etq} anioForzado={Number(anio) || undefined} />}
-      {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" />}
-      {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" />}
+      {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" esAdmin={esAdmin} />}
+      {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" esAdmin={esAdmin} />}
     </div>
   );
 }
@@ -245,7 +250,7 @@ function VistaMapeo({ etq, anioForzado }: { etq: string; anioForzado?: number })
 }
 
 /* ---------- Ejecución presupuestal JERÁRQUICA: presupuesto vs. real ---------- */
-function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
+function VistaEjecucion({ etq, modo, esAdmin }: { etq: string; modo: "acum" | "mes"; esAdmin: boolean }) {
   const ANIO = periodo(etq).anio;
   const mesHasta = periodo(etq).mes;
   const e = ejecucionArbol(ANIO, mesHasta, modo);
@@ -256,7 +261,9 @@ function VistaEjecucion({ etq, modo }: { etq: string; modo: "acum" | "mes" }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted">Ejecución {e.periodoLabel} · el real (Estado de Resultados) frente al presupuesto de la Junta · pesos colombianos</p>
-        <Link href="?vista=mapeo" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><SlidersHorizontal size={12} /> Editar mapeo de cuentas</Link>
+        {esAdmin && (
+          <Link href="?vista=mapeo" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><SlidersHorizontal size={12} /> Editar mapeo de cuentas</Link>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

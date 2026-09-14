@@ -9,18 +9,28 @@ import { NAV, MODOS, MODO_DEFAULT, escribirModo, leerModo, visibleEn, type ModoA
 
 const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, Upload, Wallet, LineChart, FileText, ClipboardCheck, Target };
 
-export default function Sidebar() {
+/* La barra recibe del servidor QUÉ puede ver este usuario (`modulos`, ya filtrado por
+   rol y por lo que el administrador habilitó). Aquí solo se pinta:
+   · admin: el conmutador Reuniones/Operación y el menú según el modo, como siempre;
+   · junta: sin conmutador —no tiene Operación—, y el modo se fija en Reuniones para
+     que ningún componente que lo lea del navegador ofrezca botones de edición.
+   Esconder no es proteger: las rutas y las acciones se defienden en el servidor. */
+export default function Sidebar({ rol, modulos }: { rol: "admin" | "junta"; modulos: string[] }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
+  const esAdmin = rol === "admin";
   // El modo es una preferencia de vista, no un permiso: se recuerda en el navegador.
   const [modo, setModo] = useState<ModoApp>(MODO_DEFAULT);
-  useEffect(() => { setModo(leerModo()); }, []);
+  useEffect(() => {
+    if (esAdmin) setModo(leerModo());
+    else escribirModo("reuniones");   // la Junta no tiene Operación, ni en un navegador compartido
+  }, [esAdmin]);
   const cambiar = (m: ModoApp) => {
     setModo(m);
     escribirModo(m);   // avisa a quien dependa del modo en esta misma pestaña
   };
-  const items = NAV.filter((i) => visibleEn(i, modo));
+  const items = NAV.filter((i) => modulos.includes(i.href) && (!esAdmin || visibleEn(i, modo)));
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[248px] overflow-hidden brand-grad text-white shadow-xl shadow-[#0b1f52]/40 flex flex-col">
@@ -35,23 +45,27 @@ export default function Sidebar() {
         </span>
       </div>
 
-      {/* Conmutador de modo: Reuniones (lo que ve la Junta) / Operación (tu trabajo) */}
-      <div className="px-3 pt-3 pb-1">
-        <div className="flex gap-1 p-1 rounded-lg bg-black/20">
-          {MODOS.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => cambiar(m.id)}
-              title={m.desc}
-              className={`flex-1 text-[11.5px] font-semibold py-1.5 rounded-md transition-colors whitespace-nowrap ${
-                modo === m.id ? "bg-white text-royal2" : "text-white/60 hover:text-white"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
+      {/* Conmutador de modo: Reuniones (lo que ve la Junta) / Operación (tu trabajo). Solo admin. */}
+      {esAdmin ? (
+        <div className="px-3 pt-3 pb-1">
+          <div className="flex gap-1 p-1 rounded-lg bg-black/20">
+            {MODOS.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => cambiar(m.id)}
+                title={m.desc}
+                className={`flex-1 text-[11.5px] font-semibold py-1.5 rounded-md transition-colors whitespace-nowrap ${
+                  modo === m.id ? "bg-white text-royal2" : "text-white/60 hover:text-white"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="px-4 pt-3 pb-1 text-[11px] uppercase tracking-wider text-white/50">Junta Directiva</div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 py-2">
@@ -75,6 +89,9 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        {items.length === 0 && (
+          <p className="px-4 py-3 text-xs text-white/60">No tienes módulos habilitados. Habla con el administrador.</p>
+        )}
       </nav>
 
       <div className="h-10 flex items-center shrink-0 border-t border-white/10">

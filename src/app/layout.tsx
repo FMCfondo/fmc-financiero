@@ -9,6 +9,7 @@ import PeriodSelector from "@/components/PeriodSelector";
 import MenuUsuario from "@/components/MenuUsuario";
 import { ensureLoaded, periodos } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
+import { modulosDe, rutaPermitida, destinoInicial } from "@/lib/permisos";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -41,15 +42,25 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const ruta = (await headers()).get("x-fmc-ruta") ?? "/";
   if (sesion.usuario.debeCambiarClave && !ruta.startsWith("/cuenta")) redirect("/cuenta?obligatorio=1");
 
+  /* Primero el dataset —que es también quien refresca los parámetros desde la base— y
+     DESPUÉS los permisos: si se evaluaran antes, un cambio en los módulos de la Junta
+     tardaría una petición en aplicarse en cada instancia (pasó en la prueba: el primer
+     aterrizaje tras el login aún veía los cuatro módulos). */
+  await ensureLoaded();
+
+  /* Lo que ve cada rol se decide AQUÍ, en cada petición, no solo en el menú: un
+     miembro de la Junta que escriba /ingesta a mano vuelve a su primer módulo. */
+  if (!rutaPermitida(sesion.usuario, ruta)) redirect(destinoInicial(sesion.usuario));
+  const modulos = modulosDe(sesion.usuario);
+
   // El selector de períodos se alimenta de la BASE, no de una lista fija:
   // al ingestar un mes nuevo aparece de inmediato.
-  await ensureLoaded();
   const etiquetas = periodos.map((q) => q.etiqueta);
   return (
     <html lang="es" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full">
         <Suspense fallback={<div className="fixed left-0 top-0 z-40 h-screen w-[248px] brand-grad" />}>
-          <Sidebar />
+          <Sidebar rol={sesion.usuario.rol} modulos={modulos} />
         </Suspense>
         <div className="pl-[248px] min-h-screen flex flex-col">
           <header className="h-16 shrink-0 border-b border-line bg-panel/80 backdrop-blur sticky top-0 z-20 flex items-center justify-between px-6">
