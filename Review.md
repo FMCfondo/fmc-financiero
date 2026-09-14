@@ -206,6 +206,35 @@ Antes de dar por terminado un módulo:
   publica su número de filas en `--filas`; si se añade una tabla nueva, hay que
   publicarlo o no se acota.
 
+### Acceso e identidad (módulo nuevo, 2026-09-14)
+- **Identidad propia, sin servicios externos ni secretos nuevos.** Tablas `usuario` y
+  `sesion` (`scripts/migrate-usuarios.mjs`). Contraseñas con `scrypt` del propio Node y sal
+  por usuario; la sesión es un token opaco en cookie `httpOnly` cuyo **SHA-256** vive en la
+  base y se valida en cada petición (`obtenerSesion()`, deduplicada con `cache`). Por eso
+  **desactivar a alguien lo saca al instante**: no hay tokens firmados que sigan valiendo.
+- **El proxy (`src/proxy.ts`) guarda la puerta, no la verdad**: solo comprueba que la cookie
+  exista y manda a `/entrar` (401 en `/api`). No toca la base a propósito. La verdad la dice
+  `obtenerSesion()` en el layout y en cada acción que escribe. Deja la ruta en la cabecera
+  `x-fmc-ruta`, única forma de que el layout raíz sepa dónde está.
+- **Sin sesión, el layout raíz pinta solo `children`** (la pantalla de entrada), sin barra
+  ni cabecera ni carga del dataset.
+- **Roles: `admin` y `junta`.** El primer administrador se crea desde `/entrar` cuando la
+  tabla está vacía (una sola vez). Las cuentas que crea el admin nacen con
+  `debe_cambiar_clave`: el primer ingreso aterriza en `/cuenta?obligatorio=1` y el layout
+  no deja ir a otro sitio hasta cambiarla.
+- **Cinco fallos seguidos bloquean quince minutos.** Correo o clave malos devuelven el mismo
+  mensaje, y un correo inexistente cuesta lo mismo que uno real (se hashea un relleno).
+- **Auditoría en la tabla que ya existía**: login, login_fallido, logout, clave_cambiada,
+  primer_admin; luego los cambios de usuarios y parámetros.
+- Los formularios de entrar/salir/cambiar clave son `<form action={acción}>`: funcionan sin
+  JavaScript y por eso se probaron de punta a punta en el panel.
+- **PENDIENTE (PR 2 y 3)**: lo que ve cada rol aplicado en servidor —menú, conmutador
+  Reuniones/Operación y TODAS las acciones que escriben con `exigirAdmin()`—, y que el
+  admin pueda habilitar/deshabilitar módulos para la Junta; después Configuración
+  (usuarios, parámetros, auditoría). **Del lado del usuario**: apagar la Protección de
+  Despliegue de Vercel al desplegar (si no, la Junta choca con esa pantalla antes que con
+  la nuestra) y rotar la clave de Neon.
+
 ### Estados Financieros
 - Continuar el refinamiento de densidad tipográfica y comportamiento del scroll (sticky
   horizontal/vertical) — base hecha, queda pulido fino.
@@ -256,6 +285,12 @@ Antes de dar por terminado un módulo:
 ## 7. Notas del entorno
 
 - Árbol de desarrollo: `D:\dev\fmc-financiero` (fuera de Drive).
+- Una ruta NUEVA puede devolver 404 en `next dev` con el código correcto (pasó con
+  `/entrar`): es un estado viciado de Turbopack. Tocar el archivo la recompila y responde;
+  no depurar la lógica. Si `npm run build` falla con «Type expected» en
+  `.next/dev/types/routes.d.ts`, es el mismo síntoma: correr el build con el dev parado.
+- Los formularios con `action={acciónDeServidor}` se envían SIN hidratación, así que el
+  login, salir y cambiar clave sí se prueban de punta a punta en el panel integrado.
 - El screenshot del navegador puede colgarse en este entorno: verificar por texto
   (`get_page_text`) y por estilos computados (`javascript_tool`).
 - `gh` CLI para los PRs. Tras mover el árbol de disco se corre `gh auth setup-git`.

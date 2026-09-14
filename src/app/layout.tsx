@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Suspense } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import PeriodSelector from "@/components/PeriodSelector";
+import MenuUsuario from "@/components/MenuUsuario";
 import { ensureLoaded, periodos } from "@/lib/data";
+import { obtenerSesion } from "@/lib/auth";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -18,6 +22,25 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const sesion = await obtenerSesion();
+
+  /* Sin sesión no hay aplicación: solo /entrar, sin barra ni cabecera. Cualquier otra
+     ruta ya la devolvió el proxy a /entrar antes de llegar aquí. No se carga el
+     dataset: la pantalla de entrada no depende de la base más que para el login. */
+  if (!sesion) {
+    return (
+      <html lang="es" className={`${jakarta.variable} h-full antialiased`}>
+        <body className="min-h-full">{children}</body>
+      </html>
+    );
+  }
+
+  /* Una contraseña asignada por el administrador se cambia ANTES de ver nada. La ruta
+     viene en la cabecera que deja el proxy: un layout no tiene otra forma de saber
+     dónde está, y sin saberlo redirigir crearía un bucle en /cuenta. */
+  const ruta = (await headers()).get("x-fmc-ruta") ?? "/";
+  if (sesion.usuario.debeCambiarClave && !ruta.startsWith("/cuenta")) redirect("/cuenta?obligatorio=1");
+
   // El selector de períodos se alimenta de la BASE, no de una lista fija:
   // al ingestar un mes nuevo aparece de inmediato.
   await ensureLoaded();
@@ -34,9 +57,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               <span className="hidden sm:inline text-faint">Entidad</span>
               <span className="font-medium text-fg">FMC S.A.S.</span>
             </div>
-            <Suspense fallback={null}>
-              <PeriodSelector periodos={etiquetas} />
-            </Suspense>
+            <div className="flex items-center gap-5">
+              <Suspense fallback={null}>
+                <PeriodSelector periodos={etiquetas} />
+              </Suspense>
+              <MenuUsuario nombre={sesion.usuario.nombre} rol={sesion.usuario.rol} />
+            </div>
           </header>
           <main className="flex-1 p-6 max-w-[1400px] w-full mx-auto">{children}</main>
         </div>

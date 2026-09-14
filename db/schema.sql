@@ -145,6 +145,32 @@ create table if not exists inversion_tasa (        -- scripts/migrate-inversion-
 -- agosto consultado en octubre mostrara las tasas de octubre.
 
 create table parametro (clave text primary key, valor jsonb not null, descripcion text);
+-- IDENTIDAD PROPIA (scripts/migrate-usuarios.mjs). `perfil` se creo pensando en un
+-- proveedor externo y nunca se uso; queda por compatibilidad hasta borrarla.
+create table if not exists usuario (
+  id                 uuid primary key default gen_random_uuid(),
+  email              text not null,                  -- unico sin distinguir mayusculas
+  nombre             text not null,
+  rol                text not null check (rol in ('admin', 'junta')),
+  clave              text not null,                  -- scrypt$N$sal$hash (nunca en claro)
+  activo             boolean not null default true,  -- desactivar saca al usuario al instante
+  debe_cambiar_clave boolean not null default false, -- true en las cuentas que crea el admin
+  intentos_fallidos  smallint not null default 0,    -- 5 seguidos bloquean 15 minutos
+  bloqueado_hasta    timestamptz,
+  ultimo_acceso      timestamptz,
+  creado_en          timestamptz not null default now(),
+  creado_por         uuid references usuario(id)
+);
+create unique index if not exists usuario_email_unico on usuario (lower(email));
+create table if not exists sesion (
+  hash        text primary key,                      -- SHA-256 del token de la cookie
+  usuario_id  uuid not null references usuario(id) on delete cascade,
+  creada_en   timestamptz not null default now(),
+  expira_en   timestamptz not null,                  -- 30 dias, renovacion deslizante
+  agente      text
+);
+create index if not exists sesion_usuario on sesion (usuario_id);
+
 create table perfil (user_id uuid primary key, rol text not null default 'editor');
 create table auditoria (
   id bigint generated always as identity primary key,
