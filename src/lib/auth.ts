@@ -200,6 +200,65 @@ export async function exigirAdmin(): Promise<Usuario> {
   return u;
 }
 
+// ------------------------------------------------ administración de usuarios ---
+
+export type UsuarioAdmin = Usuario & { creadoEn: string; bloqueado: boolean };
+
+export async function listarUsuarios(): Promise<UsuarioAdmin[]> {
+  const sql = await sqlDb();
+  const rs = await sql`select * from usuario order by rol, lower(nombre)`;
+  return (rs as Record<string, unknown>[]).map((r) => ({
+    ...aUsuario(r),
+    creadoEn: new Date(r.creado_en as string).toISOString(),
+    bloqueado: !!r.bloqueado_hasta && new Date(r.bloqueado_hasta as string) > new Date(),
+  }));
+}
+
+export async function buscarUsuario(id: string): Promise<Usuario | null> {
+  const sql = await sqlDb();
+  const [r] = await sql`select * from usuario where id = ${id}`;
+  return r ? aUsuario(r) : null;
+}
+
+/** Activa o desactiva. Desactivar cierra sus sesiones: se va en el acto. */
+export async function activarUsuario(id: string, activo: boolean): Promise<void> {
+  const sql = await sqlDb();
+  await sql`update usuario set activo = ${activo} where id = ${id}`;
+  if (!activo) await cerrarSesionesDe(id);
+}
+
+export async function cambiarRol(id: string, rol: Rol): Promise<void> {
+  const sql = await sqlDb();
+  await sql`update usuario set rol = ${rol} where id = ${id}`;
+}
+
+/** Nueva contraseña generada, cambio obligatorio al entrar, sesiones cerradas. */
+export async function restablecerClave(id: string): Promise<string> {
+  const clave = generarClave();
+  const sql = await sqlDb();
+  await sql`update usuario set clave = ${hashClave(clave)}, debe_cambiar_clave = true,
+            intentos_fallidos = 0, bloqueado_hasta = null where id = ${id}`;
+  await cerrarSesionesDe(id);
+  return clave;
+}
+
+export type EventoAuditoria = {
+  id: number; ts: string; accion: string; entidad: string | null; registro: string | null;
+  usuario: { nombre: string; email: string } | null;
+};
+export async function ultimosEventos(limite = 200): Promise<EventoAuditoria[]> {
+  const sql = await sqlDb();
+  const rs = await sql`
+    select a.id, a.ts, a.accion, a.entidad, a.registro_id, u.nombre, u.email
+      from auditoria a left join usuario u on u.id = a.usuario
+     order by a.ts desc limit ${limite}`;
+  return (rs as Record<string, unknown>[]).map((r) => ({
+    id: Number(r.id), ts: new Date(r.ts as string).toISOString(), accion: String(r.accion),
+    entidad: (r.entidad as string) ?? null, registro: (r.registro_id as string) ?? null,
+    usuario: r.email ? { nombre: String(r.nombre), email: String(r.email) } : null,
+  }));
+}
+
 // --------------------------------------------------------------- auditoría ---
 
 /** Quién hizo qué. Mejor esfuerzo: un fallo aquí nunca tumba la acción. */

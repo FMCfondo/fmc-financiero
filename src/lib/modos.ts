@@ -47,6 +47,9 @@ export const NAV: ItemNav[] = [
   { href: "/presupuesto", match: "/presupuesto", label: "Presupuesto", icono: "Target", modos: ["operacion"] },
   { href: "/revision", match: "/revision", label: "Revisión del cierre", icono: "ClipboardCheck", modos: ["operacion"] },
   { href: "/impuesto", match: "/impuesto", label: "Provisión de Impuesto", icono: "Percent", modos: ["operacion"] },
+  /* Solo administrador: usuarios, lo que ve la Junta, parámetros y auditoría. Está en
+     Operación, así que la Junta no lo ve ni llegando a mano (rutaPermitida). */
+  { href: "/configuracion", match: "/configuracion", label: "Configuración", icono: "Settings", modos: ["operacion"] },
 ];
 
 export const visibleEn = (item: ItemNav, modo: ModoApp) => !item.modos || item.modos.includes(modo);
