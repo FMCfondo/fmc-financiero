@@ -14,8 +14,8 @@ const COLOR: Record<string, string> = {
   bueno: "var(--color-pos)", malo: "var(--color-neg)", neutro: "var(--color-faint)",
 };
 
-export default function EjecucionMatrix({ roots, persistKey }: { roots: NodoEjec[]; persistKey?: string }) {
-  const ctx = useExpand([roots], persistKey);
+export default function EjecucionMatrix({ roots }: { roots: NodoEjec[] }) {
+  const ctx = useExpand([roots]);
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">

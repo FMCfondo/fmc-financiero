@@ -10,11 +10,11 @@ import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, MAX_SANGRIA } fr
    (nivel 2) se ocultan y se despliegan con el chevron. */
 
 export default function PresupuestoMatrix({
-  labels, roots, persistKey,
+  labels, roots,
 }: {
-  labels: string[]; roots: NodoPpto[]; persistKey?: string;
+  labels: string[]; roots: NodoPpto[];
 }) {
-  const ctx = useExpand([roots], persistKey);
+  const ctx = useExpand([roots]);
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">

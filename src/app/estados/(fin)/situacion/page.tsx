@@ -75,7 +75,6 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
         conAcum={false}
         resaltar={meses.findIndex((x) => x.etiqueta === etq)}
         encabezado={{ titulo: "Estado de Situación Financiera", periodo: rangoNombre(meses.map((x) => x.etiqueta)), unidad: "Saldos al cierre de cada mes · pesos colombianos" }}
-        persistKey="esf-estado"
         secciones={[
           { titulo: "Activo", tono: "bg-royal", arbol: m.activo, totalLabel: "Total activos", totalVals: m.totalActivo },
           {
@@ -116,7 +115,7 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} persistKey={`esf-${modo}`} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} colorear={modo === "horizontal"} />
       <p className="text-xs text-muted">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}.`
