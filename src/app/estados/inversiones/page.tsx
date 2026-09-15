@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
 import { ensureLoaded, resolverEtq } from "@/lib/data";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
    Dashboard y los Estados; el mantenimiento vive en /portafolio. */
 
 export default async function InversionesPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  await accesoA("/estados/inversiones");
   const { p } = await searchParams;
   const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
   await ensureLoaded();

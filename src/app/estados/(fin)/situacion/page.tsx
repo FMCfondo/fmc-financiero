@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import Link from "next/link";
 import { esfMatrizArbol, analisisMatriz, interanualData, provisionRenta, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
@@ -14,6 +15,7 @@ import IndicadoresTabla from "@/components/IndicadoresTabla";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
+  await accesoA("/estados/situacion");
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
   const current = vista || "estado";
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);

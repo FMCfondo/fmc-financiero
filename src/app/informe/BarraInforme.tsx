@@ -20,6 +20,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { usePantallaCompleta } from "@/components/PantallaCompleta";
 
 /** Ancho de una hoja carta apaisada, en px de CSS. */
 const ANCHO_HOJA = 1056;
@@ -75,14 +76,12 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
   const [zoom, setZoom] = useState<Zoom>("ajustar");
   const [factor, setFactor] = useState(1);
 
-  /* PANTALLA COMPLETA (para presentar el informe desde la app). Se esconden la barra
-     lateral y la cabecera (clase `presentacion` en <html>, ver informe.css), la hoja
-     se ajusta al ancho de la pantalla y se pide al navegador el modo de pantalla
-     completa de verdad; si no lo concede (un iframe, un navegador antiguo), queda el
-     modo dentro de la ventana, que ya gana todo el espacio. Se sale con el botón o
-     con Esc, y las flechas pasan de hoja. El aumento de presentación no se guarda:
-     es de ese momento, no una preferencia. */
-  const [presentando, setPresentando] = useState(false);
+  /* PANTALLA COMPLETA (para presentar el informe desde la app): el gancho compartido
+     esconde la barra y la cabecera y pide la pantalla completa; aquí se añade lo
+     propio del informe: la hoja se ajusta al ancho de la pantalla, las flechas pasan
+     de hoja y se ve en qué hoja se va. El aumento de presentación no se guarda: es de
+     ese momento, no una preferencia. */
+  const { presentando, entrar: entrarPantalla, salir: salirPresentacion } = usePantallaCompleta();
   const [zoomPres, setZoomPres] = useState<Zoom>("ajustar");
   const [hoja, setHoja] = useState({ actual: 1, total: 0 });
   const hojaActual = useRef(1);
@@ -122,26 +121,17 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
     hojas[i - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const salirPresentacion = useCallback(() => {
-    setPresentando(false);
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  }, []);
-
   const entrarPresentacion = () => {
     setZoomPres("ajustar");
-    setPresentando(true);
-    document.documentElement.requestFullscreen?.().catch(() => { /* queda el modo dentro de la ventana */ });
+    entrarPantalla();
   };
 
   useEffect(() => {
     if (!presentando) return;
-    document.documentElement.classList.add("presentacion");
     requestAnimationFrame(aplicar); // sin barra lateral el ancho útil es otro
 
-    const alCambiarPantalla = () => { if (!document.fullscreenElement) salirPresentacion(); };
     const teclas = (e: KeyboardEvent) => {
-      if (e.key === "Escape") salirPresentacion();
-      else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); irAHoja(hojaActual.current + 1); }
+      if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); irAHoja(hojaActual.current + 1); }
       else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); irAHoja(hojaActual.current - 1); }
     };
     /* Qué hoja se está viendo: la más cercana al centro de la pantalla. */
@@ -162,20 +152,17 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
       });
     };
     situar();
-    document.addEventListener("fullscreenchange", alCambiarPantalla);
     window.addEventListener("keydown", teclas);
     window.addEventListener("scroll", situar, { passive: true });
     window.addEventListener("resize", situar);
     return () => {
-      document.documentElement.classList.remove("presentacion");
-      document.removeEventListener("fullscreenchange", alCambiarPantalla);
       window.removeEventListener("keydown", teclas);
       window.removeEventListener("scroll", situar);
       window.removeEventListener("resize", situar);
       cancelAnimationFrame(marco);
       requestAnimationFrame(aplicar); // vuelve el ancho de siempre
     };
-  }, [presentando, aplicar, irAHoja, salirPresentacion]);
+  }, [presentando, aplicar, irAHoja]);
 
   useEffect(() => {
     aplicar();

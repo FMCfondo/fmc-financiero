@@ -11,15 +11,22 @@ const TABS = [
   { id: "dashboard", href: "/estados/dashboard", label: "Análisis", icon: LineChart },
 ];
 
-export default function ModuloTabs() {
+/** `visibles`: rutas de pestaña habilitadas para este usuario. La mitad «Estados
+ *  Financieros» se muestra si le queda alguna de sus cuatro pestañas; «Análisis», si
+ *  está habilitada. Con una sola mitad no hay nada que elegir y la fila no se pinta. */
+export default function ModuloTabs({ visibles, entradaFin }: { visibles: string[]; entradaFin: string }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
   const current = pathname.startsWith("/estados/dashboard") ? "dashboard" : "fin";
+  const tabs = TABS
+    .filter((t) => (t.id === "dashboard" ? visibles.includes(t.href) : entradaFin !== ""))
+    .map((t) => (t.id === "fin" ? { ...t, href: entradaFin } : t));
+  if (tabs.length < 2) return null;
 
   return (
     <div className="flex gap-6 border-b border-line">
-      {TABS.map(({ id, href, label, icon: Icon }) => {
+      {tabs.map(({ id, href, label, icon: Icon }) => {
         const active = current === id;
         return (
           <Link

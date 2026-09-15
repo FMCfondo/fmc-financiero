@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import { flujoEfectivo, flujoMatriz } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
@@ -8,6 +9,7 @@ import StatementMatrix from "@/components/StatementMatrix";
 import { CheckCircle2, Info } from "lucide-react";
 
 export default async function FlujoPage({ searchParams }: { searchParams: Promise<{ p?: string; meses?: string; anio?: string }> }) {
+  await accesoA("/estados/flujo");
   const { p, meses, anio } = await searchParams;
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   await ensureLoaded();

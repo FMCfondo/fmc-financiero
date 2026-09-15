@@ -7,7 +7,7 @@ import {
   restablecerClave, type Rol,
 } from "@/lib/auth";
 import { guardarParametroJson } from "@/lib/data";
-import { CLAVE_MODULOS_JUNTA, MODULOS_JUNTA, inicioDe } from "@/lib/permisos";
+import { CLAVE_MODULOS_JUNTA, CLAVE_VISTAS_JUNTA, MODULOS_JUNTA, VISTAS_JUNTA, inicioDe } from "@/lib/permisos";
 import { COOKIE_CLAVE } from "@/lib/auth-cookie";
 
 /* Configuración: usuarios, módulos de la Junta. Todo son formularios clásicos con
@@ -94,13 +94,16 @@ export async function cambiarRolUsuario(fd: FormData): Promise<void> {
   redirect("/configuracion?v=usuarios");
 }
 
-/** Los módulos que la Junta puede ver. Solo se aceptan los del catálogo. */
+/** Los módulos y las pestañas que la Junta puede ver. Solo se acepta lo del catálogo. */
 export async function guardarModulosJunta(fd: FormData): Promise<void> {
   const yo = await admin();
-  const permitidos = new Set(MODULOS_JUNTA.map((m) => m.href));
-  const elegidos = fd.getAll("modulo").map(String).filter((h) => permitidos.has(h));
-  await guardarParametroJson(CLAVE_MODULOS_JUNTA, elegidos);
-  await auditar(yo.id, "junta_modulos", { entidad: "parametro", registro: CLAVE_MODULOS_JUNTA, despues: elegidos });
+  const modulosOk = new Set(MODULOS_JUNTA.map((m) => m.href));
+  const vistasOk = new Set(VISTAS_JUNTA.map((v) => v.href));
+  const modulos = fd.getAll("modulo").map(String).filter((h) => modulosOk.has(h));
+  const vistas = fd.getAll("vista").map(String).filter((h) => vistasOk.has(h));
+  await guardarParametroJson(CLAVE_MODULOS_JUNTA, modulos);
+  await guardarParametroJson(CLAVE_VISTAS_JUNTA, vistas);
+  await auditar(yo.id, "junta_modulos", { entidad: "parametro", registro: CLAVE_MODULOS_JUNTA, despues: { modulos, vistas } });
   revalidatePath("/", "layout");
   redirect("/configuracion?v=junta&ok=1");
 }

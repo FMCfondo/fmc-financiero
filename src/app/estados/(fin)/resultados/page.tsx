@@ -4,7 +4,7 @@ import { type FilaEjec } from "@/lib/ejecucion";
 import { presupuestoArbol, ejecucionArbol, lineasMapeo } from "@/lib/presupuesto";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
-import { soloAdmin } from "@/lib/permisos";
+import { accesoA, soloAdmin } from "@/lib/permisos";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { etqNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum, fmtCont, fmtM } from "@/lib/format";
@@ -21,6 +21,7 @@ import MapeoEditor from "@/components/MapeoEditor";
 import { Info, SlidersHorizontal, ArrowLeft } from "lucide-react";
 
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
+  await accesoA("/estados/resultados");
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
   const current = vista || "estado";
   // El editor de mapeo escribe en el presupuesto: solo administrador.

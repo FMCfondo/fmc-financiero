@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import {
   dashboard, cascadaChart, kpisResumen, esfCharts, contribucion, contribucionPeriodo, contribucionTrend,
   gastosAdminDetalle, esfAnalisis, erAnalisis, provisionRenta, trendCompleto, resultadosPanel, serieResultados,
@@ -20,6 +21,7 @@ import AnioSelector from "@/components/AnioSelector";
 import { ShieldCheck, TrendingUp, TrendingDown, Info, AlertTriangle, CheckCircle2, type LucideIcon } from "lucide-react";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ p?: string; sec?: string; meses?: string; anio?: string; modo?: string }> }) {
+  await accesoA("/estados/dashboard");
   const { p, sec, meses, anio, modo } = await searchParams;
   const current = sec || "resumen";
   const nMeses = Math.min(Math.max(parseInt(meses || "6") || 6, 1), 24);

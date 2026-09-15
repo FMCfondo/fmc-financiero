@@ -254,6 +254,23 @@ Antes de dar por terminado un módulo:
   Reuniones. Dentro de páginas visibles, las partes que escriben (Mantenimiento del
   portafolio, editor de mapeo, editor de notas del informe) se gatean por rol desde el
   servidor: `puedeEditar` viaja dentro de `EdicionNota`.
+- **Pestañas dosificadas (2026-09-15).** Además de los módulos, el administrador elige qué
+  PESTAÑAS de Estados Financieros ve la Junta (parámetro JSON `junta_vistas`, catálogo
+  `VISTAS_JUNTA` en `permisos.ts`: Resultados, Situación, Flujo, Patrimonio, Análisis).
+  Sirve para enseñar el ER y el ESF mientras el EFE y el ECP se terminan de trabajar.
+  `rutaPermitida` exige módulo Y pestaña; `entradaDe(u, módulo)` da la primera pestaña
+  habilitada (la barra lateral y `destinoInicial` la usan: si Resultados está apagado,
+  Estados entra por la siguiente); un módulo con pestañas y ninguna encendida se retira
+  del menú (`modulosJunta`), porque si no su entrada rebotaría a sí misma. Las tiras de
+  pestañas (`EstadosTabs`, `ModuloTabs`) reciben `visibles` del servidor; el layout de
+  Estados exige el módulo (`accesoAlModulo`) y cada página su pestaña (`accesoA`).
+  El formulario de Configuración muestra lo GUARDADO (`paramJson`), no lo efectivo.
+- **Pantalla completa también en Estados Financieros (2026-09-15).** El gancho
+  `usePantallaCompleta` (`components/PantallaCompleta.tsx`) es común: clase
+  `presentacion` en `<html>` (reglas generales en `globals.css`), pantalla completa del
+  navegador si la concede, Esc y `fullscreenchange` para salir. El informe le añade lo
+  suyo (ajuste al ancho, flechas, «Hoja n de m»); Estados solo pone el botón junto al
+  título y el flotante de salir.
 - **Los permisos los aplica CADA PÁGINA, no el layout (2026-09-15).** `accesoA(ruta)` al
   principio de cada página de Reuniones (Panel, layout de Estados, Portafolio, Informe,
   Cuenta) y `soloAdmin()` en las de Operación: exige sesión, obliga el cambio de

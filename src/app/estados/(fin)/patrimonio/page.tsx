@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import { cambiosPatrimonio } from "@/lib/statements";
 import { ensureLoaded, periodos, periodo, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
@@ -5,6 +6,7 @@ import { fmtNum } from "@/lib/format";
 import AnioSelector from "@/components/AnioSelector";
 
 export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
+  await accesoA("/estados/patrimonio");
   const { p, anio } = await searchParams;
   await ensureLoaded();
   const etqBase = resolverEtq(p);
