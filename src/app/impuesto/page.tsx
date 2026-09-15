@@ -1,3 +1,4 @@
+import { soloAdmin } from "@/lib/permisos";
 import { provisionRenta } from "@/lib/statements";
 import { ensureLoaded, paramNum, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
@@ -6,6 +7,7 @@ import ImpuestoCalc from "@/components/ImpuestoCalc";
 export const dynamic = "force-dynamic";
 
 export default async function ImpuestoPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  await soloAdmin();
   const { p } = await searchParams;
   await ensureLoaded();
   const etq = resolverEtq(p);

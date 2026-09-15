@@ -1,3 +1,4 @@
+import { soloAdmin } from "@/lib/permisos";
 import Link from "next/link";
 import { ensureLoaded, presupuesto } from "@/lib/data";
 import PresupuestoCarga from "@/components/PresupuestoCarga";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
    Financieros › Resultados › mapeo); desde aquí solo se llega. */
 
 export default async function PresupuestoPage() {
+  await soloAdmin();
   await ensureLoaded();
   const anios = [...new Set(presupuesto.map((l) => l.anio))].sort((a, b) => b - a);
   const resumen = anios.map((anio) => {

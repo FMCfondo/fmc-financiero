@@ -2,8 +2,7 @@ import Link from "next/link";
 import { portafolio } from "@/lib/inversiones";
 import { ensureLoaded, inversiones, paramNum, resolverEtq, periodo, esALaVista, tasaDe } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
-import { obtenerSesion } from "@/lib/auth";
-import { soloAdmin } from "@/lib/permisos";
+import { accesoA, soloAdmin } from "@/lib/permisos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import InversionesMantenimiento from "@/components/InversionesMantenimiento";
 import { Settings2, LayoutDashboard } from "lucide-react";
@@ -14,7 +13,7 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
   const { p, v } = await searchParams;
   // Mantenimiento (tasas, fechas, mapeo de auxiliares) es de administrador; la Junta
   // vuelve al resumen. La pestaña tampoco se le muestra, pero esconder no es proteger.
-  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
+  const esAdmin = (await accesoA("/portafolio")).rol === "admin";
   if (v === "mantenimiento" && !esAdmin) await soloAdmin(`/portafolio${p ? `?p=${p}` : ""}`);
   await ensureLoaded();
   const etq = resolverEtq(p);

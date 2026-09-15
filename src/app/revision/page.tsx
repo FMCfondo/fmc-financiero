@@ -1,3 +1,4 @@
+import { soloAdmin } from "@/lib/permisos";
 import Link from "next/link";
 import { ensureLoaded, resolverEtq, periodo, leerNotas } from "@/lib/data";
 import { detectarAnomalias } from "@/lib/anomalias";
@@ -10,6 +11,7 @@ import { ArrowRight, Info } from "lucide-react";
    escribe aquí es lo que la Junta lee en el Panel. Vive en Operación. */
 
 export default async function RevisionPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  await soloAdmin();
   const { p } = await searchParams;
   await ensureLoaded();
   const etq = resolverEtq(p);

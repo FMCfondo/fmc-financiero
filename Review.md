@@ -214,10 +214,9 @@ Antes de dar por terminado un módulo:
   **desactivar a alguien lo saca al instante**: no hay tokens firmados que sigan valiendo.
 - **El proxy (`src/proxy.ts`) guarda la puerta, no la verdad**: solo comprueba que la cookie
   exista y manda a `/entrar` (401 en `/api`). No toca la base a propósito. La verdad la dice
-  `obtenerSesion()` en el layout y en cada acción que escribe. Deja la ruta en la cabecera
-  `x-fmc-ruta`, única forma de que el layout raíz sepa dónde está.
-- **Sin sesión, el layout raíz pinta solo `children`** (la pantalla de entrada), sin barra
-  ni cabecera ni carga del dataset.
+  `obtenerSesion()` en cada página y en cada acción que escribe.
+- **Sin sesión, el layout raíz pinta solo `children`**, sin barra ni cabecera ni carga del
+  dataset; y **el layout raíz NO redirige nunca** (ver «pantalla en blanco», más abajo).
 - **Roles: `admin` y `junta`.** El primer administrador se crea desde `/entrar` cuando la
   tabla está vacía (una sola vez). Las cuentas que crea el admin nacen con
   `debe_cambiar_clave`: el primer ingreso aterriza en `/cuenta?obligatorio=1` y el layout
@@ -226,8 +225,14 @@ Antes de dar por terminado un módulo:
   mensaje, y un correo inexistente cuesta lo mismo que uno real (se hashea un relleno).
 - **Auditoría en la tabla que ya existía**: login, login_fallido, logout, clave_cambiada,
   primer_admin; luego los cambios de usuarios y parámetros.
-- Los formularios de entrar/salir/cambiar clave son `<form action={acción}>`: funcionan sin
-  JavaScript y por eso se probaron de punta a punta en el panel.
+- **Entrar, salir y el primer administrador son peticiones HTTP clásicas** (`<form
+  method="post" action="/api/sesion/…">`, rutas en `src/app/api/sesion/`) que responden
+  con una **redirección 303 real**, no acciones de servidor. Al entrar o salir cambia el
+  layout raíz entero (pantalla de entrada ↔ aplicación) y eso solo es fiable con una carga
+  completa: el router no vuelve a ejecutar un layout compartido al cambiar de ruta sin
+  recargar. Funcionan igual con y sin JavaScript. Las rutas comprueban `Origin` contra el
+  host (lo que las acciones hacen solas). Cambiar la contraseña sigue siendo una acción:
+  no cambia el layout.
 - **Roles aplicados en servidor (PR 2, 2026-09-14).** `src/lib/permisos.ts`: `modulosDe(u)`
   (qué ve), `rutaPermitida(u, ruta)` (el layout raíz la aplica en cada petición y manda a
   `destinoInicial`), `soloAdmin()` para páginas o partes de página, y
@@ -240,10 +245,29 @@ Antes de dar por terminado un módulo:
   Reuniones. Dentro de páginas visibles, las partes que escriben (Mantenimiento del
   portafolio, editor de mapeo, editor de notas del informe) se gatean por rol desde el
   servidor: `puedeEditar` viaja dentro de `EdicionNota`.
-- **Orden en el layout raíz: `ensureLoaded()` ANTES de evaluar permisos.** El dataset es
-  quien refresca los parámetros desde la base; evaluados antes, un cambio en
-  `junta_modulos` tardaba una petición en aplicarse por instancia (se vio en la prueba:
-  el primer aterrizaje tras el login aún mostraba los cuatro módulos).
+- **Los permisos los aplica CADA PÁGINA, no el layout (2026-09-15).** `accesoA(ruta)` al
+  principio de cada página de Reuniones (Panel, layout de Estados, Portafolio, Informe,
+  Cuenta) y `soloAdmin()` en las de Operación: exige sesión, obliga el cambio de
+  contraseña pendiente y comprueba el módulo; `ensureLoaded()` va dentro porque los
+  módulos de la Junta salen de los parámetros. Dos motivos: (1) un layout compartido no
+  se vuelve a ejecutar cuando el navegador cambia de ruta sin recargar, así que lo que
+  decidía el layout raíz solo valía en cargas completas; (2) **la pantalla en blanco**:
+  una `redirect()` lanzada desde el layout raíz mientras se sirve la redirección de una
+  acción de servidor no la resuelve ningún límite del router y no se pinta nada hasta
+  recargar. Se vio así: un miembro de la Junta guardaba su contraseña nueva, la acción
+  mandaba a `/panel`, el Panel estaba deshabilitado para la Junta, el layout volvía a
+  redirigir → blanco. Las páginas sí pueden redirigir (el router las envuelve). Por lo
+  mismo, ninguna acción redirige a `/panel` «porque sí»: `inicioDe(u)` da el primer
+  módulo del usuario. El proxy ya no deja la cabecera `x-fmc-ruta`: nadie la necesita.
+- **Cookie sin sesión = fuera.** Antes, una cookie huérfana (sesión caducada, cuenta
+  desactivada) pasaba el proxy y la página se pintaba «a pelo» sin barra; ahora
+  `accesoA`/`soloAdmin` la mandan a `/entrar`. Y `/api/conciliacion` exige administrador.
+- **`scripts/prueba-sesion.mjs` recorre todo el ciclo en un Chrome real (hidratado)** con
+  `puppeteer-core` (devDependency) y el Chrome instalado: crea un miembro de junta
+  desechable, entra, cambia la clave, navega sin recargar, prueba una ruta prohibida,
+  sale, vuelve a entrar y prueba la cookie huérfana; lo borra al terminar. Es la única
+  prueba de interactividad real que tenemos: el panel integrado no hidrata React, y por
+  eso la pantalla en blanco no se vio en las pruebas del 14.
 - **PR 3 — Configuración, HECHO (2026-09-14).** `/configuracion` (solo administrador,
   `soloAdmin()`), cuatro pestañas por `?v=`: **Usuarios** (crear con clave generada,
   cambiar rol, activar/desactivar, restablecer clave, último acceso), **Lo que ve la
@@ -313,8 +337,12 @@ Antes de dar por terminado un módulo:
   `/entrar`): es un estado viciado de Turbopack. Tocar el archivo la recompila y responde;
   no depurar la lógica. Si `npm run build` falla con «Type expected» en
   `.next/dev/types/routes.d.ts`, es el mismo síntoma: correr el build con el dev parado.
-- Los formularios con `action={acciónDeServidor}` se envían SIN hidratación, así que el
-  login, salir y cambiar clave sí se prueban de punta a punta en el panel integrado.
+- Los formularios con `action={acciónDeServidor}` se envían SIN hidratación, así que en
+  el panel integrado se prueban de punta a punta, pero **por el camino sin JavaScript**:
+  lo que falla solo con React hidratado (redirecciones de acciones, navegación sin
+  recarga) no se ve ahí. Para eso, `node scripts/prueba-sesion.mjs` (Chrome real, ver
+  Acceso e identidad). Kaspersky inyecta scripts en cada página de este equipo
+  (`gc.kes.v2.scr.kaspersky-labs.com`); no rompe la prueba pero ensucia el registro de red.
 - El screenshot del navegador puede colgarse en este entorno: verificar por texto
   (`get_page_text`) y por estilos computados (`javascript_tool`).
 - `gh` CLI para los PRs. Tras mover el árbol de disco se corre `gh auth setup-git`.

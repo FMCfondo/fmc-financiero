@@ -6,12 +6,9 @@ import { COOKIE_SESION } from "@/lib/auth-cookie";
    validez real de la sesión —que exista, que no haya caducado, que el usuario siga
    activo— la decide `obtenerSesion()` contra la base, en el layout y en cada acción.
    El proxy no toca la base a propósito: corre en cada petición y debe ser barato.
+   Quién puede estar en qué página lo decide cada página (`accesoA`, `soloAdmin`). */
 
-   También deja la ruta pedida en una cabecera, que es la única forma que tiene un
-   layout de servidor de saber dónde está (para obligar el cambio de contraseña sin
-   encerrar al usuario en un bucle). */
-
-const PUBLICAS = ["/entrar"];
+const PUBLICAS = ["/entrar", "/api/sesion"];
 
 export default function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -28,9 +25,7 @@ export default function proxy(req: NextRequest) {
     return NextResponse.redirect(destino);
   }
 
-  const cabeceras = new Headers(req.headers);
-  cabeceras.set("x-fmc-ruta", pathname);
-  return NextResponse.next({ request: { headers: cabeceras } });
+  return NextResponse.next();
 }
 
 export const config = {

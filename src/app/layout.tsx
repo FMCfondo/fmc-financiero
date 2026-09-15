@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Suspense } from "react";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import PeriodSelector from "@/components/PeriodSelector";
 import MenuUsuario from "@/components/MenuUsuario";
 import { ensureLoaded, periodos } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
-import { modulosDe, rutaPermitida, destinoInicial } from "@/lib/permisos";
+import { modulosDe } from "@/lib/permisos";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -22,12 +20,26 @@ export const metadata: Metadata = {
   description: "Plataforma financiera · Fondo Mutuo de Cobertura FMC S.A.S.",
 };
 
+/* EL LAYOUT RAÍZ NO REDIRIGE NUNCA. Quién puede estar dónde lo decide cada página con
+   `accesoA` / `soloAdmin` (src/lib/permisos.ts). Dos razones, las dos aprendidas:
+   · un layout compartido no se vuelve a ejecutar cuando el navegador cambia de ruta
+     sin recargar, así que una comprobación aquí solo valdría en las cargas completas;
+   · una redirección lanzada desde el layout raíz mientras se sirve la redirección de
+     una acción de servidor deja la pantalla EN BLANCO (2026-09-15: un miembro de la
+     Junta guardaba su contraseña nueva, la acción mandaba a /panel, el Panel estaba
+     deshabilitado para la Junta, el layout volvía a redirigir… y no se pintaba nada
+     hasta recargar). Las páginas sí pueden redirigir: el router las envuelve en un
+     límite que lo resuelve sin perder la aplicación.
+   Aquí solo se decide QUÉ se pinta alrededor: sin sesión, nada; con sesión, la barra
+   y la cabecera. */
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const sesion = await obtenerSesion();
 
-  /* Sin sesión no hay aplicación: solo /entrar, sin barra ni cabecera. Cualquier otra
-     ruta ya la devolvió el proxy a /entrar antes de llegar aquí. No se carga el
-     dataset: la pantalla de entrada no depende de la base más que para el login. */
+  /* Sin sesión válida no hay aplicación: ni barra ni cabecera. La página que venga
+     dentro manda a /entrar por su cuenta (todas lo hacen), y /entrar es la única que
+     se pinta así a propósito. Que la cookie exista no basta (el proxy solo mira eso):
+     si la sesión caducó o el administrador desactivó la cuenta, aquí ya no hay
+     sesión. No se carga el dataset: la pantalla de entrada no lo necesita. */
   if (!sesion) {
     return (
       <html lang="es" className={`${jakarta.variable} h-full antialiased`}>
@@ -36,21 +48,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     );
   }
 
-  /* Una contraseña asignada por el administrador se cambia ANTES de ver nada. La ruta
-     viene en la cabecera que deja el proxy: un layout no tiene otra forma de saber
-     dónde está, y sin saberlo redirigir crearía un bucle en /cuenta. */
-  const ruta = (await headers()).get("x-fmc-ruta") ?? "/";
-  if (sesion.usuario.debeCambiarClave && !ruta.startsWith("/cuenta")) redirect("/cuenta?obligatorio=1");
-
-  /* Primero el dataset —que es también quien refresca los parámetros desde la base— y
-     DESPUÉS los permisos: si se evaluaran antes, un cambio en los módulos de la Junta
-     tardaría una petición en aplicarse en cada instancia (pasó en la prueba: el primer
-     aterrizaje tras el login aún veía los cuatro módulos). */
+  /* El dataset es también quien refresca los parámetros desde la base, y de ellos
+     salen los módulos que ve la Junta: por eso va antes de calcular el menú. */
   await ensureLoaded();
-
-  /* Lo que ve cada rol se decide AQUÍ, en cada petición, no solo en el menú: un
-     miembro de la Junta que escriba /ingesta a mano vuelve a su primer módulo. */
-  if (!rutaPermitida(sesion.usuario, ruta)) redirect(destinoInicial(sesion.usuario));
   const modulos = modulosDe(sesion.usuario);
 
   // El selector de períodos se alimenta de la BASE, no de una lista fija:

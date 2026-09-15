@@ -1,3 +1,4 @@
+import { soloAdmin } from "@/lib/permisos";
 import * as D from "@/lib/data";
 import { mesCorto } from "@/lib/format";
 import BalancesMatrix from "@/components/BalancesMatrix";
@@ -5,6 +6,7 @@ import BalancesMatrix from "@/components/BalancesMatrix";
 export const dynamic = "force-dynamic";
 
 export default async function BalancesPage() {
+  await soloAdmin();
   await D.ensureLoaded();
   const periodos = D.periodos.map((p) => ({
     etiqueta: p.etiqueta, anio: p.anio, label: `${mesCorto[p.mes]} ${String(p.anio).slice(2)}`,

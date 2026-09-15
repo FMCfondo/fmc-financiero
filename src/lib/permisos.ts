@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { NAV, visibleEn } from "./modos";
-import { paramJson } from "./data";
+import { ensureLoaded, paramJson } from "./data";
 import { obtenerSesion, type Usuario } from "./auth";
 
 /* Qué puede ver cada rol, decidido en el SERVIDOR.
@@ -51,11 +51,34 @@ export function destinoInicial(u: Usuario): string {
   return modulosDe(u)[0] ?? "/cuenta";
 }
 
+/** Lo mismo, cargando antes los parámetros (para acciones y rutas que corren solas,
+ *  sin una página que ya haya cargado el dataset). Nunca es /panel «porque sí»: el
+ *  Panel puede estar deshabilitado para la Junta. */
+export async function inicioDe(u: Usuario): Promise<string> {
+  await ensureLoaded();
+  return destinoInicial(u);
+}
+
+/** AL PRINCIPIO DE CADA PÁGINA: exige sesión, obliga el cambio de contraseña pendiente
+ *  y comprueba que este usuario pueda estar en este módulo. Lo hace la página, y no
+ *  solo el layout, porque un layout compartido NO se vuelve a ejecutar cuando el
+ *  navegador cambia de ruta sin recargar: lo que el layout decidió al entrar se queda.
+ *  El layout hace la misma comprobación en las cargas completas; esta vale en todas. */
+export async function accesoA(ruta: string): Promise<Usuario> {
+  const s = await obtenerSesion();
+  if (!s) redirect(ruta === "/" ? "/entrar" : `/entrar?volver=${encodeURIComponent(ruta)}`);
+  if (s.usuario.debeCambiarClave && !ruta.startsWith("/cuenta")) redirect("/cuenta?obligatorio=1");
+  await ensureLoaded(); // los módulos de la Junta salen de los parámetros
+  if (!rutaPermitida(s.usuario, ruta)) redirect(destinoInicial(s.usuario));
+  return s.usuario;
+}
+
 /** Para páginas de administrador (o partes de una página, como Mantenimiento o el
  *  editor de mapeo): si no es admin, se le devuelve a un sitio suyo. */
 export async function soloAdmin(destino?: string): Promise<Usuario> {
   const s = await obtenerSesion();
   if (!s) redirect("/entrar");
+  if (s.usuario.debeCambiarClave) redirect("/cuenta?obligatorio=1");
   if (s.usuario.rol !== "admin") redirect(destino ?? destinoInicial(s.usuario));
   return s.usuario;
 }

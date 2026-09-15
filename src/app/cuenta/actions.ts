@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { auditar, cambiarClave, cerrarSesionesDe, crearSesion, exigirSesion, verificarClave, MIN_CLAVE } from "@/lib/auth";
+import { inicioDe } from "@/lib/permisos";
 
 /* Cambiar MI contraseña. Cierra las demás sesiones del usuario y abre una nueva para
    esta: si alguien tenía la clave vieja abierta en otro sitio, se queda fuera. */
@@ -25,5 +26,5 @@ export async function cambiarMiClave(fd: FormData): Promise<void> {
   await cerrarSesionesDe(u.id);
   await crearSesion(u.id);
   await auditar(u.id, "clave_cambiada", { entidad: "usuario", registro: u.id });
-  redirect(obligatorio ? "/panel" : "/cuenta?ok=1");
+  redirect(obligatorio ? await inicioDe(u) : "/cuenta?ok=1");
 }
