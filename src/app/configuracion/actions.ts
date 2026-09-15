@@ -7,7 +7,7 @@ import {
   restablecerClave, type Rol,
 } from "@/lib/auth";
 import { guardarParametroJson } from "@/lib/data";
-import { CLAVE_MODULOS_JUNTA, MODULOS_JUNTA } from "@/lib/permisos";
+import { CLAVE_MODULOS_JUNTA, MODULOS_JUNTA, inicioDe } from "@/lib/permisos";
 import { COOKIE_CLAVE } from "@/lib/auth-cookie";
 
 /* Configuración: usuarios, módulos de la Junta. Todo son formularios clásicos con
@@ -21,7 +21,8 @@ const texto = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 async function admin() {
   const s = await obtenerSesion();
-  if (!s || s.usuario.rol !== "admin") redirect("/panel");
+  if (!s) redirect("/entrar");
+  if (s.usuario.rol !== "admin") redirect(await inicioDe(s.usuario));
   return s.usuario;
 }
 

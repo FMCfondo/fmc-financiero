@@ -1,3 +1,4 @@
+import { accesoA } from "@/lib/permisos";
 import Link from "next/link";
 import { ensureLoaded, resolverEtq, leerNotas, type NotaPeriodo } from "@/lib/data";
 import { construirPanel, TERMINOS, type Modo, type Panel } from "@/lib/panel";
@@ -26,6 +27,7 @@ const Mill = ({ v }: { v: number }) => (
 export default async function PanelPage({ searchParams }: {
   searchParams: Promise<{ p?: string; modo?: string }>;
 }) {
+  await accesoA("/panel");
   const { p, modo: qModo } = await searchParams;
   await ensureLoaded();
   const etq = resolverEtq(p);

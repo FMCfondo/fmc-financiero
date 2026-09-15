@@ -1,4 +1,5 @@
-import { obtenerSesion, MIN_CLAVE } from "@/lib/auth";
+import { MIN_CLAVE } from "@/lib/auth";
+import { accesoA } from "@/lib/permisos";
 import { cambiarMiClave } from "./actions";
 import { KeyRound, CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -16,9 +17,7 @@ const ERRORES: Record<string, string> = {
    ningún otro sitio hasta cambiarla. */
 export default async function CuentaPage({ searchParams }: { searchParams: Promise<{ error?: string; ok?: string; obligatorio?: string }> }) {
   const { error, ok, obligatorio } = await searchParams;
-  const s = await obtenerSesion();
-  if (!s) return null; // el proxy ya habría redirigido
-  const u = s.usuario;
+  const u = await accesoA("/cuenta");
   const forzado = obligatorio === "1" || u.debeCambiarClave;
 
   return (

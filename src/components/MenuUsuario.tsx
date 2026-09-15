@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { salir } from "@/app/entrar/actions";
 import { LogOut, UserRound, Settings } from "lucide-react";
 
-/* Quién está dentro y la puerta de salida. Es un formulario clásico, no un botón con
-   JavaScript: salir tiene que funcionar aunque nada se haya hidratado. */
+/* Quién está dentro y la puerta de salida. Salir es un formulario HTML clásico contra
+   /api/sesion/salir (redirección 303 real): funciona sin JavaScript y, sobre todo,
+   recarga la página entera, que es lo único que garantiza que el layout vuelva a la
+   pantalla de entrada. */
 export default function MenuUsuario({ nombre, rol }: { nombre: string; rol: "admin" | "junta" }) {
   return (
     <div className="flex items-center gap-3 text-sm">
@@ -17,7 +18,7 @@ export default function MenuUsuario({ nombre, rol }: { nombre: string; rol: "adm
           <Settings size={15} /><span className="hidden lg:inline">Configuración</span>
         </Link>
       )}
-      <form action={salir}>
+      <form method="post" action="/api/sesion/salir">
         <button type="submit" className="flex items-center gap-1.5 text-muted hover:text-fg" title="Salir">
           <LogOut size={15} /><span className="hidden md:inline">Salir</span>
         </button>

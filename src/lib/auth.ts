@@ -135,16 +135,32 @@ export async function cambiarClave(usuarioId: string, nueva: string): Promise<vo
 const hashToken = (t: string) => createHash("sha256").update(t).digest("base64url");
 const enDias = (d: number) => new Date(Date.now() + d * 86_400_000);
 
-/** Crea la sesión en la base y deja la cookie. Se llama desde una acción de servidor. */
-export async function crearSesion(usuarioId: string): Promise<void> {
+/** Atributos de la cookie de sesión, iguales la ponga quien la ponga. */
+export const OPCIONES_COOKIE_SESION = {
+  httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/",
+  maxAge: DIAS_SESION * 86_400,
+} as const;
+
+/** Abre la sesión en la base y devuelve el token que va en la cookie. El que llama
+ *  decide dónde poner la cookie: en la respuesta (rutas de /api/sesion) o en el
+ *  tarro de una acción de servidor (`crearSesion`). */
+export async function abrirSesion(usuarioId: string): Promise<string> {
   const sql = await sqlDb();
   const token = randomBytes(32).toString("base64url");
   const agente = (await headers()).get("user-agent")?.slice(0, 200) ?? null;
   await sql`insert into sesion (hash, usuario_id, expira_en, agente) values (${hashToken(token)}, ${usuarioId}, ${enDias(DIAS_SESION).toISOString()}, ${agente})`;
-  (await cookies()).set(COOKIE_SESION, token, {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/",
-    maxAge: DIAS_SESION * 86_400,
-  });
+  return token;
+}
+
+/** Abre la sesión y deja la cookie. Para acciones de servidor (cambio de contraseña). */
+export async function crearSesion(usuarioId: string): Promise<void> {
+  const token = await abrirSesion(usuarioId);
+  (await cookies()).set(COOKIE_SESION, token, OPCIONES_COOKIE_SESION);
+}
+
+/** Borra de la base la sesión de este token. La cookie la quita quien llama. */
+export async function borrarSesion(token: string): Promise<void> {
+  try { const sql = await sqlDb(); await sql`delete from sesion where hash = ${hashToken(token)}`; } catch { /* la cookie se borra igual */ }
 }
 
 /** La sesión de esta petición, o null. Una consulta por petición (cache de React).
@@ -173,9 +189,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
 export async function cerrarSesion(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(COOKIE_SESION)?.value;
-  if (token) {
-    try { const sql = await sqlDb(); await sql`delete from sesion where hash = ${hashToken(token)}`; } catch { /* la cookie se borra igual */ }
-  }
+  if (token) await borrarSesion(token);
   jar.delete(COOKIE_SESION);
 }
 

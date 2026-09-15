@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { hayUsuarios, obtenerSesion, MIN_CLAVE } from "@/lib/auth";
-import { crearPrimerAdmin, entrar } from "./actions";
+import { inicioDe } from "@/lib/permisos";
 import { LogIn, ShieldCheck, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 /* /entrar — la única página sin sesión. Dos caras:
    · si todavía no hay ningún usuario, crea el PRIMER administrador (una sola vez);
    · si ya hay, pide correo y contraseña.
-   El layout raíz la pinta sin barra lateral porque no hay sesión. */
+   El layout raíz la pinta sin barra lateral porque no hay sesión. Los formularios
+   son HTML clásico contra /api/sesion (redirección 303 real): al entrar cambia el
+   layout entero y eso solo es fiable con una carga completa de la página. */
 
 const ERRORES: Record<string, string> = {
   faltan: "Escribe el correo y la contraseña.",
@@ -24,7 +26,8 @@ const ERRORES: Record<string, string> = {
 
 export default async function EntrarPage({ searchParams }: { searchParams: Promise<{ error?: string; volver?: string }> }) {
   const { error, volver } = await searchParams;
-  if (await obtenerSesion()) redirect("/panel");
+  const s = await obtenerSesion();
+  if (s) redirect(await inicioDe(s.usuario));
   const primeraVez = !(await hayUsuarios());
 
   return (
@@ -48,7 +51,7 @@ export default async function EntrarPage({ searchParams }: { searchParams: Promi
               <p className="text-sm text-muted">
                 Todavía no hay usuarios. Esta cuenta será la que cree las demás; este paso solo aparece una vez.
               </p>
-              <form action={crearPrimerAdmin} className="space-y-3">
+              <form method="post" action="/api/sesion/primer-admin" className="space-y-3">
                 <Campo label="Nombre" name="nombre" autoComplete="name" />
                 <Campo label="Correo" name="email" type="email" autoComplete="username" />
                 <Campo label={`Contraseña (mínimo ${MIN_CLAVE} caracteres)`} name="clave" type="password" autoComplete="new-password" />
@@ -63,7 +66,7 @@ export default async function EntrarPage({ searchParams }: { searchParams: Promi
                 <LogIn size={18} className="text-accent2" />
                 <h1 className="font-semibold">Entrar</h1>
               </div>
-              <form action={entrar} className="space-y-3">
+              <form method="post" action="/api/sesion/entrar" className="space-y-3">
                 <input type="hidden" name="volver" value={volver ?? ""} />
                 <Campo label="Correo" name="email" type="email" autoComplete="username" />
                 <Campo label="Contraseña" name="clave" type="password" autoComplete="current-password" />

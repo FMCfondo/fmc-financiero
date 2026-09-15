@@ -7,6 +7,7 @@
  * Uso:  curl "http://localhost:3000/api/conciliacion"
  *       CIFRAS_CONTROL=/otra/ruta.json  para apuntar a otro archivo.
  */
+import { obtenerSesion } from "@/lib/auth";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
@@ -206,6 +207,9 @@ function filasInformeResultados(ir: {
 }
 
 export async function GET() {
+  // La cookie la mira el proxy; que la sesión valga y sea de administrador se mira aquí.
+  const s = await obtenerSesion();
+  if (!s || s.usuario.rol !== "admin") return NextResponse.json({ error: "Solo el administrador." }, { status: s ? 403 : 401 });
   const ruta = process.env.CIFRAS_CONTROL ?? join(process.cwd(), "db", "cifras-control.json");
   if (!existsSync(ruta))
     return NextResponse.json(
