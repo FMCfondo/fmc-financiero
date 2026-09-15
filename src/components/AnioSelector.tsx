@@ -17,17 +17,15 @@ export default function AnioSelector({ current }: { current?: number }) {
     const q = params.toString();
     return pathname + (q ? "?" + q : "");
   };
-  const cls = (active: boolean) =>
-    `px-2.5 py-1 rounded-md text-xs border transition-colors ${
-      active ? "bg-accentdim border-accent/40 text-accent2 font-medium" : "border-line text-muted hover:text-fg hover:bg-card2"
-    }`;
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted mr-1">Año:</span>
-      <Link href={href("ultimos")} className={cls(!current)}>Últimos</Link>
-      {ANIOS.map((a) => (
-        <Link key={a} href={href(a)} className={cls(current === Number(a))}>{a}</Link>
-      ))}
+    <div className="flex items-center">
+      <span className="seg-label">Año</span>
+      <div className="seg">
+        <Link href={href("ultimos")} className={!current ? "on" : ""}>Últimos</Link>
+        {ANIOS.map((a) => (
+          <Link key={a} href={href(a)} className={current === Number(a) ? "on" : ""}>{a}</Link>
+        ))}
+      </div>
     </div>
   );
 }

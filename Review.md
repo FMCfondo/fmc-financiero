@@ -68,6 +68,20 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   tinte** (no por barras de color), reglas contables (simple sobre subtotal, doble bajo el
   total), densidad alta pero legible. Sensación de "inmovilizar paneles de Excel", con
   apariencia moderna.
+- **Rediseño 2026-09-15 («se veía muy básico»)**: cada estado se presenta como un
+  DOCUMENTO. La tarjeta lleva encima el encabezado (`EncabezadoEstado`: entidad, nombre del
+  estado, período «Enero – Agosto 2026» con `rangoNombre`, unidad) y la tabla debajo. La
+  **banda de sección** (INGRESOS, ACTIVO…) lleva el rótulo en la celda FIJA y una celda de
+  relleno con la misma banda: antes el rótulo abarcaba toda la fila con `colSpan` y al
+  desplazar a la derecha se iba con ella (se leía «S» donde decía INGRESOS) — una celda tan
+  ancha como la tabla no puede quedarse fija. El **mes de corte** va iluminado
+  (`resaltar`, clase `corte`: un lavado como imagen de fondo, para superponerse al tinte
+  de cualquier fila, y la etiqueta «corte» en la cabecera); el **acumulado** tiene regla
+  doble y papel propio; el total va en navy con rótulo en versalitas; las reglas contables
+  son clases (`rule-sub`, `rule-total`) y no se pintan sobre celdas vacías. Sombras de
+  desplazamiento solo cuando hay contenido debajo (`data-sx`/`data-sy`, `useSombrasScroll`).
+  Los segmentadores (vistas, año, meses, interanual) son el mismo control `.seg`: carril
+  claro y pastilla blanca activa. 13 px, filas de ~32 px, primera columna 288 px.
 
 ---
 

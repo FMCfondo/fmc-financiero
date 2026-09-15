@@ -1,7 +1,7 @@
 import { accesoA } from "@/lib/permisos";
 import { flujoEfectivo, flujoMatriz } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
-import { etqNombre } from "@/lib/periodos";
+import { etqNombre, rangoNombre } from "@/lib/periodos";
 import { fmtCOP, fmtCont } from "@/lib/format";
 import MesesSelector from "@/components/MesesSelector";
 import AnioSelector from "@/components/AnioSelector";
@@ -33,6 +33,8 @@ export default async function FlujoPage({ searchParams }: { searchParams: Promis
         labels={m.labels}
         conAcum={false}
         col1Label="Concepto"
+        resaltar={cols.findIndex((x) => x.etiqueta === etq)}
+        encabezado={{ titulo: "Estado de Flujo de Efectivo", periodo: rangoNombre(cols.map((x) => x.etiqueta)), unidad: "Método indirecto · movimiento de cada mes · pesos colombianos" }}
         secciones={[]}
         filasFinales={m.filas.map((fila) => ({
           nombre: fila.nombre, vals: fila.vals,

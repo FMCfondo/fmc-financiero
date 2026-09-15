@@ -1,5 +1,6 @@
 "use client";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, Concepto } from "@/components/statementShared";
+import { useSombrasScroll } from "@/components/StatementMatrix";
 
 /* Análisis vertical / horizontal — misma piel que el Estado (sistema `.stmt`).
    Vertical   → participación sobre la base del período (número sobrio).
@@ -40,11 +41,12 @@ export default function AnalisisMatrix({
 }) {
   const ctx = useExpand(secciones.map((s) => s.arbol), persistKey);
   const nCols = labels.length + 1;
+  const scroll = useSombrasScroll();
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">
         <ExpandToggle ctx={ctx} />
-        <div className="stmt card">
+        <div className="stmt card" {...scroll}>
           <table>
             <thead>
               <tr>
@@ -66,13 +68,15 @@ export default function AnalisisMatrix({
 function Seccion({ s, nCols, colorear }: { s: Seccion; nCols: number; colorear?: boolean }) {
   return (
     <>
+      {/* El rótulo va en la celda fija; el resto de la fila es relleno con la misma banda. */}
       <tr className="section">
-        <td colSpan={nCols} className="col1"><span className="sec-label">{s.titulo}</span></td>
+        <td className="col1"><span className="sec-label">{s.titulo}</span></td>
+        <td colSpan={nCols - 1} className="sec-fill" />
       </tr>
       {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} />)}
       <tr className="subtotal">
         <td className="col1">Total {s.titulo.toLowerCase()}</td>
-        {s.totalVals.map((v, i) => <td key={i} className="num"><span className="border-t border-fg/25 inline-block"><Val v={v} colorear={colorear} /></span></td>)}
+        {s.totalVals.map((v, i) => <td key={i} className="num"><span className="rule-sub"><Val v={v} colorear={colorear} /></span></td>)}
       </tr>
     </>
   );
@@ -100,11 +104,11 @@ function FilaFinal({ f, colorear }: { f: FilaFinalPct; colorear?: boolean }) {
   const total = f.tipo === "total";
   const sub = f.tipo === "sub";
   const cls = total ? "total" : sub ? "subtotal" : "row";
-  const rule = total ? "border-t border-fg/45 border-b-[3px] border-double border-fg/45 py-0.5" : sub ? "border-t border-fg/25" : "";
+  const rule = total ? "rule-total" : sub ? "rule-sub" : "";
   return (
     <tr className={cls}>
       <td className="col1">{f.nombre}</td>
-      {f.vals.map((v, i) => <td key={i} className="num"><span className={`inline-block ${rule}`}><Val v={v} colorear={colorear} /></span></td>)}
+      {f.vals.map((v, i) => <td key={i} className="num"><span className={v === null ? "" : rule}><Val v={v} colorear={colorear} /></span></td>)}
     </tr>
   );
 }

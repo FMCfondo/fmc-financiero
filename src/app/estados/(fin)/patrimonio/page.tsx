@@ -4,6 +4,7 @@ import { ensureLoaded, periodos, periodo, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
 import { fmtNum } from "@/lib/format";
 import AnioSelector from "@/components/AnioSelector";
+import { EncabezadoEstado } from "@/components/StatementMatrix";
 
 export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
   await accesoA("/estados/patrimonio");
@@ -25,7 +26,13 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
         <AnioSelector current={nAnio} />
       </div>
 
-      <div className="stmt card" style={{ ["--stmt-col1" as string]: "260px" }}>
+      <div className="card overflow-hidden">
+        <EncabezadoEstado
+          titulo="Estado de Cambios en el Patrimonio"
+          periodo={`${c.ini ? `${etqNombre(c.ini)} – ` : ""}${etqNombre(etq)}`}
+          unidad="Acumulado del año · pesos colombianos"
+        />
+        <div className="stmt" style={{ ["--stmt-col1" as string]: "300px" }}>
         <table>
           <thead>
             <tr>
@@ -42,9 +49,10 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
             <MRow label="Patrimonio total (incluye utilidad)" vals={c.comps.map(() => null)} total={c.totalFinal} tipo="total" />
           </tbody>
         </table>
+        </div>
       </div>
 
-      <p className="text-xs text-faint">
+      <p className="stmt-nota">
         La utilidad del ejercicio ({fmtNum(c.resultado)}) aún no está cerrada en las cuentas de patrimonio; se muestra por separado y se suma al patrimonio total.
       </p>
     </div>
@@ -53,16 +61,16 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
 
 function MRow({ label, vals, total, tipo }: { label: string; vals: (number | null)[]; total: number; tipo?: "subtotal" | "total" }) {
   const isTotal = tipo === "total";
-  const rule = isTotal ? "border-t border-fg/45 border-b-[3px] border-double border-fg/45 py-0.5" : tipo === "subtotal" ? "border-t border-fg/25" : "";
+  const rule = isTotal ? "rule-total" : tipo === "subtotal" ? "rule-sub" : "";
   return (
     <tr className={tipo === "total" ? "total" : tipo === "subtotal" ? "subtotal" : "row"}>
       <td className="col1">{label}</td>
       {vals.map((v, i) => (
         <td key={i} className={`num ${v !== null && v < 0 ? "text-neg" : ""}`}>
-          <span className={`inline-block ${rule}`}>{v === null ? "—" : fmtNum(v)}</span>
+          <span className={v === null ? "" : rule}>{v === null ? "—" : fmtNum(v)}</span>
         </td>
       ))}
-      <td className="num num-acc"><span className={`inline-block font-semibold ${rule}`}>{fmtNum(total)}</span></td>
+      <td className="num num-acc"><span className={`font-semibold ${rule}`}>{fmtNum(total)}</span></td>
     </tr>
   );
 }
