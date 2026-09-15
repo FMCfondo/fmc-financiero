@@ -6,7 +6,7 @@ import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
 import { accesoA, soloAdmin } from "@/lib/permisos";
 import { indicadoresMatriz } from "@/lib/indicadores";
-import { etqNombre } from "@/lib/periodos";
+import { etqNombre, rangoNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum, fmtCont, fmtM } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
@@ -73,6 +73,8 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
         labels={m.labels}
         conAcum
         persistKey="er-estado"
+        resaltar={meses.findIndex((x) => x.etiqueta === etq)}
+        encabezado={{ titulo: "Estado de Resultados", periodo: rangoNombre(meses.map((x) => x.etiqueta)), unidad: "Movimiento de cada mes · acumulado del año · pesos colombianos" }}
         secciones={[
           { titulo: "Ingresos", tono: "bg-pos", arbol: m.ingresos, totalLabel: "Total ingresos", totalVals: m.totalIng.vals, totalAcum: m.totalIng.acum },
           { titulo: "Gastos (sin depreciaciones ni amortizaciones)", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos operativos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
@@ -86,7 +88,7 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
           { nombre: "(=) Utilidad neta", vals: m.utilNeta.vals, acum: m.utilNeta.acum, tipo: "total" },
         ]}
       />
-      <p className="text-xs text-faint">
+      <p className="stmt-nota">
         Estructura EBITDA: los gastos se muestran sin depreciaciones ni amortizaciones, que bajan como líneas propias hasta la
         utilidad antes de impuestos. Cada columna es el movimiento del mes y el <b>Acumulado</b> del año va en el recuadro final;
         el impuesto de cada mes es la provisión marginal (los meses suman el acumulado, que usa la provisión completa de{" "}

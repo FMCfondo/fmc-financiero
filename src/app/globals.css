@@ -65,73 +65,117 @@ body {
    Sobrio y ejecutivo: jerarquía por peso y tinte, no por color.
    =================================================================== */
 
-/* Contenedor con scroll: la cabecera queda fija arriba y la 1ª columna a la izq. */
+/* Contenedor con scroll: la cabecera queda fija arriba y la 1ª columna a la izq.
+   Se lee como un estado IMPRESO: encabezado del documento (entidad, estado,
+   período, unidad), bandas de sección con su rótulo siempre a la vista, cuentas
+   por peso y sangría, subtotal con regla simple, total con regla doble; el mes de
+   corte va iluminado y el acumulado en su propio recuadro. Todos los tonos son
+   lavados del navy de la marca: la jerarquía la dan el peso y el tinte, no el
+   color. Rediseño 2026-09-15 (el anterior se veía «muy básico»). */
 .stmt {
-  --stmt-col1: 288px;         /* ancho de la columna de concepto */
-  --stmt-tint: #f6f9fd;       /* tinte de subtotal (navy muy tenue) */
-  --stmt-tint2: #eef3fb;      /* tinte de total */
-  --stmt-px: 14px;            /* padding horizontal de celda */
-  --stmt-py: 6px;             /* padding vertical de celda (densidad) */
+  --stmt-col1: 288px;          /* ancho de la columna de concepto */
+  --stmt-px: 14px;             /* padding horizontal de celda */
+  --stmt-py: 7px;              /* padding vertical de celda (densidad) */
+  --stmt-band: #edf2fb;        /* banda de sección */
+  --stmt-tint: #f6f8fd;        /* subtotal */
+  --stmt-tint2: #e7edf9;       /* total */
+  --stmt-acc: #f8fafe;         /* recuadro del acumulado */
+  --stmt-corte: rgba(30, 64, 175, 0.05);   /* lavado del mes de corte (se superpone a cualquier fila) */
+  --stmt-corte-ink: #1e40af;
+  position: relative;
   overflow: auto;
   border-radius: var(--radius-xl);
-  /* Tipografía ligeramente más pequeña que el resto: más filas visibles sin scroll,
-     como una hoja de cálculo bien maquetada, pero más limpia. */
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 1.35;
 }
+.card > .stmt { border-radius: 0; }   /* dentro de la tarjeta-documento, las esquinas las pone la tarjeta */
 .stmt table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
 .stmt th, .stmt td { white-space: nowrap; }
+
+/* Encabezado del documento: dentro de la tarjeta, encima de la tabla. */
+.stmt-doc {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px 12px; border-bottom: 1px solid var(--color-line);
+  background: linear-gradient(180deg, #fbfcfe, #f4f7fd);
+}
+.stmt-doc .doc-entidad { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-faint); }
+.stmt-doc .doc-titulo { margin-top: 2px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--color-royal2); }
+.stmt-doc .doc-derecha { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stmt-doc .doc-periodo { font-size: 13px; font-weight: 600; color: var(--color-fg); }
+.stmt-doc .doc-unidad { font-size: 11px; color: var(--color-muted); }
 
 /* Cabecera fija (sticky) — los meses permanecen visibles en TODO el scroll vertical */
 .stmt thead th {
   position: sticky; top: 0; z-index: 20;
   background: var(--color-card);
-  font-weight: 600; font-size: 10.5px; letter-spacing: 0.055em; text-transform: uppercase;
-  color: var(--color-faint);
-  padding: 9px var(--stmt-px) 8px;
+  font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 10px var(--stmt-px) 9px;
   border-bottom: 1px solid var(--color-line);
   box-shadow: 0 1px 0 var(--color-line);
+  vertical-align: bottom;
 }
 .stmt thead th.num { text-align: right; }
+/* Al desplazarse hacia abajo, la cabecera proyecta una sombra corta: se ve que hay filas debajo. */
+.stmt[data-sy="1"] thead th { box-shadow: 0 1px 0 var(--color-line), 0 8px 12px -10px rgba(19, 40, 110, 0.35); }
 
 /* Primera columna fija (concepto): la referencia no se pierde al hacer scroll
-   horizontal. Ancho mínimo consistente + divisor sutil (freeze-panes elegante). */
+   horizontal. Divisor sutil, y sombra solo cuando de verdad hay columnas debajo. */
 .stmt .col1 { position: sticky; left: 0; z-index: 10; background: var(--color-card); min-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
 .stmt tbody td.col1 { padding: var(--stmt-py) var(--stmt-px); }
-.stmt thead th.col1 { z-index: 30; text-align: left; padding: 9px var(--stmt-px) 8px; }
+.stmt thead th.col1 { z-index: 30; text-align: left; }
+.stmt[data-sx="1"] .col1 { box-shadow: 10px 0 14px -10px rgba(19, 40, 110, 0.28); }
+.stmt[data-sx="1"][data-sy="1"] thead th.col1 { box-shadow: 10px 0 14px -10px rgba(19, 40, 110, 0.28), 0 1px 0 var(--color-line), 0 8px 12px -10px rgba(19, 40, 110, 0.35); }
 
 /* Celdas numéricas: tabulares, alineadas, ancho parejo */
 .stmt .num {
   text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
-  padding: var(--stmt-py) var(--stmt-px); min-width: 116px;
+  padding: var(--stmt-py) var(--stmt-px); min-width: 108px;
 }
-.stmt .num-acc { border-left: 1px solid var(--color-line); background: var(--stmt-tint); }
+/* El recuadro del acumulado: regla doble a la izquierda y papel propio. */
+.stmt .num-acc { border-left: 3px double #c9d5ea; background: var(--stmt-acc); }
+.stmt thead th.num-acc { color: var(--color-royal2); font-weight: 700; }
+
+/* El mes de corte, iluminado. Es una IMAGEN de fondo, no un color: así se superpone al
+   tinte que tenga la fila (sección, subtotal, total) sin taparlo. */
+.stmt th.corte, .stmt td.corte { background-image: linear-gradient(var(--stmt-corte), var(--stmt-corte)); box-shadow: inset 1px 0 0 rgba(30, 64, 175, 0.12), inset -1px 0 0 rgba(30, 64, 175, 0.12); }
+.stmt thead th.corte { color: var(--stmt-corte-ink); box-shadow: 0 1px 0 var(--stmt-corte-ink), inset 1px 0 0 rgba(30, 64, 175, 0.12), inset -1px 0 0 rgba(30, 64, 175, 0.12); }
+.stmt thead th.corte::before { content: "corte"; display: block; font-size: 8.5px; letter-spacing: 0.16em; opacity: 0.75; margin-bottom: 1px; }
 
 /* Filas: hover discreto, línea base tenue */
 .stmt tbody tr td { border-bottom: 1px solid var(--color-line-soft); }
-.stmt tbody tr.row:hover td { background: var(--color-card2); }
-.stmt tbody tr.row:hover .col1 { background: var(--color-card2); }
+.stmt tbody tr.row:hover td { background-color: var(--color-card2); }
+.stmt tbody tr.row:hover .col1 { background-color: var(--color-card2); }
 
-/* Encabezado de sección (Ingresos / Activo…): limpio, sin barra de color llena */
+/* Banda de sección (Ingresos / Activo…): el rótulo va en la celda FIJA, y el resto de
+   la fila es una celda de relleno con la misma banda. Antes el rótulo abarcaba toda la
+   fila (colSpan) y, al desplazar hacia la derecha, se iba con ella: se leía «S» donde
+   decía «INGRESOS». Una celda tan ancha como la tabla no puede quedarse fija. */
 .stmt tr.section td {
-  padding: 13px var(--stmt-px) 6px; background: var(--color-card);
-  border-bottom: 1px solid var(--color-line); border-right: none;
+  padding: 8px var(--stmt-px); background: var(--stmt-band);
+  border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line);
 }
-.stmt tbody tr.section:first-child td { padding-top: 9px; }
+.stmt tr.section td.col1 { border-right-color: transparent; }
+.stmt tbody tr.section:first-child td { border-top: none; }
 .stmt tr.section .sec-label {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.085em; text-transform: uppercase; color: var(--color-muted);
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-royal2);
 }
-.stmt tr.section .sec-dot { width: 6px; height: 6px; border-radius: 999px; }
+.stmt tr.section .sec-dot { width: 7px; height: 7px; border-radius: 999px; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85); }
 
-/* Grupo (cuenta de nivel 0): peso medio, fondo apenas perceptible */
-.stmt tr.group > .col1, .stmt tr.group > td { background: #fafcff; }
-.stmt tr.group:hover > td, .stmt tr.group:hover > .col1 { background: var(--color-card2); }
+/* Grupo (cuenta de nivel 0): peso medio sobre blanco; los hijos, más leves y sangrados */
+.stmt tr.group > .col1, .stmt tr.group > td { background: var(--color-card); }
+.stmt tr.group > td.num { font-weight: 600; }
+.stmt tr.group:hover > td, .stmt tr.group:hover > .col1 { background-color: var(--color-card2); }
 
-/* Subtotal y total: tinte sobrio + regla superior; total con doble regla */
-.stmt tr.subtotal td { background: var(--stmt-tint); font-weight: 600; }
-.stmt tr.subtotal .col1 { background: var(--stmt-tint); }
-.stmt tr.total td { background: var(--stmt-tint2); font-weight: 700; }
-.stmt tr.total .col1 { background: var(--stmt-tint2); text-transform: uppercase; letter-spacing: 0.04em; font-size: 12px; }
+/* Subtotal y total: tinte sobrio; el total en navy, con rótulo en versalitas */
+.stmt tr.subtotal td { background: var(--stmt-tint); font-weight: 600; border-bottom-color: var(--color-line); }
+.stmt tr.total td { background: var(--stmt-tint2); font-weight: 700; color: var(--color-royal2); border-bottom: 1px solid var(--color-line); }
+.stmt tr.total .col1 { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11.5px; }
+
+/* Reglas contables: simple sobre el subtotal, doble bajo el total */
+.stmt .rule-sub { display: inline-block; border-top: 1px solid rgba(23, 35, 59, 0.35); padding-top: 2px; }
+.stmt .rule-total { display: inline-block; border-top: 1px solid rgba(19, 40, 110, 0.65); border-bottom: 3px double rgba(19, 40, 110, 0.65); padding: 2px 0; }
 
 /* Guías de indentación (jerarquía de cuentas) */
 .stmt .indent { position: relative; display: inline-flex; align-items: center; }
@@ -141,7 +185,19 @@ body {
 /* Chevron de expandir/contraer con giro suave */
 .stmt .chev { transition: transform 0.18s ease; color: var(--color-faint); flex: none; }
 .stmt .chev.open { transform: rotate(90deg); }
-.stmt .code { font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: -0.01em; color: #9fb0c6; }
+.stmt .code { font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.02em; color: #9fb0c6; }
+
+/* Nota al pie de un estado */
+.stmt-nota { font-size: 12px; line-height: 1.55; color: var(--color-muted); max-width: 64rem; padding-left: 12px; border-left: 2px solid var(--color-line); }
+
+/* Segmentador (vistas, año, meses): un carril claro y la opción activa como pastilla
+   blanca. Es el mismo control en todos los estados. */
+.seg { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: #e6ecf6; }
+.seg > a, .seg > button, .seg > span { padding: 5px 11px; border-radius: 7px; font-size: 12px; line-height: 1.2; color: var(--color-muted); white-space: nowrap; transition: background-color 0.15s, color 0.15s; }
+.seg > a:hover, .seg > button:hover { color: var(--color-fg); }
+.seg > .on { background: #fff; color: var(--color-royal2); font-weight: 600; box-shadow: 0 1px 2px rgba(19, 40, 110, 0.12), 0 0 0 1px rgba(19, 40, 110, 0.06); }
+.seg > .off { color: rgba(147, 161, 184, 0.7); cursor: not-allowed; }
+.seg-label { font-size: 11px; color: var(--color-faint); margin-right: 6px; }
 
 /* Indicador de variación: discreto (triángulo + número tenue), nunca chillón */
 .delta { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }

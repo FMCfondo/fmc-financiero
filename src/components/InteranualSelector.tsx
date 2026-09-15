@@ -27,28 +27,28 @@ export default function InteranualSelector({ unidad, idx }: { unidad: string; id
     params.set("idx", String(i));
     return pathname + "?" + params.toString();
   };
-  const chip = (active: boolean) =>
-    `px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-      active ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"
-    }`;
   const u = UNIDADES.find((x) => x.id === unidad) ?? UNIDADES[0];
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-xs font-medium text-fg mr-1">Período:</span>
-        {UNIDADES.map((x) => (
-          <Link key={x.id} href={href(x.id, 1)} className={chip(unidad === x.id)}>{x.label}</Link>
-        ))}
+      <div className="flex items-center flex-wrap gap-y-2">
+        <span className="seg-label">Período</span>
+        <div className="seg flex-wrap">
+          {UNIDADES.map((x) => (
+            <Link key={x.id} href={href(x.id, 1)} className={unidad === x.id ? "on" : ""}>{x.label}</Link>
+          ))}
+        </div>
       </div>
       {u.n > 1 && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-medium text-fg mr-1">{u.label}:</span>
-          {Array.from({ length: u.n }, (_, i) => i + 1).map((i) => (
-            <Link key={i} href={href(u.id, i)} className={chip(idx === i)}>
-              {u.id === "mes" ? MESES[i - 1] : `${u.pre}${i}`}
-            </Link>
-          ))}
+        <div className="flex items-center flex-wrap gap-y-2">
+          <span className="seg-label">{u.label}</span>
+          <div className="seg flex-wrap">
+            {Array.from({ length: u.n }, (_, i) => i + 1).map((i) => (
+              <Link key={i} href={href(u.id, i)} className={idx === i ? "on" : ""}>
+                {u.id === "mes" ? MESES[i - 1] : `${u.pre}${i}`}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

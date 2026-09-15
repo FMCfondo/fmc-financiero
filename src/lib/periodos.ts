@@ -20,6 +20,15 @@ export const PERIODOS: string[] = (() => {
 
 export const PERIODO_DEFAULT = PERIODOS[PERIODOS.length - 1]; // mes actual
 
+/** «Enero – Agosto 2026» para una lista de meses (si cruzan de año, cada extremo lleva el suyo). */
+export function rangoNombre(etqs: string[]): string {
+  if (!etqs.length) return "";
+  const a = etqNombre(etqs[0]), b = etqNombre(etqs[etqs.length - 1]);
+  if (etqs.length === 1) return a;
+  const mismoAnio = a.slice(-4) === b.slice(-4);
+  return `${mismoAnio ? a.slice(0, -5) : a} – ${b}`;
+}
+
 export function etqNombre(etq: string): string {
   const m = ABREV.indexOf(etq.slice(0, 3));
   return m < 0 ? etq : `${NOMBRE[m]} ${etq.slice(3)}`;

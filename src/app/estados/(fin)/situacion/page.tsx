@@ -3,7 +3,7 @@ import Link from "next/link";
 import { esfMatrizArbol, analisisMatriz, interanualData, provisionRenta, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
 import { indicadoresMatriz } from "@/lib/indicadores";
-import { etqNombre } from "@/lib/periodos";
+import { etqNombre, rangoNombre } from "@/lib/periodos";
 import { fmtCOP, fmtNum } from "@/lib/format";
 import StatementMatrix from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
@@ -73,6 +73,8 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
       <StatementMatrix
         labels={m.labels}
         conAcum={false}
+        resaltar={meses.findIndex((x) => x.etiqueta === etq)}
+        encabezado={{ titulo: "Estado de Situación Financiera", periodo: rangoNombre(meses.map((x) => x.etiqueta)), unidad: "Saldos al cierre de cada mes · pesos colombianos" }}
         persistKey="esf-estado"
         secciones={[
           { titulo: "Activo", tono: "bg-royal", arbol: m.activo, totalLabel: "Total activos", totalVals: m.totalActivo },

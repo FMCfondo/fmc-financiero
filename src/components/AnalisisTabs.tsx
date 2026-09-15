@@ -26,22 +26,12 @@ export default function AnalisisTabs({ current, ejec = true }: { current: string
     return pathname + (q ? "?" + q : "");
   };
   return (
-    <div className="flex gap-1.5 flex-wrap">
+    <div className="seg flex-wrap">
       {VISTAS.map((v) =>
         v.soon ? (
-          <span key={v.id} className="px-3 py-1.5 rounded-lg text-xs border border-line text-faint/70 cursor-not-allowed whitespace-nowrap">
-            {v.label} <span className="text-[9px] align-super">próx.</span>
-          </span>
+          <span key={v.id} className="off">{v.label}</span>
         ) : (
-          <Link
-            key={v.id}
-            href={href(v.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs border transition-colors whitespace-nowrap ${
-              current === v.id ? "bg-accentdim border-accent/40 text-accent2 font-medium" : "border-line text-muted hover:text-fg hover:bg-card2"
-            }`}
-          >
-            {v.label}
-          </Link>
+          <Link key={v.id} href={href(v.id)} className={current === v.id ? "on" : ""}>{v.label}</Link>
         ),
       )}
     </div>
