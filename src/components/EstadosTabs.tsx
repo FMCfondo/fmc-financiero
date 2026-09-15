@@ -9,14 +9,17 @@ const TABS = [
   { href: "/estados/patrimonio", label: "Cambios en el Patrimonio" },
 ];
 
-export default function EstadosTabs() {
+/** `visibles`: las pestañas que este usuario puede ver (lo decide el servidor; para la
+ *  Junta, las que el administrador dejó habilitadas). */
+export default function EstadosTabs({ visibles }: { visibles: string[] }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
+  const tabs = TABS.filter((t) => visibles.includes(t.href));
 
   return (
     <div className="flex gap-1 p-1.5 rounded-xl brand-grad overflow-x-auto shadow-sm">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <Link
           key={t.href}
           href={`${t.href}${qs}`}

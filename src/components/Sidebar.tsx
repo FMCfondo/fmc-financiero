@@ -15,7 +15,9 @@ const ICONOS: Record<string, LucideIcon> = { Gauge, Landmark, Table2, Percent, U
    · junta: sin conmutador —no tiene Operación—, y el modo se fija en Reuniones para
      que ningún componente que lo lea del navegador ofrezca botones de edición.
    Esconder no es proteger: las rutas y las acciones se defienden en el servidor. */
-export default function Sidebar({ rol, modulos }: { rol: "admin" | "junta"; modulos: string[] }) {
+/** `modulos`: qué entradas ve este usuario y a dónde lleva cada una (para la Junta, la
+ *  entrada de Estados apunta a su primera pestaña habilitada). */
+export default function Sidebar({ rol, modulos }: { rol: "admin" | "junta"; modulos: { href: string; destino: string }[] }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qs = sp.get("p") ? `?p=${sp.get("p")}` : "";
@@ -30,7 +32,8 @@ export default function Sidebar({ rol, modulos }: { rol: "admin" | "junta"; modu
     setModo(m);
     escribirModo(m);   // avisa a quien dependa del modo en esta misma pestaña
   };
-  const items = NAV.filter((i) => modulos.includes(i.href) && (!esAdmin || visibleEn(i, modo)));
+  const destinos = new Map(modulos.map((m) => [m.href, m.destino]));
+  const items = NAV.filter((i) => destinos.has(i.href) && (!esAdmin || visibleEn(i, modo)));
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[248px] overflow-hidden brand-grad text-white shadow-xl shadow-[#0b1f52]/40 flex flex-col">
@@ -75,7 +78,7 @@ export default function Sidebar({ rol, modulos }: { rol: "admin" | "junta"; modu
           return (
             <Link
               key={href}
-              href={`${href}${qs}`}
+              href={`${destinos.get(href) ?? href}${qs}`}
               title={label}
               className={`flex items-center h-11 transition-colors ${
                 active ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"

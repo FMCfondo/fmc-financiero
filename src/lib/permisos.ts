@@ -17,21 +17,63 @@ import { obtenerSesion, type Usuario } from "./auth";
  * Tres capas: esconder no es proteger. */
 
 export const CLAVE_MODULOS_JUNTA = "junta_modulos";
+export const CLAVE_VISTAS_JUNTA = "junta_vistas";
 
 /** Los módulos que el administrador puede habilitar o no para la Junta. */
 export const MODULOS_JUNTA = NAV.filter((i) => visibleEn(i, "reuniones")).map((i) => ({ href: i.href, label: i.label }));
 const POR_DEFECTO = MODULOS_JUNTA.map((m) => m.href);
 
-/** Rutas habilitadas hoy para la Junta. Lo que no sea de Reuniones se descarta. */
+/** Dentro de un módulo, las VISTAS que el administrador puede habilitar o no para la
+ *  Junta (parámetro `junta_vistas`). Hoy solo Estados Financieros tiene pestañas que
+ *  valga la pena dosificar: se puede mostrar el Estado de Resultados y la Situación
+ *  Financiera y dejar fuera el Flujo o el Patrimonio mientras se terminan de trabajar.
+ *  `modulo` es el href de la entrada del menú (así se identifica un módulo en toda la
+ *  app); `href` es la ruta de la pestaña. */
+export const VISTAS_JUNTA: { modulo: string; href: string; label: string }[] = [
+  { modulo: "/estados/resultados", href: "/estados/resultados", label: "Estado de Resultados" },
+  { modulo: "/estados/resultados", href: "/estados/situacion", label: "Situación Financiera" },
+  { modulo: "/estados/resultados", href: "/estados/flujo", label: "Flujo de Efectivo" },
+  { modulo: "/estados/resultados", href: "/estados/patrimonio", label: "Cambios en el Patrimonio" },
+  { modulo: "/estados/resultados", href: "/estados/dashboard", label: "Análisis" },
+];
+const VISTAS_POR_DEFECTO = VISTAS_JUNTA.map((v) => v.href);
+
+/** Vistas habilitadas hoy para la Junta (solo las del catálogo). */
+export function vistasJunta(): string[] {
+  const v = paramJson(CLAVE_VISTAS_JUNTA);
+  const lista = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : VISTAS_POR_DEFECTO;
+  return VISTAS_POR_DEFECTO.filter((h) => lista.includes(h));
+}
+
+/** Rutas habilitadas hoy para la Junta. Lo que no sea de Reuniones se descarta, y un
+ *  módulo con pestañas al que no le quede ninguna habilitada tampoco se ofrece: sin
+ *  eso, su entrada del menú llevaría a una página que rebota a esa misma entrada. */
 export function modulosJunta(): string[] {
   const v = paramJson(CLAVE_MODULOS_JUNTA);
   const lista = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : POR_DEFECTO;
-  return POR_DEFECTO.filter((h) => lista.includes(h));
+  const vistas = vistasJunta();
+  return POR_DEFECTO.filter((h) => lista.includes(h))
+    .filter((h) => !VISTAS_JUNTA.some((vv) => vv.modulo === h) || VISTAS_JUNTA.some((vv) => vv.modulo === h && vistas.includes(vv.href)));
 }
 
 /** Las rutas del menú que este usuario puede ver. */
 export function modulosDe(u: Usuario): string[] {
   return u.rol === "admin" ? NAV.map((i) => i.href) : modulosJunta();
+}
+
+/** Las vistas (pestañas) que este usuario puede ver, de las que están en el catálogo. */
+export function vistasDe(u: Usuario): string[] {
+  return u.rol === "admin" ? VISTAS_POR_DEFECTO : vistasJunta();
+}
+
+/** A dónde lleva la entrada de un módulo para este usuario: su primera pestaña
+ *  habilitada (para la Junta, si Resultados está apagado, Estados entra por la
+ *  siguiente que esté encendida). */
+export function entradaDe(u: Usuario, modulo: string): string {
+  const vistas = VISTAS_JUNTA.filter((v) => v.modulo === modulo);
+  if (u.rol === "admin" || vistas.length === 0) return modulo;
+  const habilitadas = vistasJunta();
+  return vistas.find((v) => habilitadas.includes(v.href))?.href ?? modulo;
 }
 
 /** ¿Puede este usuario estar en esta ruta? Se casa contra el `match` de cada módulo,
@@ -41,14 +83,20 @@ export function modulosDe(u: Usuario): string[] {
 export function rutaPermitida(u: Usuario, ruta: string): boolean {
   if (u.rol === "admin") return true;
   if (ruta === "/cuenta" || ruta.startsWith("/cuenta/")) return true;
-  const modulo = NAV.find((i) => (Array.isArray(i.match) ? i.match : [i.match]).some((m) => ruta === m || ruta.startsWith(m + "/") || ruta.startsWith(m + "?")));
+  const es = (m: string) => ruta === m || ruta.startsWith(m + "/") || ruta.startsWith(m + "?");
+  const modulo = NAV.find((i) => (Array.isArray(i.match) ? i.match : [i.match]).some(es));
   if (!modulo) return ruta === "/" || ruta === "/er" || ruta === "/esf";
-  return modulosJunta().includes(modulo.href);
+  if (!modulosJunta().includes(modulo.href)) return false;
+  // Dentro del módulo, la pestaña concreta también tiene que estar habilitada.
+  const vista = VISTAS_JUNTA.find((v) => es(v.href));
+  return !vista || vistasJunta().includes(vista.href);
 }
 
-/** A dónde mandar a alguien que no puede estar donde está: su primer módulo, o su cuenta. */
+/** A dónde mandar a alguien que no puede estar donde está: la entrada de su primer
+ *  módulo, o su cuenta. */
 export function destinoInicial(u: Usuario): string {
-  return modulosDe(u)[0] ?? "/cuenta";
+  const m = modulosDe(u)[0];
+  return m ? entradaDe(u, m) : "/cuenta";
 }
 
 /** Lo mismo, cargando antes los parámetros (para acciones y rutas que corren solas,
@@ -70,6 +118,19 @@ export async function accesoA(ruta: string): Promise<Usuario> {
   if (s.usuario.debeCambiarClave && !ruta.startsWith("/cuenta")) redirect("/cuenta?obligatorio=1");
   await ensureLoaded(); // los módulos de la Junta salen de los parámetros
   if (!rutaPermitida(s.usuario, ruta)) redirect(destinoInicial(s.usuario));
+  return s.usuario;
+}
+
+/** Para el layout de un módulo con pestañas (Estados Financieros): exige sesión y que
+ *  el MÓDULO esté habilitado, sin mirar la pestaña, que la comprueba cada página. Si
+ *  el layout mirara una pestaña concreta, apagarla echaría al usuario de todo el
+ *  módulo aunque tuviera otras encendidas. */
+export async function accesoAlModulo(modulo: string): Promise<Usuario> {
+  const s = await obtenerSesion();
+  if (!s) redirect(`/entrar?volver=${encodeURIComponent(modulo)}`);
+  if (s.usuario.debeCambiarClave) redirect("/cuenta?obligatorio=1");
+  await ensureLoaded();
+  if (!modulosDe(s.usuario).includes(modulo)) redirect(destinoInicial(s.usuario));
   return s.usuario;
 }
 

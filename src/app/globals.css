@@ -179,3 +179,12 @@ body {
 .ejec-mb { position: relative; width: 54px; height: 4px; border-radius: 99px; background: var(--color-line); flex: none; }
 .ejec-mb i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; }
 .ejec-mb u { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--color-royal); opacity: 0.6; text-decoration: none; }
+
+/* =============================================================================
+   PANTALLA COMPLETA (presentación). El gancho `usePantallaCompleta` pone la clase
+   `presentacion` en <html>: se van la barra lateral y la cabecera, el contenedor deja
+   de dejarles hueco y el contenido gana toda la pantalla. La marcación es la misma.
+   ============================================================================= */
+html.presentacion aside, html.presentacion header { display: none !important; }
+html.presentacion body > div { padding-left: 0 !important; }
+html.presentacion main { max-width: none !important; padding: 16px 24px !important; }

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { ensureLoaded, parametros, parametrosJson } from "@/lib/data";
+import { ensureLoaded, parametros, parametrosJson, paramJson } from "@/lib/data";
 import { listarUsuarios, ultimosEventos, type EventoAuditoria } from "@/lib/auth";
-import { soloAdmin, modulosJunta, MODULOS_JUNTA } from "@/lib/permisos";
+import { soloAdmin, modulosJunta, vistasJunta, MODULOS_JUNTA, VISTAS_JUNTA, CLAVE_MODULOS_JUNTA } from "@/lib/permisos";
 import { COOKIE_CLAVE } from "@/lib/auth-cookie";
 import { fmtCont } from "@/lib/format";
 import {
@@ -186,18 +186,40 @@ async function claveNueva(): Promise<{ email: string; nombre: string; clave: str
 
 /* ------------------------------------------------------- lo que ve la Junta --- */
 function Junta({ ok }: { ok: boolean }) {
-  const activos = new Set(modulosJunta());
+  /* Lo GUARDADO, no lo efectivo: `modulosJunta()` ya descarta un módulo sin pestañas
+     encendidas, y aquí el administrador debe ver la casilla tal como la dejó. */
+  const guardados = paramJson(CLAVE_MODULOS_JUNTA);
+  const activos = new Set(Array.isArray(guardados) ? guardados.map(String) : MODULOS_JUNTA.map((m) => m.href));
+  const vistas = new Set(vistasJunta());
   return (
-    <form action={guardarModulosJunta} className="card p-5 space-y-4 max-w-xl">
-      <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-accent2" /><h2 className="font-medium">Módulos visibles para la Junta</h2></div>
-      <p className="text-sm text-muted">Un miembro de la Junta solo lee, y solo estos módulos. Lo que desmarques desaparece de su menú y le rebota si escribe la dirección a mano. Nada de Operación se le puede habilitar.</p>
-      <div className="space-y-2">
-        {MODULOS_JUNTA.map((m) => (
-          <label key={m.href} className="flex items-center gap-3 text-sm cursor-pointer">
-            <input type="checkbox" name="modulo" value={m.href} defaultChecked={activos.has(m.href)} className="accent-[#13286E] h-4 w-4" />
-            {m.label} <span className="text-xs text-faint">{m.href}</span>
-          </label>
-        ))}
+    <form action={guardarModulosJunta} className="card p-5 space-y-4 max-w-2xl">
+      <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-accent2" /><h2 className="font-medium">Lo que ve la Junta</h2></div>
+      <p className="text-sm text-muted">Un miembro de la Junta solo lee, y solo lo que esté marcado aquí. Lo que desmarques desaparece de su menú y de sus pestañas, y le rebota si escribe la dirección a mano. Nada de Operación se le puede habilitar.</p>
+      <div className="space-y-3">
+        {MODULOS_JUNTA.map((m) => {
+          const pestanas = VISTAS_JUNTA.filter((v) => v.modulo === m.href);
+          return (
+            <div key={m.href} className="space-y-2">
+              <label className="flex items-center gap-3 text-sm cursor-pointer">
+                <input type="checkbox" name="modulo" value={m.href} defaultChecked={activos.has(m.href)} className="accent-[#13286E] h-4 w-4" />
+                <span className="font-medium">{m.label}</span>
+              </label>
+              {pestanas.length > 0 && (
+                <div className="ml-7 rounded-lg border border-line bg-card2/60 px-4 py-3">
+                  <p className="text-xs text-muted mb-2">Pestañas de {m.label}. Puedes mostrar unas y dejar otras fuera mientras se terminan de trabajar; si no dejas ninguna, el módulo entero desaparece de su menú.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                    {pestanas.map((v) => (
+                      <label key={v.href} className="flex items-center gap-2.5 text-sm cursor-pointer">
+                        <input type="checkbox" name="vista" value={v.href} defaultChecked={vistas.has(v.href)} className="accent-[#13286E] h-4 w-4" />
+                        {v.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex items-center gap-3">
         <button type="submit" className="px-4 py-2 rounded-lg brand-grad text-white text-sm font-medium">Guardar</button>
@@ -217,6 +239,7 @@ function Parametros() {
     { clave: "bench_cdt180", label: "Referencia CDT 180 días (BanRep)", valor: pct(parametros.bench_cdt180 ?? 0), donde: { href: "/portafolio?v=mantenimiento", label: "Portafolio › Mantenimiento" } },
     { clave: "ipc_12m", label: "Inflación 12 meses (IPC)", valor: pct(parametros.ipc_12m ?? 0), donde: { href: "/portafolio?v=mantenimiento", label: "Portafolio › Mantenimiento" } },
     { clave: "junta_modulos", label: "Módulos visibles para la Junta", valor: modulosJunta().join(", "), donde: { href: "/configuracion?v=junta", label: "Lo que ve la Junta" } },
+    { clave: "junta_vistas", label: "Pestañas de Estados visibles para la Junta", valor: VISTAS_JUNTA.filter((v) => vistasJunta().includes(v.href)).map((v) => v.label).join(", ") || "ninguna", donde: { href: "/configuracion?v=junta", label: "Lo que ve la Junta" } },
   ];
   const conocidas = new Set(filas.map((f) => f.clave));
   const heredadas = Object.keys(parametrosJson).filter((k) => !conocidas.has(k)).sort();

@@ -7,7 +7,7 @@ import PeriodSelector from "@/components/PeriodSelector";
 import MenuUsuario from "@/components/MenuUsuario";
 import { ensureLoaded, periodos } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
-import { modulosDe } from "@/lib/permisos";
+import { modulosDe, entradaDe } from "@/lib/permisos";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -51,7 +51,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   /* El dataset es también quien refresca los parámetros desde la base, y de ellos
      salen los módulos que ve la Junta: por eso va antes de calcular el menú. */
   await ensureLoaded();
-  const modulos = modulosDe(sesion.usuario);
+  const modulos = modulosDe(sesion.usuario).map((href) => ({ href, destino: entradaDe(sesion.usuario, href) }));
 
   // El selector de períodos se alimenta de la BASE, no de una lista fija:
   // al ingestar un mes nuevo aparece de inmediato.
