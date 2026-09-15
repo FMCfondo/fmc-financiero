@@ -18,7 +18,8 @@
  * sale aunque falte una explicación (2026-09-08). La barra dice qué falta; decidir
  * si se envía así es de quien lo envía.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2, ChevronLeft, ChevronRight } from "lucide-react";
 
 /** Ancho de una hoja carta apaisada, en px de CSS. */
 const ANCHO_HOJA = 1056;
@@ -30,6 +31,26 @@ const NIVELES: { id: Zoom; label: string }[] = [
   { id: 1.25, label: "125%" },
   { id: 1.5, label: "150%" },
 ];
+
+/** El selector de aumento, el mismo en la barra y en la presentación. */
+function Niveles({ valor, alElegir }: { valor: Zoom; alElegir: (z: Zoom) => void }) {
+  return (
+    <div className="flex overflow-hidden rounded-md border border-line">
+      {NIVELES.map((n) => (
+        <button
+          key={String(n.id)}
+          type="button"
+          onClick={() => alElegir(n.id)}
+          className={`px-2.5 py-1.5 text-xs font-medium transition ${
+            valor === n.id ? "bg-accentdim text-royal" : "text-muted hover:bg-card2"
+          }`}
+        >
+          {n.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 type Props = {
   periodo: string;
@@ -54,6 +75,18 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
   const [zoom, setZoom] = useState<Zoom>("ajustar");
   const [factor, setFactor] = useState(1);
 
+  /* PANTALLA COMPLETA (para presentar el informe desde la app). Se esconden la barra
+     lateral y la cabecera (clase `presentacion` en <html>, ver informe.css), la hoja
+     se ajusta al ancho de la pantalla y se pide al navegador el modo de pantalla
+     completa de verdad; si no lo concede (un iframe, un navegador antiguo), queda el
+     modo dentro de la ventana, que ya gana todo el espacio. Se sale con el botón o
+     con Esc, y las flechas pasan de hoja. El aumento de presentación no se guarda:
+     es de ese momento, no una preferencia. */
+  const [presentando, setPresentando] = useState(false);
+  const [zoomPres, setZoomPres] = useState<Zoom>("ajustar");
+  const [hoja, setHoja] = useState({ actual: 1, total: 0 });
+  const hojaActual = useRef(1);
+
   useEffect(() => {
     try {
       const g = localStorage.getItem(CLAVE_ZOOM);
@@ -71,8 +104,9 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
     const hoja = document.querySelector<HTMLElement>(".informe");
     const madre = hoja?.parentElement;
     if (!hoja || !madre) return;
-    let z = typeof zoom === "number" ? zoom : 1;
-    if (zoom === "ajustar") {
+    const modo = presentando ? zoomPres : zoom;
+    let z = typeof modo === "number" ? modo : 1;
+    if (modo === "ajustar") {
       const cs = getComputedStyle(madre);
       const util = madre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       // Nunca por debajo de 1: encoger el papel lo haria ilegible, mejor que se corte.
@@ -80,7 +114,68 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
     }
     hoja.style.setProperty("--zoom-informe", String(z));
     setFactor(z);
-  }, [zoom]);
+  }, [zoom, zoomPres, presentando]);
+
+  const irAHoja = useCallback((n: number) => {
+    const hojas = document.querySelectorAll<HTMLElement>(".informe .page");
+    const i = Math.min(hojas.length, Math.max(1, n));
+    hojas[i - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const salirPresentacion = useCallback(() => {
+    setPresentando(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, []);
+
+  const entrarPresentacion = () => {
+    setZoomPres("ajustar");
+    setPresentando(true);
+    document.documentElement.requestFullscreen?.().catch(() => { /* queda el modo dentro de la ventana */ });
+  };
+
+  useEffect(() => {
+    if (!presentando) return;
+    document.documentElement.classList.add("presentacion");
+    requestAnimationFrame(aplicar); // sin barra lateral el ancho útil es otro
+
+    const alCambiarPantalla = () => { if (!document.fullscreenElement) salirPresentacion(); };
+    const teclas = (e: KeyboardEvent) => {
+      if (e.key === "Escape") salirPresentacion();
+      else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); irAHoja(hojaActual.current + 1); }
+      else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); irAHoja(hojaActual.current - 1); }
+    };
+    /* Qué hoja se está viendo: la más cercana al centro de la pantalla. */
+    let marco = 0;
+    const situar = () => {
+      cancelAnimationFrame(marco);
+      marco = requestAnimationFrame(() => {
+        const hojas = Array.from(document.querySelectorAll<HTMLElement>(".informe .page"));
+        const centro = window.innerHeight / 2;
+        let idx = 0, mejor = Infinity;
+        hojas.forEach((p, i) => {
+          const r = p.getBoundingClientRect();
+          const d = Math.abs((r.top + r.bottom) / 2 - centro);
+          if (d < mejor) { mejor = d; idx = i; }
+        });
+        hojaActual.current = idx + 1;
+        setHoja({ actual: idx + 1, total: hojas.length });
+      });
+    };
+    situar();
+    document.addEventListener("fullscreenchange", alCambiarPantalla);
+    window.addEventListener("keydown", teclas);
+    window.addEventListener("scroll", situar, { passive: true });
+    window.addEventListener("resize", situar);
+    return () => {
+      document.documentElement.classList.remove("presentacion");
+      document.removeEventListener("fullscreenchange", alCambiarPantalla);
+      window.removeEventListener("keydown", teclas);
+      window.removeEventListener("scroll", situar);
+      window.removeEventListener("resize", situar);
+      cancelAnimationFrame(marco);
+      requestAnimationFrame(aplicar); // vuelve el ancho de siempre
+    };
+  }, [presentando, aplicar, irAHoja, salirPresentacion]);
 
   useEffect(() => {
     aplicar();
@@ -144,6 +239,30 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
   ];
   const avisar = mostrarAvisos && bloqueos.length > 0;
 
+  if (presentando) {
+    return (
+      <div className="no-imprimir fixed right-4 top-4 z-50 flex items-center gap-3 rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-lg backdrop-blur opacity-40 transition hover:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => irAHoja(hoja.actual - 1)} className="rounded p-1 text-muted hover:bg-card2 hover:text-fg" title="Hoja anterior (←)" aria-label="Hoja anterior">
+            <ChevronLeft size={14} />
+          </button>
+          <span className="tnum text-muted">Hoja {hoja.actual} de {hoja.total}</span>
+          <button type="button" onClick={() => irAHoja(hoja.actual + 1)} className="rounded p-1 text-muted hover:bg-card2 hover:text-fg" title="Hoja siguiente (→)" aria-label="Hoja siguiente">
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        <Niveles valor={zoomPres} alElegir={setZoomPres} />
+        <button
+          type="button"
+          onClick={salirPresentacion}
+          className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-medium text-fg transition hover:bg-card2"
+        >
+          <Minimize2 size={13} /> Salir de pantalla completa
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className="no-imprimir mx-auto mb-5 rounded-lg border border-line bg-panel shadow-sm"
@@ -160,20 +279,7 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-xs text-faint">Tamaño</span>
-            <div className="flex overflow-hidden rounded-md border border-line">
-              {NIVELES.map((n) => (
-                <button
-                  key={String(n.id)}
-                  type="button"
-                  onClick={() => elegir(n.id)}
-                  className={`px-2.5 py-1.5 text-xs font-medium transition ${
-                    zoom === n.id ? "bg-accentdim text-royal" : "text-muted hover:bg-card2"
-                  }`}
-                >
-                  {n.label}
-                </button>
-              ))}
-            </div>
+            <Niveles valor={zoom} alElegir={elegir} />
           </div>
 
           <p className="max-w-[19rem] text-xs leading-snug text-muted">
@@ -181,6 +287,14 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
             <b className="font-semibold text-fg">Ninguno</b> y desactiva{" "}
             <b className="font-semibold text-fg">Encabezados y pies de página</b>.
           </p>
+          <button
+            type="button"
+            onClick={entrarPresentacion}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm font-medium text-fg transition hover:bg-card2"
+            title="Ver el informe a toda pantalla, para presentarlo desde aquí"
+          >
+            <Maximize2 size={14} /> Pantalla completa
+          </button>
           <button
             type="button"
             onClick={() => window.print()}

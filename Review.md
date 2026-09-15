@@ -205,6 +205,15 @@ Antes de dar por terminado un módulo:
   el resto, y un mes sin presupuesto estiraba una fila única a 557 px. Cada página
   publica su número de filas en `--filas`; si se añade una tabla nueva, hay que
   publicarlo o no se acota.
+- **Pantalla completa (2026-09-15)**, junto a «Descargar PDF», para presentar el informe
+  desde la app en la reunión: la barra pone la clase `presentacion` en `<html>` (se van
+  la barra lateral y la cabecera, `informe.css`), pide el modo de pantalla completa del
+  navegador (si no lo concede, queda el modo dentro de la ventana) y ajusta la hoja al
+  ancho de la pantalla. Controles flotantes arriba a la derecha (traslúcidos hasta pasar
+  el ratón): hoja actual, flechas, aumento y «Salir de pantalla completa». Esc y las
+  flechas ← → también funcionan. El aumento de presentación no se guarda: no es una
+  preferencia. Probado en Chrome real con `puppeteer-core` (entrar, pasar de hoja, salir
+  con Esc y con el botón).
 
 ### Acceso e identidad (módulo nuevo, 2026-09-14)
 - **Identidad propia, sin servicios externos ni secretos nuevos.** Tablas `usuario` y
