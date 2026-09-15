@@ -48,7 +48,7 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
       </div>
 
       {!d.hayDatos ? (
-        <div className="card p-6 text-sm text-muted">No hay inversiones registradas. Ejecuta <code>node scripts/migrate-inversiones.mjs</code> o créalas en Mantenimiento.</div>
+        <div className="card p-6 text-sm text-muted">No hay inversiones registradas para este período.</div>
       ) : v === "mantenimiento" ? (
         <InversionesMantenimiento
           inversiones={inversiones}
@@ -58,7 +58,7 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
           tasasMes={tasasMes}
         />
       ) : (
-        <PortafolioResumen d={d} />
+        <PortafolioResumen d={d} esAdmin={esAdmin} />
       )}
     </div>
   );

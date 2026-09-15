@@ -4,6 +4,7 @@ import { ensureLoaded, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
 import PortafolioResumen from "@/components/PortafolioResumen";
 import { Settings2 } from "lucide-react";
+import { obtenerSesion } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function InversionesPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
+  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
   await ensureLoaded();
   const etq = resolverEtq(p);
   const d = portafolio(etq);
@@ -21,14 +23,16 @@ export default async function InversionesPage({ searchParams }: { searchParams: 
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted">{etqNombre(etq)} · montos desde el balance · vencimientos contra hoy</p>
-        <Link href="/portafolio?v=mantenimiento" className="flex items-center gap-1.5 text-xs text-muted hover:text-fg">
-          <Settings2 size={13} /> Mantenimiento (tasas, fechas, cuentas)
-        </Link>
+        {esAdmin && (
+          <Link href="/portafolio?v=mantenimiento" className="flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+            <Settings2 size={13} /> Mantenimiento (tasas, fechas, cuentas)
+          </Link>
+        )}
       </div>
       {!d.hayDatos ? (
-        <div className="card p-6 text-sm text-muted">No hay inversiones registradas.</div>
+        <div className="card p-6 text-sm text-muted">No hay inversiones registradas para este período.</div>
       ) : (
-        <PortafolioResumen d={d} />
+        <PortafolioResumen d={d} esAdmin={esAdmin} />
       )}
     </div>
   );

@@ -12,10 +12,12 @@ const pctO = (v: number | null) => (v === null ? "—" : fmtPct(v));
    Orden (revisión del analista): KPIs → Concentración + Tasa vs. referencia →
    resumen por tipo → tabla de posiciones. */
 
-export default function PortafolioResumen({ d }: { d: ReturnType<typeof portafolio> }) {
+/* `esAdmin`: el aviso de tasas faltantes y su enlace a Mantenimiento son del analista.
+   La Junta no ve aquí instrucciones de dónde se edita nada: lee cifras. */
+export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnType<typeof portafolio>; esAdmin?: boolean }) {
   return (
     <div className="space-y-5">
-      {d.tasasFaltantes.length > 0 && (
+      {esAdmin && d.tasasFaltantes.length > 0 && (
         <div className="card p-4 flex items-start gap-3 border-neg/30">
           <AlertTriangle size={16} className="text-neg mt-0.5 shrink-0" />
           <p className="text-sm">
@@ -52,7 +54,7 @@ export default function PortafolioResumen({ d }: { d: ReturnType<typeof portafol
         <div className="card p-5">
           <div className="flex items-baseline justify-between mb-1">
             <h2 className="font-medium">Tasa por posición vs. referencia</h2>
-            <span className="text-xs text-muted">CDT 180d BanRep e IPC (editable en Mantenimiento)</span>
+            <span className="text-xs text-muted">referencias: CDT 180 días (BanRep) e IPC 12 meses</span>
           </div>
           <DotPlot posiciones={d.posiciones} benchmark={d.benchmark} ipc={d.ipc} />
         </div>
@@ -105,7 +107,7 @@ export default function PortafolioResumen({ d }: { d: ReturnType<typeof portafol
         Las tasas de las fiducias y los bolsillos son la E.A. de los últimos 30 días del extracto y se capturan cada mes; la de los CDT es la pactada.
         Interés estimado del mes = monto × ((1+E.A.)^(1/12) − 1). Los rendimientos de CDT tienen retención en la fuente del 4%
         (7% en cuentas y fiducias) — es anticipo de renta, no costo final. La cifra de cada posición sale del balance del mes
-        seleccionado; las fechas y tasas se editan en <Link href="/portafolio?v=mantenimiento" className="text-accent2 hover:underline">Mantenimiento</Link>.
+        seleccionado.
       </p>
     </div>
   );
@@ -136,13 +138,13 @@ function DotPlot({ posiciones, benchmark, ipc }: { posiciones: Posicion[]; bench
         </div>
       ))}
       {sinTasa.length > 0 && (
-        <p className="text-[11px] text-neg pt-1">Sin tasa este mes: {sinTasa.map((x) => x.entidad).join(", ")}.</p>
+        <p className="text-[11px] text-muted pt-1">Sin tasa este mes: {sinTasa.map((x) => x.entidad).join(", ")}.</p>
       )}
       <div className="flex items-center gap-4 pt-1 text-[11px] text-muted">
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-royal" /> tasa E.A. de la posición</span>
         {benchmark > 0 && <span className="flex items-center gap-1.5"><span className="h-3 w-px bg-neg/60" /> referencia CDT 180d ({fmtPct(benchmark)})</span>}
         {ipc > 0 && <span className="flex items-center gap-1.5"><span className="h-3 w-px bg-gold" /> IPC 12m ({fmtPct(ipc)})</span>}
-        {benchmark === 0 && ipc === 0 && <span>define las referencias en Mantenimiento para ver las líneas de comparación</span>}
+        {benchmark === 0 && ipc === 0 && <span>sin referencias de comparación para este mes</span>}
       </div>
     </div>
   );
