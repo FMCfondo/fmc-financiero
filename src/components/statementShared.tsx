@@ -1,11 +1,17 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
-/* Primitivas compartidas del sistema de estados financieros: estado expandido
-   (persistente por vista) y la celda de concepto con guías de indentación y
-   chevron. Las usan StatementMatrix y AnalisisMatrix para verse y comportarse
-   idéntico. Estilos en globals.css → `.stmt`. */
+/* Primitivas compartidas del sistema de estados financieros: estado expandido y
+   la celda de concepto con guías de indentación y chevron. Las usan
+   StatementMatrix, AnalisisMatrix, EjecucionMatrix y PresupuestoMatrix para verse
+   y comportarse idéntico. Estilos en globals.css → `.stmt`.
+
+   Un estado se abre SIEMPRE compacto: solo los grupos, sin sus cuentas (decisión del
+   usuario, 2026-09-15: «siempre en su versión compactada, y el botón de expandir sí
+   lo haga»). Antes los grupos de primer nivel venían abiertos y además se recordaba
+   lo expandido en el navegador, así que había secciones abiertas y el botón decía
+   «Expandir todo». Nada se recuerda entre visitas: expandir es de ese momento. */
 
 export const MAX_SANGRIA = 4;
 
@@ -14,28 +20,17 @@ export type Ctx = { isOpen: (c: string) => boolean; toggle: (c: string) => void;
 const ExpandCtx = createContext<Ctx | null>(null);
 export const useExpandCtx = () => useContext(ExpandCtx)!;
 
-export function useExpand<T extends NodoBase>(arboles: T[][], persistKey?: string): Ctx {
-  const { groups, defaults } = useMemo(() => {
+export function useExpand<T extends NodoBase>(arboles: T[][]): Ctx {
+  const groups = useMemo(() => {
     const groups: string[] = [];
-    const defaults: string[] = [];
-    const walk = (n: NodoBase) => {
-      if (n.hijos.length) { groups.push(n.codigo); if (n.depth <= 0) defaults.push(n.codigo); n.hijos.forEach(walk); }
-    };
+    const walk = (n: NodoBase) => { if (n.hijos.length) { groups.push(n.codigo); n.hijos.forEach(walk); } };
     arboles.forEach((a) => a.forEach(walk));
-    return { groups, defaults };
+    return groups;
   }, [arboles]);
 
-  const [open, setOpen] = useState<Set<string>>(() => new Set(defaults));
-  const key = persistKey ? `stmt:${persistKey}` : null;
-
-  useEffect(() => {
-    if (!key) return;
-    try { const raw = localStorage.getItem(key); if (raw) setOpen(new Set(JSON.parse(raw) as string[])); } catch { /* noop */ }
-  }, [key]);
-
-  const persist = (s: Set<string>) => { if (key) try { localStorage.setItem(key, JSON.stringify([...s])); } catch { /* noop */ } };
-  const toggle = (c: string) => setOpen((p) => { const n = new Set(p); n.has(c) ? n.delete(c) : n.add(c); persist(n); return n; });
-  const setAll = (o: boolean) => { const n = new Set(o ? groups : []); setOpen(n); persist(n); };
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggle = (c: string) => setOpen((p) => { const n = new Set(p); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  const setAll = (o: boolean) => setOpen(new Set(o ? groups : []));
   return { isOpen: (c) => open.has(c), toggle, setAll, allExpanded: groups.length > 0 && open.size >= groups.length, hasGroups: groups.length > 0 };
 }
 

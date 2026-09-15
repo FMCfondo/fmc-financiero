@@ -72,7 +72,6 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
       <StatementMatrix
         labels={m.labels}
         conAcum
-        persistKey="er-estado"
         resaltar={meses.findIndex((x) => x.etiqueta === etq)}
         encabezado={{ titulo: "Estado de Resultados", periodo: rangoNombre(meses.map((x) => x.etiqueta)), unidad: "Movimiento de cada mes · acumulado del año · pesos colombianos" }}
         secciones={[
@@ -116,7 +115,7 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} persistKey={`er-${modo}`} />
+      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} />
       <p className="text-xs text-muted">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}. Los gastos van sin depreciaciones ni amortizaciones, que cierran la estructura EBITDA al pie.`
@@ -229,7 +228,7 @@ function VistaPresupuesto({ etq }: { etq: string }) {
         <MiniKpi label="EBITDA presupuestado" valor={p.resumen.ebitda} />
         <MiniKpi label="Utilidad neta presupuestada" valor={p.resumen.utilNeta} />
       </div>
-      <PresupuestoMatrix labels={p.labels} roots={p.roots} persistKey={`ppto-${ANIO}`} />
+      <PresupuestoMatrix labels={p.labels} roots={p.roots} />
     </div>
   );
 }
@@ -276,7 +275,7 @@ function VistaEjecucion({ etq, modo, esAdmin }: { etq: string; modo: "acum" | "m
         <KpiEjec label="Utilidad neta" fila={e.kpis.utilNeta} />
       </div>
 
-      <EjecucionMatrix roots={e.roots} persistKey={`ejec-${ANIO}-${modo}`} />
+      <EjecucionMatrix roots={e.roots} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="card p-5">

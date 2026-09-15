@@ -53,19 +53,18 @@ export function useSombrasScroll() {
 }
 
 export default function StatementMatrix({
-  labels, secciones, conAcum, filasFinales = [], persistKey, col1Label = "Cuenta", resaltar, encabezado,
+  labels, secciones, conAcum, filasFinales = [], col1Label = "Cuenta", resaltar, encabezado,
 }: {
   labels: string[];
   secciones: Seccion[];
   conAcum: boolean;
   filasFinales?: FilaPlano[];
-  persistKey?: string;
   col1Label?: string;
   /** Índice de la columna del mes de corte (se ilumina). */
   resaltar?: number;
   encabezado?: Encabezado;
 }) {
-  const ctx = useExpand(secciones.map((s) => s.arbol), persistKey);
+  const ctx = useExpand(secciones.map((s) => s.arbol));
   const nCols = labels.length + (conAcum ? 1 : 0) + 1;
   const scroll = useSombrasScroll();
   const num = (i: number) => `num${i === resaltar ? " corte" : ""}`;

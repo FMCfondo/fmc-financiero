@@ -31,15 +31,14 @@ function Val({ v, colorear }: { v: number | null; colorear?: boolean }) {
 }
 
 export default function AnalisisMatrix({
-  labels, secciones, colorear, filasFinales = [], persistKey,
+  labels, secciones, colorear, filasFinales = [],
 }: {
   labels: string[];
   secciones: Seccion[];
   colorear?: boolean;
   filasFinales?: FilaFinalPct[];
-  persistKey?: string;
 }) {
-  const ctx = useExpand(secciones.map((s) => s.arbol), persistKey);
+  const ctx = useExpand(secciones.map((s) => s.arbol));
   const nCols = labels.length + 1;
   const scroll = useSombrasScroll();
   return (
