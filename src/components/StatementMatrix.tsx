@@ -39,6 +39,16 @@ export function EncabezadoEstado({ titulo, periodo, unidad, entidad = "FMC S.A.S
   );
 }
 
+/** El encabezado y su filete de oro, juntos: así lo usan todos los estados. */
+export function CabeceraDocumento(props: Encabezado & { derecha?: React.ReactNode }) {
+  return (
+    <>
+      <EncabezadoEstado {...props} />
+      <div className="stmt-filete" />
+    </>
+  );
+}
+
 /** Sombras de desplazamiento: la columna fija y la cabecera solo proyectan sombra
  *  cuando de verdad hay contenido debajo de ellas. */
 export function useSombrasScroll() {
@@ -73,7 +83,7 @@ export default function StatementMatrix({
       <div className="space-y-2">
         {!encabezado && <ExpandToggle ctx={ctx} />}
         <div className="card overflow-hidden">
-          {encabezado && <EncabezadoEstado {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
+          {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
           <div className="stmt" {...scroll}>
             <table>
               <thead>
@@ -103,10 +113,7 @@ function Seccion({ s, conAcum, nCols, num }: { s: Seccion; conAcum: boolean; nCo
       {/* El rótulo va en la celda fija; el resto de la fila es relleno con la misma banda. */}
       <tr className="section">
         <td className="col1">
-          <span className="sec-label">
-            {s.tono && <span className={`sec-dot ${s.tono}`} />}
-            {s.titulo}
-          </span>
+          <span className="sec-label">{s.titulo}</span>
         </td>
         <td colSpan={nCols - 1} className="sec-fill" />
       </tr>
