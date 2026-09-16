@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
 import { fmtCont } from "@/lib/format";
+import StmtScroll from "@/components/StmtScroll";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, Concepto } from "@/components/statementShared";
 
 /* Estado financiero multi-mes — el renderizador ANCLA del sistema visual.
@@ -49,19 +49,6 @@ export function CabeceraDocumento(props: Encabezado & { derecha?: React.ReactNod
   );
 }
 
-/** Sombras de desplazamiento: la columna fija y la cabecera solo proyectan sombra
- *  cuando de verdad hay contenido debajo de ellas. */
-export function useSombrasScroll() {
-  const [sx, setSx] = useState(false);
-  const [sy, setSy] = useState(false);
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    setSx(el.scrollLeft > 0);
-    setSy(el.scrollTop > 0);
-  };
-  return { onScroll, "data-sx": sx ? "1" : undefined, "data-sy": sy ? "1" : undefined } as const;
-}
-
 export default function StatementMatrix({
   labels, secciones, conAcum, filasFinales = [], col1Label = "Cuenta", resaltar, encabezado,
 }: {
@@ -76,7 +63,6 @@ export default function StatementMatrix({
 }) {
   const ctx = useExpand(secciones.map((s) => s.arbol));
   const nCols = labels.length + (conAcum ? 1 : 0) + 1;
-  const scroll = useSombrasScroll();
   const num = (i: number) => `num${i === resaltar ? " corte" : ""}`;
   return (
     <ExpandProvider ctx={ctx}>
@@ -84,7 +70,7 @@ export default function StatementMatrix({
         {!encabezado && <ExpandToggle ctx={ctx} />}
         <div className="card overflow-hidden">
           {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
-          <div className="stmt" {...scroll}>
+          <StmtScroll>
             <table>
               <thead>
                 <tr>
@@ -98,7 +84,7 @@ export default function StatementMatrix({
                 {filasFinales.map((f) => <FilaPlana key={f.nombre} f={f} conAcum={conAcum} num={num} />)}
               </tbody>
             </table>
-          </div>
+          </StmtScroll>
         </div>
       </div>
     </ExpandProvider>
@@ -156,7 +142,7 @@ function FilaPlana({ f, conAcum, num, italica }: { f: FilaPlano; conAcum: boolea
   );
   return (
     <tr className={cls}>
-      <td className={`col1 ${italica ? "italic text-muted" : ""}`}>{f.nombre}</td>
+      <td className={`col1 ${italica ? "italic text-muted" : ""}`}><span className="etq">{f.nombre}</span></td>
       {f.vals.map((v, i) => <td key={i} className={num(i)}>{cell(v)}</td>)}
       {conAcum && <td className="num num-acc">{cell(f.acum ?? null, true)}</td>}
     </tr>

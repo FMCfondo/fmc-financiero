@@ -3,7 +3,8 @@ import { ChevronRight } from "lucide-react";
 import type { NodoPpto } from "@/lib/presupuesto";
 import { fmtCont } from "@/lib/format";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, MAX_SANGRIA } from "@/components/statementShared";
-import { useSombrasScroll, CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
+import { CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
+import StmtScroll from "@/components/StmtScroll";
 
 /* Presupuesto anual COMPLETO, expandible — mismo lenguaje visual que los estados
    (`.stmt`: cabecera fija, columna de concepto congelada, jerarquía sobria).
@@ -16,14 +17,13 @@ export default function PresupuestoMatrix({
   labels: string[]; roots: NodoPpto[]; encabezado?: Encabezado;
 }) {
   const ctx = useExpand([roots]);
-  const scroll = useSombrasScroll();
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">
         {!encabezado && <ExpandToggle ctx={ctx} />}
         <div className="card overflow-hidden">
         {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
-        <div className="stmt" style={{ ["--stmt-col1" as string]: "320px" }} {...scroll}>
+        <StmtScroll style={{ ["--stmt-col1" as string]: "320px" }}>
           <table>
             <thead>
               <tr>
@@ -36,7 +36,7 @@ export default function PresupuestoMatrix({
               {roots.map((n) => <Fila key={n.orden} n={n} />)}
             </tbody>
           </table>
-        </div>
+        </StmtScroll>
         </div>
         <p className="stmt-nota">
           Presupuesto tal cual la hoja de la Junta. Los rubros con <ChevronRight size={11} className="inline -mt-0.5" /> agrupan
@@ -73,7 +73,7 @@ function Fila({ n }: { n: NodoPpto }) {
           >
             {Array.from({ length: depth }).map((_, i) => <span key={i} className={`guide ${i === depth - 1 ? "line" : ""}`} />)}
             {has ? <ChevronRight size={13} className={`chev ${open ? "open" : ""}`} /> : <span className="w-[13px] shrink-0" />}
-            <span className={`truncate ${total ? "font-semibold" : n.nivel === 0 ? "text-fg font-medium" : "text-muted"}`}>{n.etiqueta}</span>
+            <span className={`etq ${total ? "font-semibold" : n.nivel === 0 ? "text-fg font-medium" : "text-muted"}`}>{n.etiqueta}</span>
             {n.nota && <span className="ml-1.5 text-[10px] text-accent2 align-super">nota</span>}
           </button>
         </td>

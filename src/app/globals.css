@@ -74,7 +74,7 @@ body {
    blanca; el mes de corte va marcado en oro y el acumulado en su propio recuadro. La
    jerarquía la dan el peso y el tinte; el oro se usa solo donde señala algo. */
 .stmt {
-  --stmt-col1: 288px;          /* ancho de la columna de concepto */
+  --stmt-col1: 324px;          /* ancho de la columna de concepto (ajustable arrastrando); con 324 el nombre de grupo más largo cabe en una línea y solo se parten los de más de ~230 px */
   --stmt-px: 14px;             /* padding horizontal de celda */
   --stmt-py: 7px;              /* padding vertical de celda (densidad) */
   --stmt-head: #eef2fb;        /* cabecera de columnas */
@@ -126,8 +126,13 @@ body {
 
 /* Primera columna fija (concepto): la referencia no se pierde al hacer scroll
    horizontal. Divisor sutil, y sombra solo cuando de verdad hay columnas debajo. */
-.stmt .col1 { position: sticky; left: 0; z-index: 10; background-color: var(--color-card); min-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
-.stmt tbody td.col1 { padding: var(--stmt-py) var(--stmt-px); }
+.stmt .col1 { position: sticky; left: 0; z-index: 10; background-color: var(--color-card); width: var(--stmt-col1); min-width: var(--stmt-col1); max-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
+/* Menos relleno vertical que las cifras: un concepto a dos líneas apenas hace crecer la fila. */
+.stmt tbody td.col1 { padding: 3px var(--stmt-px); }
+/* El texto del concepto (`.etq`) se parte en DOS líneas como máximo cuando la columna es
+   estrecha; el resto de la celda (guías, chevron, código) no se parte. */
+.stmt .etq { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; line-height: 1.15; word-break: break-word; min-width: 0; flex: 1 1 auto; }
+.stmt .indent > .etq { align-self: center; }
 .stmt thead th.col1 { z-index: 30; text-align: left; background-color: var(--stmt-head); }
 .stmt[data-sx="1"] .col1 { box-shadow: 10px 0 14px -10px rgba(19, 40, 110, 0.28); }
 .stmt[data-sx="1"][data-sy="1"] thead th.col1 { box-shadow: 10px 0 14px -10px rgba(19, 40, 110, 0.28), 0 1px 0 var(--color-line), 0 8px 12px -10px rgba(19, 40, 110, 0.35); }
@@ -196,6 +201,18 @@ body {
 .stmt .chev { transition: transform 0.18s ease; color: var(--color-faint); flex: none; }
 .stmt .chev.open { transform: rotate(90deg); }
 .stmt .code { font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.02em; color: #9fb0c6; }
+
+/* AJUSTE DE COLUMNAS (StmtScroll): un asa invisible en el borde derecho de cada cabecera;
+   se ve al pasar el ratón y mientras se arrastra. Durante el arrastre el contenedor
+   bloquea la selección de texto. */
+/* El asa vive DENTRO de su celda: la celda siguiente es un contexto de apilamiento con
+   el mismo z-index y taparía lo que sobresaliera (pasó: solo se podía arrastrar la
+   primera columna, cuya cabecera va por encima). */
+.stmt thead th .ajuste { position: absolute; top: 0; right: 0; width: 9px; height: 100%; cursor: col-resize; z-index: 5; touch-action: none; }
+.stmt thead th .ajuste::after { content: ""; position: absolute; top: 6px; bottom: 6px; right: 0; width: 2px; border-radius: 2px; background-color: transparent; transition: background-color 0.12s; }
+.stmt thead th .ajuste:hover::after, .stmt thead th .ajuste.activo::after { background-color: var(--color-royal); }
+.stmt.ajustando { cursor: col-resize; user-select: none; }
+.stmt.ajustando * { cursor: col-resize !important; }
 
 /* Nota al pie de un estado */
 .stmt-nota { font-size: 12px; line-height: 1.55; color: var(--color-muted); max-width: 64rem; padding-left: 12px; border-left: 2px solid var(--color-line); }
@@ -284,3 +301,6 @@ body {
 html.presentacion aside, html.presentacion header { display: none !important; }
 html.presentacion body > div { padding-left: 0 !important; }
 html.presentacion main { max-width: none !important; padding: 16px 24px !important; }
+
+
+

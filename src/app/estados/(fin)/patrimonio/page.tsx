@@ -5,6 +5,7 @@ import { etqNombre } from "@/lib/periodos";
 import { fmtNum } from "@/lib/format";
 import AnioSelector from "@/components/AnioSelector";
 import { CabeceraDocumento } from "@/components/StatementMatrix";
+import StmtScroll from "@/components/StmtScroll";
 
 export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
   await accesoA("/estados/patrimonio");
@@ -32,7 +33,7 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
           periodo={`${c.ini ? `${etqNombre(c.ini)} – ` : ""}${etqNombre(etq)}`}
           unidad="Acumulado del año · pesos colombianos"
         />
-        <div className="stmt" style={{ ["--stmt-col1" as string]: "300px" }}>
+        <StmtScroll style={{ ["--stmt-col1" as string]: "300px" }}>
         <table>
           <thead>
             <tr>
@@ -49,7 +50,7 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
             <MRow label="Patrimonio total (incluye utilidad)" vals={c.comps.map(() => null)} total={c.totalFinal} tipo="total" />
           </tbody>
         </table>
-        </div>
+        </StmtScroll>
       </div>
 
       <p className="stmt-nota">
@@ -64,7 +65,7 @@ function MRow({ label, vals, total, tipo }: { label: string; vals: (number | nul
   const rule = isTotal ? "rule-total" : tipo === "subtotal" ? "rule-sub" : "";
   return (
     <tr className={tipo === "total" ? "total" : tipo === "subtotal" ? "subtotal" : "row"}>
-      <td className="col1">{label}</td>
+      <td className="col1"><span className="etq">{label}</span></td>
       {vals.map((v, i) => (
         <td key={i} className={`num ${v !== null && v < 0 ? "text-neg" : ""}`}>
           <span className={v === null ? "" : rule}>{v === null ? "—" : fmtNum(v)}</span>
