@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { NodoPpto } from "@/lib/presupuesto";
 import { fmtCont } from "@/lib/format";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, MAX_SANGRIA } from "@/components/statementShared";
+import { useSombrasScroll, CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
 
 /* Presupuesto anual COMPLETO, expandible — mismo lenguaje visual que los estados
    (`.stmt`: cabecera fija, columna de concepto congelada, jerarquía sobria).
@@ -10,16 +11,19 @@ import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, MAX_SANGRIA } fr
    (nivel 2) se ocultan y se despliegan con el chevron. */
 
 export default function PresupuestoMatrix({
-  labels, roots,
+  labels, roots, encabezado,
 }: {
-  labels: string[]; roots: NodoPpto[];
+  labels: string[]; roots: NodoPpto[]; encabezado?: Encabezado;
 }) {
   const ctx = useExpand([roots]);
+  const scroll = useSombrasScroll();
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">
-        <ExpandToggle ctx={ctx} />
-        <div className="stmt card" style={{ ["--stmt-col1" as string]: "320px" }}>
+        {!encabezado && <ExpandToggle ctx={ctx} />}
+        <div className="card overflow-hidden">
+        {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
+        <div className="stmt" style={{ ["--stmt-col1" as string]: "320px" }} {...scroll}>
           <table>
             <thead>
               <tr>
@@ -33,7 +37,8 @@ export default function PresupuestoMatrix({
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-faint">
+        </div>
+        <p className="stmt-nota">
           Presupuesto tal cual la hoja de la Junta. Los rubros con <ChevronRight size={11} className="inline -mt-0.5" /> agrupan
           cuentas de detalle: usa <b>Expandir/Contraer todo</b> o el chevron de cada rubro. Las cifras vacías van con raya (—).
         </p>

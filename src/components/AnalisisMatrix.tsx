@@ -1,6 +1,6 @@
 "use client";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, Concepto } from "@/components/statementShared";
-import { useSombrasScroll } from "@/components/StatementMatrix";
+import { useSombrasScroll, CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
 
 /* Análisis vertical / horizontal — misma piel que el Estado (sistema `.stmt`).
    Vertical   → participación sobre la base del período (número sobrio).
@@ -31,40 +31,49 @@ function Val({ v, colorear }: { v: number | null; colorear?: boolean }) {
 }
 
 export default function AnalisisMatrix({
-  labels, secciones, colorear, filasFinales = [],
+  labels, secciones, colorear, filasFinales = [], resaltar, encabezado,
 }: {
   labels: string[];
   secciones: Seccion[];
   colorear?: boolean;
   filasFinales?: FilaFinalPct[];
+  /** Índice de la columna del mes de corte (se marca). */
+  resaltar?: number;
+  encabezado?: Encabezado;
 }) {
   const ctx = useExpand(secciones.map((s) => s.arbol));
   const nCols = labels.length + 1;
   const scroll = useSombrasScroll();
+  const num = (i: number) => `num${i === resaltar ? " corte" : ""}`;
   return (
     <ExpandProvider ctx={ctx}>
       <div className="space-y-2">
-        <ExpandToggle ctx={ctx} />
-        <div className="stmt card" {...scroll}>
-          <table>
-            <thead>
-              <tr>
-                <th className="col1">Cuenta</th>
-                {labels.map((l) => <th key={l} className="num">{l}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {secciones.map((s) => <Seccion key={s.titulo} s={s} nCols={nCols} colorear={colorear} />)}
-              {filasFinales.map((f) => <FilaFinal key={f.nombre} f={f} colorear={colorear} />)}
-            </tbody>
-          </table>
+        {!encabezado && <ExpandToggle ctx={ctx} />}
+        <div className="card overflow-hidden">
+          {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
+          <div className="stmt" {...scroll}>
+            <table>
+              <thead>
+                <tr>
+                  <th className="col1">Cuenta</th>
+                  {labels.map((l, i) => <th key={l} className={num(i)}>{l}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {secciones.map((s) => <Seccion key={s.titulo} s={s} nCols={nCols} colorear={colorear} num={num} />)}
+                {filasFinales.map((f) => <FilaFinal key={f.nombre} f={f} colorear={colorear} num={num} />)}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </ExpandProvider>
   );
 }
 
-function Seccion({ s, nCols, colorear }: { s: Seccion; nCols: number; colorear?: boolean }) {
+type Num = (i: number) => string;
+
+function Seccion({ s, nCols, colorear, num }: { s: Seccion; nCols: number; colorear?: boolean; num: Num }) {
   return (
     <>
       {/* El rótulo va en la celda fija; el resto de la fila es relleno con la misma banda. */}
@@ -72,16 +81,16 @@ function Seccion({ s, nCols, colorear }: { s: Seccion; nCols: number; colorear?:
         <td className="col1"><span className="sec-label">{s.titulo}</span></td>
         <td colSpan={nCols - 1} className="sec-fill" />
       </tr>
-      {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} />)}
+      {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} num={num} />)}
       <tr className="subtotal">
         <td className="col1">Total {s.titulo.toLowerCase()}</td>
-        {s.totalVals.map((v, i) => <td key={i} className="num"><span className="rule-sub"><Val v={v} colorear={colorear} /></span></td>)}
+        {s.totalVals.map((v, i) => <td key={i} className={num(i)}><span className={v === null ? "" : "rule-sub"}><Val v={v} colorear={colorear} /></span></td>)}
       </tr>
     </>
   );
 }
 
-function Fila({ n, colorear }: { n: NodoPct; colorear?: boolean }) {
+function Fila({ n, colorear, num }: { n: NodoPct; colorear?: boolean; num: Num }) {
   const ctx = useExpandCtx();
   const has = n.hijos.length > 0;
   const open = has && ctx.isOpen(n.codigo);
@@ -92,14 +101,14 @@ function Fila({ n, colorear }: { n: NodoPct; colorear?: boolean }) {
         <td className="col1">
           <Concepto codigo={n.codigo} nombre={n.nombre} depth={n.depth} esGrupo={esGrupo} has={has} open={open} onToggle={() => ctx.toggle(n.codigo)} />
         </td>
-        {n.vals.map((v, i) => <td key={i} className="num"><Val v={v} colorear={colorear} /></td>)}
+        {n.vals.map((v, i) => <td key={i} className={num(i)}><Val v={v} colorear={colorear} /></td>)}
       </tr>
-      {open && n.hijos.map((h) => <Fila key={h.codigo} n={h} colorear={colorear} />)}
+      {open && n.hijos.map((h) => <Fila key={h.codigo} n={h} colorear={colorear} num={num} />)}
     </>
   );
 }
 
-function FilaFinal({ f, colorear }: { f: FilaFinalPct; colorear?: boolean }) {
+function FilaFinal({ f, colorear, num }: { f: FilaFinalPct; colorear?: boolean; num: Num }) {
   const total = f.tipo === "total";
   const sub = f.tipo === "sub";
   const cls = total ? "total" : sub ? "subtotal" : "row";
@@ -107,7 +116,7 @@ function FilaFinal({ f, colorear }: { f: FilaFinalPct; colorear?: boolean }) {
   return (
     <tr className={cls}>
       <td className="col1">{f.nombre}</td>
-      {f.vals.map((v, i) => <td key={i} className="num"><span className={v === null ? "" : rule}><Val v={v} colorear={colorear} /></span></td>)}
+      {f.vals.map((v, i) => <td key={i} className={num(i)}><span className={v === null ? "" : rule}><Val v={v} colorear={colorear} /></span></td>)}
     </tr>
   );
 }

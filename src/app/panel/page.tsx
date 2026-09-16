@@ -359,7 +359,7 @@ function Detalle({ p }: { p?: string }) {
     { href: `/estados/resultados${qs}`, label: "Estado de Resultados", icon: FileSpreadsheet },
     { href: `/estados/situacion${qs}`, label: "Situación Financiera", icon: Landmark },
     { href: `/estados/flujo${qs}`, label: "Flujo de Efectivo", icon: Waves },
-    { href: `/estados/resultados${qs ? qs + "&" : "?"}vista=presupuesto`, label: "Presupuesto", icon: Target },
+    { href: `/estados/resultados${qs ? qs + "&" : "?"}vista=ejecucion`, label: "Ejecución presupuestal", icon: Target },
     { href: `/estados/patrimonio${qs}`, label: "Patrimonio", icon: Layers },
     { href: `/portafolio`, label: "Portafolio", icon: Wallet },
   ];

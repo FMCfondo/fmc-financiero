@@ -200,6 +200,36 @@ body {
 /* Nota al pie de un estado */
 .stmt-nota { font-size: 12px; line-height: 1.55; color: var(--color-muted); max-width: 64rem; padding-left: 12px; border-left: 2px solid var(--color-line); }
 
+/* EJECUCIÓN PRESUPUESTAL (la hoja del informe, en pantalla): cabecera de DOS filas
+   —grupos y columnas—, las dos fijas; tres bloques con su tinte, separados por una
+   columna estrecha; el porcentaje con semáforo (invertido en gastos, lo decide la
+   fila). La primera fila mide 42 px fijos para que la segunda sepa dónde pegarse. */
+.stmt.dos-filas thead tr.grupos th { top: 0; height: 42px; box-sizing: border-box; padding: 6px var(--stmt-px); text-align: center; vertical-align: middle; }
+.stmt.dos-filas thead tr.grupos th.col1 { text-align: left; vertical-align: bottom; height: auto; padding-bottom: 9px; }
+.stmt.dos-filas thead tr:not(.grupos) th { top: 42px; }
+.stmt.dos-filas thead .g-titulo { display: block; font-size: 10.5px; line-height: 14px; font-weight: 800; letter-spacing: 0.1em; }
+.stmt.dos-filas thead .g-def { display: block; font-size: 9.5px; line-height: 13px; font-weight: 500; letter-spacing: 0.01em; text-transform: none; color: var(--color-muted); }
+.stmt th.gap, .stmt td.gap { width: 10px; min-width: 10px; padding: 0; }
+.stmt td.ejecutado { background-color: var(--stmt-acc); }
+.stmt th.b-mes { background-color: #e6edf9; }
+.stmt th.b-acum { background-color: #dfe8fb; }
+.stmt th.b-anio { background-color: #d5e2fa; }
+.stmt td.b-mes { background-color: #f4f7fc; }
+.stmt td.b-acum { background-color: #eef3fb; }
+.stmt td.b-anio { background-color: #e7eefa; }
+.stmt tr.subtotal td.b-mes { background-color: #e6edf9; }
+.stmt tr.subtotal td.b-acum { background-color: #dfe8fb; }
+.stmt tr.subtotal td.b-anio { background-color: #d5e2fa; }
+/* El semáforo del porcentaje gana al color apagado de las filas de detalle
+   (`tr.row:not(.group) > td.num`): por eso la especificidad de más. */
+.stmt tbody tr td.num.pct.pos { color: #15803d; font-weight: 700; }
+.stmt tbody tr td.num.pct.neg { color: #b91c1c; font-weight: 700; }
+.stmt tbody tr.total td.num.pct.pos { color: #9fe3b6; }
+.stmt tbody tr.total td.num.pct.neg { color: #ffb3b3; }
+.stmt .signo { display: inline-block; width: 22px; color: var(--color-faint); font-size: 10px; }
+.stmt tr.total .signo { color: rgba(255, 255, 255, 0.6); }
+.stmt td.col1.sangria { padding-left: calc(var(--stmt-px) + 22px); }
+
 /* Segmentador (vistas, año, meses): un carril claro y la opción activa como pastilla
    blanca. Es el mismo control en todos los estados. */
 .seg { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background-color: #e6ecf6; }

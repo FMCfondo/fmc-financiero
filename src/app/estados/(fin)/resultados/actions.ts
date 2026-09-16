@@ -18,5 +18,6 @@ export async function guardarMapeoPpto(input: { anio: number; orden: number; cue
   }
   await guardarMapeoPptoDb(input.anio, input.orden, cuentas);
   revalidatePath("/estados/resultados");
+  revalidatePath("/presupuesto");
   return { ok: true, nombres };
 }

@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 
 /* Primitivas compartidas del sistema de estados financieros: estado expandido y
    la celda de concepto con guías de indentación y chevron. Las usan
-   StatementMatrix, AnalisisMatrix, EjecucionMatrix y PresupuestoMatrix para verse
+   StatementMatrix, AnalisisMatrix, EjecucionInforme y PresupuestoMatrix para verse
    y comportarse idéntico. Estilos en globals.css → `.stmt`.
 
    Un estado se abre SIEMPRE compacto: solo los grupos, sin sus cuentas (decisión del

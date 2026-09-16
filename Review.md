@@ -95,6 +95,23 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
 - **Siempre compactos (2026-09-15, PR #48).** Todo estado abre con los grupos cerrados y
   nada se recuerda entre visitas (`useExpand` ya no persiste en localStorage ni abre el
   primer nivel). Antes había secciones abiertas mientras el botón decía «Expandir todo».
+- **Ejecución Presupuestal = la hoja del informe (2026-09-16).** En Resultados, la vista
+  «Ejecución Presupuestal» es la MISMA hoja que imprime el Informe de Junta (páginas 5 a
+  7): `ejecucionPresupuestal(etq)` en `informe.ts` expone las filas de `seccionResultados`
+  y `seccionGastos` (mismo ensamblador, no se calcula nada nuevo) y `EjecucionInforme`
+  las pinta con la piel navy: cabecera de DOS filas fijas (grupos + columnas, la primera
+  de 42 px fijos para que la segunda sepa dónde pegarse), bloques con su tinte y una
+  columna de separación, semáforo del porcentaje (invertido en gastos, lo dice la fila).
+  La ejecución jerárquica del árbol PUC (`EjecucionMatrix`) se eliminó. Orden de las
+  vistas, decidido por el usuario: Estado → Ejecución Presupuestal → Comparación
+  interanual → Análisis Vertical → Análisis Horizontal. El presupuesto y su mapeo salieron
+  de aquí y viven en **/presupuesto** (pestañas Plan anual · Mapeo de cuentas · Cargar);
+  las rutas viejas (`vista=ejec-acum|ejec-mes|presupuesto|mapeo`) redirigen. Los análisis
+  vertical, horizontal e interanual llevan el mismo encabezado de documento y el corte.
+- **Turbopack puede servir CSS viejo.** Si `globals.css` se edita con el servidor de
+  desarrollo parado, al arrancar puede servir la compilación anterior de la caché (las
+  reglas nuevas no existen en el navegador aunque estén en el archivo). Tocar el archivo
+  con el servidor arriba lo recompila. Comprobar siempre con estilos computados.
 
 ---
 
@@ -350,7 +367,8 @@ Antes de dar por terminado un módulo:
 - Mover **Provisión de Impuesto** a un módulo de **Configuración/Ajustes**.
 - **Cloudflare Access** + dominio propio para que la Junta entre sin cuenta de Vercel.
 - **Conciliación de la cuenta 2640** (pausada).
-- **Módulo de presupuestos — HECHO (2026-09-14).** `/presupuesto` (Operación): estado de
+- **Módulo de presupuestos — HECHO (2026-09-14; con pestañas desde el 2026-09-16: Plan
+  anual, Mapeo de cuentas, Cargar).** `/presupuesto` (Operación): estado de
   cada año cargado y carga de uno nuevo desde la hoja «PPTO <año>» del libro de la Junta,
   en dos pasos (revisar → confirmar), como la ingesta. La idea que lo hizo posible sin el
   extractor Python: **del Excel salen solo etiqueta, nivel de agrupación (el outline de
