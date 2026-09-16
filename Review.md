@@ -108,10 +108,25 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   de aquí y viven en **/presupuesto** (pestañas Plan anual · Mapeo de cuentas · Cargar);
   las rutas viejas (`vista=ejec-acum|ejec-mes|presupuesto|mapeo`) redirigen. Los análisis
   vertical, horizontal e interanual llevan el mismo encabezado de documento y el corte.
+- **Columnas ajustables y concepto a dos líneas (2026-09-16).** Todo `.stmt` vive dentro
+  de `StmtScroll` (cliente): sombras de desplazamiento y asas en el borde derecho de cada
+  cabecera para arrastrar el ancho como en Excel; doble clic restablece. La columna de
+  concepto se gobierna por `--stmt-col1` (ahora es ANCHO fijo, no solo mínimo: así el
+  texto se parte en vez de estirarla) y su texto va en `.etq`, que se corta a dos líneas
+  con `line-height` 1.15 y 3 px de relleno vertical: una fila a dos líneas mide ~37 px
+  frente a ~32 de una. Las cifras solo se ensanchan. Los anchos se recuerdan por
+  pantalla, vista y tabla en localStorage. El asa vive DENTRO de su celda: la celda
+  siguiente es un contexto de apilamiento con el mismo z-index y tapaba lo que
+  sobresalía (solo se podía arrastrar la primera columna). El doble clic se detecta con
+  dos `pointerdown` seguidos: al cancelar el `pointerdown`, los eventos de ratón
+  derivados no son de fiar.
 - **Turbopack puede servir CSS viejo.** Si `globals.css` se edita con el servidor de
   desarrollo parado, al arrancar puede servir la compilación anterior de la caché (las
-  reglas nuevas no existen en el navegador aunque estén en el archivo). Tocar el archivo
-  con el servidor arriba lo recompila. Comprobar siempre con estilos computados.
+  reglas nuevas no existen en el navegador aunque estén en el archivo). Y las escrituras
+  hechas desde Python no despiertan su vigilante de archivos en este equipo; un
+  `printf '
+' >> archivo` desde la shell sí. Tocar el archivo con el servidor arriba lo
+  recompila. Comprobar siempre con estilos computados.
 
 ---
 

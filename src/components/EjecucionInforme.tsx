@@ -1,7 +1,8 @@
 "use client";
 import { fmtCont } from "@/lib/format";
 import type { FilaResultados } from "@/lib/informe-tipos";
-import { CabeceraDocumento, useSombrasScroll } from "@/components/StatementMatrix";
+import { CabeceraDocumento } from "@/components/StatementMatrix";
+import StmtScroll from "@/components/StmtScroll";
 
 /* EJECUCIÓN PRESUPUESTAL en pantalla: la MISMA hoja que imprime el Informe de Junta
    (páginas 5 a 7), con la piel de los estados financieros. Las filas llegan del
@@ -42,7 +43,6 @@ const tono = (v: number | null, esGasto?: boolean) => {
 };
 
 export default function EjecucionInforme({ titulo, periodo, unidad, mesNombre, filas, encabezaCon, nota }: Props) {
-  const scroll = useSombrasScroll();
   const mes = mesNombre.toLowerCase();
   const bloques: Bloque[] = [
     { k: "mes", clase: "b-mes", titulo: "Ejecución del mes", def: `${mes} vs. presupuesto de ${mes}`, ppto: (f) => f.pptoMes, ej: (f) => f.ejecMesPct },
@@ -54,7 +54,7 @@ export default function EjecucionInforme({ titulo, periodo, unidad, mesNombre, f
     <div className="space-y-2">
       <div className="card overflow-hidden">
         <CabeceraDocumento titulo={titulo} periodo={periodo} unidad={unidad} />
-        <div className="stmt dos-filas" {...scroll}>
+        <StmtScroll className="dos-filas">
           <table>
             <thead>
               <tr className="grupos">
@@ -85,7 +85,7 @@ export default function EjecucionInforme({ titulo, periodo, unidad, mesNombre, f
               {filas.map((f, i) => <FilaEjec key={`${f.etiqueta}-${i}`} f={f} bloques={bloques} />)}
             </tbody>
           </table>
-        </div>
+        </StmtScroll>
       </div>
       <p className="stmt-nota">
         Los tres porcentajes miden cosas distintas y no se comparan entre sí: {bloques.map((b) => `${b.titulo.replace("Ejecución ", "")}: ${b.def}`).join(" · ")}.
@@ -113,8 +113,10 @@ function FilaEjec({ f, bloques }: { f: FilaResultados; bloques: Bloque[] }) {
   return (
     <tr className={clase}>
       <td className={`col1${f.sangria ? " sangria" : ""}`}>
-        {f.signo && !sinReal && <span className="signo">{f.signo}</span>}
-        {f.etiqueta}
+        <span className="flex items-center">
+          {f.signo && !sinReal && <span className="signo shrink-0">{f.signo}</span>}
+          <span className="etq">{f.etiqueta}</span>
+        </span>
       </td>
       <td className="num ejecutado corte">{sinReal ? "—" : val(f.mes, f.nivel === "tot")}</td>
       <td className="num ejecutado">{sinReal ? "—" : val(f.acumulado, f.nivel === "tot")}</td>

@@ -1,6 +1,7 @@
 "use client";
 import { useExpand, useExpandCtx, ExpandProvider, ExpandToggle, Concepto } from "@/components/statementShared";
-import { useSombrasScroll, CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
+import { CabeceraDocumento, type Encabezado } from "@/components/StatementMatrix";
+import StmtScroll from "@/components/StmtScroll";
 
 /* Análisis vertical / horizontal — misma piel que el Estado (sistema `.stmt`).
    Vertical   → participación sobre la base del período (número sobrio).
@@ -43,7 +44,6 @@ export default function AnalisisMatrix({
 }) {
   const ctx = useExpand(secciones.map((s) => s.arbol));
   const nCols = labels.length + 1;
-  const scroll = useSombrasScroll();
   const num = (i: number) => `num${i === resaltar ? " corte" : ""}`;
   return (
     <ExpandProvider ctx={ctx}>
@@ -51,7 +51,7 @@ export default function AnalisisMatrix({
         {!encabezado && <ExpandToggle ctx={ctx} />}
         <div className="card overflow-hidden">
           {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
-          <div className="stmt" {...scroll}>
+          <StmtScroll>
             <table>
               <thead>
                 <tr>
@@ -64,7 +64,7 @@ export default function AnalisisMatrix({
                 {filasFinales.map((f) => <FilaFinal key={f.nombre} f={f} colorear={colorear} num={num} />)}
               </tbody>
             </table>
-          </div>
+          </StmtScroll>
         </div>
       </div>
     </ExpandProvider>
@@ -83,7 +83,7 @@ function Seccion({ s, nCols, colorear, num }: { s: Seccion; nCols: number; color
       </tr>
       {s.arbol.map((n) => <Fila key={n.codigo} n={n} colorear={colorear} num={num} />)}
       <tr className="subtotal">
-        <td className="col1">Total {s.titulo.toLowerCase()}</td>
+        <td className="col1"><span className="etq">Total {s.titulo.toLowerCase()}</span></td>
         {s.totalVals.map((v, i) => <td key={i} className={num(i)}><span className={v === null ? "" : "rule-sub"}><Val v={v} colorear={colorear} /></span></td>)}
       </tr>
     </>
@@ -115,7 +115,7 @@ function FilaFinal({ f, colorear, num }: { f: FilaFinalPct; colorear?: boolean; 
   const rule = total ? "rule-total" : sub ? "rule-sub" : "";
   return (
     <tr className={cls}>
-      <td className="col1">{f.nombre}</td>
+      <td className="col1"><span className="etq">{f.nombre}</span></td>
       {f.vals.map((v, i) => <td key={i} className={num(i)}><span className={v === null ? "" : rule}><Val v={v} colorear={colorear} /></span></td>)}
     </tr>
   );

@@ -16,6 +16,7 @@ import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
 import EjecucionInforme from "@/components/EjecucionInforme";
+import StmtScroll from "@/components/StmtScroll";
 import { Info, SlidersHorizontal } from "lucide-react";
 
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
@@ -175,7 +176,7 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
       {/* Resumen del período: los dos motores, año contra año */}
       <div className="card overflow-hidden">
         <CabeceraDocumento titulo="Resumen del período" periodo={periodoTxt} unidad="Los dos motores del resultado, año contra año · pesos colombianos" />
-        <div className="stmt">
+        <StmtScroll>
           <table>
             <thead>
               <tr>
@@ -188,7 +189,7 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
                 const total = r.nombre.startsWith("(=)");
                 return (
                   <tr key={r.nombre} className={total ? "total" : "row"}>
-                    <td className="col1">{r.nombre}</td>
+                    <td className="col1"><span className="etq">{r.nombre}</span></td>
                     {r.vals.map((v, i) => (
                       <td key={i} className="num">
                         <span className={total && v !== null ? "rule-total" : ""}>{v === null ? "—" : fmtCont(v, total)}</span>
@@ -199,7 +200,7 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
               })}
             </tbody>
           </table>
-        </div>
+        </StmtScroll>
       </div>
 
       <div className="card overflow-hidden">

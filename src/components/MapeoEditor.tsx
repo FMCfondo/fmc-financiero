@@ -1,4 +1,5 @@
 "use client";
+import StmtScroll from "@/components/StmtScroll";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { guardarMapeoPpto } from "@/app/estados/(fin)/resultados/actions";
@@ -19,7 +20,7 @@ export default function MapeoEditor({ anio, lineas }: { anio: number; lineas: Li
           (EBITDA, utilidad…) no se editan: su real es una fórmula del Estado de Resultados.
         </div>
       </div>
-      <div className="stmt card" style={{ ["--stmt-col1" as string]: "300px" }}>
+      <StmtScroll className="card" style={{ ["--stmt-col1" as string]: "300px" }}>
         <table>
           <thead>
             <tr>
@@ -34,7 +35,7 @@ export default function MapeoEditor({ anio, lineas }: { anio: number; lineas: Li
             {lineas.map((l) => <FilaMapeo key={l.orden} anio={anio} l={l} />)}
           </tbody>
         </table>
-      </div>
+      </StmtScroll>
     </div>
   );
 }
@@ -55,7 +56,7 @@ function FilaMapeo({ anio, l }: { anio: number; l: LineaMapeo }) {
   return (
     <tr className="row">
       <td className="col1">
-        <span className="block truncate" style={{ paddingLeft: sangria }} title={l.etiqueta}>
+        <span className="etq" style={{ paddingLeft: sangria }} title={l.etiqueta}>
           <span className={l.nivel === 0 ? "text-fg font-medium" : l.nivel === 1 ? "text-fg" : "text-muted"}>{l.etiqueta}</span>
         </span>
       </td>

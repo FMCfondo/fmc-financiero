@@ -51,8 +51,8 @@ export function Concepto({ codigo, nombre, depth, esGrupo, has, open, onToggle }
     >
       {Array.from({ length: d }).map((_, i) => <span key={i} className={`guide ${i === d - 1 ? "line" : ""}`} />)}
       {has ? <ChevronRight size={13} className={`chev ${open ? "open" : ""}`} /> : <span className="w-[13px] shrink-0" />}
-      <span className="code w-[64px] shrink-0 pl-1">{codigo}</span>
-      <span className={`truncate ${esGrupo ? "text-fg font-medium" : "text-muted"}`}>{nombre}</span>
+      <span className="code w-[48px] shrink-0 pl-1">{codigo}</span>
+      <span className={`etq ${esGrupo ? "text-fg font-medium" : "text-muted"}`}>{nombre}</span>
     </button>
   );
 }
@@ -70,3 +70,4 @@ export function ExpandToggle({ ctx }: { ctx: Ctx }) {
     </button>
   );
 }
+
