@@ -4,7 +4,7 @@ import { ensureLoaded, periodos, periodo, resolverEtq } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
 import { fmtNum } from "@/lib/format";
 import AnioSelector from "@/components/AnioSelector";
-import { EncabezadoEstado } from "@/components/StatementMatrix";
+import { CabeceraDocumento } from "@/components/StatementMatrix";
 
 export default async function PatrimonioPage({ searchParams }: { searchParams: Promise<{ p?: string; anio?: string }> }) {
   await accesoA("/estados/patrimonio");
@@ -27,7 +27,7 @@ export default async function PatrimonioPage({ searchParams }: { searchParams: P
       </div>
 
       <div className="card overflow-hidden">
-        <EncabezadoEstado
+        <CabeceraDocumento
           titulo="Estado de Cambios en el Patrimonio"
           periodo={`${c.ini ? `${etqNombre(c.ini)} – ` : ""}${etqNombre(etq)}`}
           unidad="Acumulado del año · pesos colombianos"

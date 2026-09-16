@@ -69,7 +69,15 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   total), densidad alta pero legible. Sensación de "inmovilizar paneles de Excel", con
   apariencia moderna.
 - **Rediseño 2026-09-15 («se veía muy básico»)**: cada estado se presenta como un
-  DOCUMENTO. La tarjeta lleva encima el encabezado (`EncabezadoEstado`: entidad, nombre del
+  DOCUMENTO. El usuario eligió entre tres maquetas la dirección **«corporativo navy y
+  oro»** (B; las otras eran «sobrio con más contraste» y «informe anual editorial»):
+  encabezado en navy con filete dorado (`CabeceraDocumento`), cabecera de columnas en
+  lavado navy, secciones blancas con barra navy, total en banda navy con barra dorada y
+  regla doble blanca, mes de corte marcado en oro. El oro solo donde señala algo (corte,
+  filete, barra del total); el resto lo hace el peso y el tinte. Las maquetas se hicieron
+  como HTML estático con la tipografía y la paleta de la app y se capturaron con Chrome
+  real: es la forma de decidir diseño con el usuario sin adivinar.
+  La tarjeta lleva encima el encabezado (`EncabezadoEstado`: entidad, nombre del
   estado, período «Enero – Agosto 2026» con `rangoNombre`, unidad) y la tabla debajo. La
   **banda de sección** (INGRESOS, ACTIVO…) lleva el rótulo en la celda FIJA y una celda de
   relleno con la misma banda: antes el rótulo abarcaba toda la fila con `colSpan` y al
@@ -81,7 +89,12 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   son clases (`rule-sub`, `rule-total`) y no se pintan sobre celdas vacías. Sombras de
   desplazamiento solo cuando hay contenido debajo (`data-sx`/`data-sy`, `useSombrasScroll`).
   Los segmentadores (vistas, año, meses, interanual) son el mismo control `.seg`: carril
-  claro y pastilla blanca activa. 13 px, filas de ~32 px, primera columna 288 px.
+  claro y pastilla blanca activa. 13 px, filas de ~32 px, primera columna 288 px. Las
+  filas usan `background-color`, nunca la abreviatura `background`: el lavado del corte es
+  una imagen de fondo y la abreviatura la borraría.
+- **Siempre compactos (2026-09-15, PR #48).** Todo estado abre con los grupos cerrados y
+  nada se recuerda entre visitas (`useExpand` ya no persiste en localStorage ni abre el
+  primer nivel). Antes había secciones abiertas mientras el botón decía «Expandir todo».
 
 ---
 
