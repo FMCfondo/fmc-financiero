@@ -29,6 +29,19 @@ export function rangoNombre(etqs: string[]): string {
   return `${mismoAnio ? a.slice(0, -5) : a} – ${b}`;
 }
 
+/** «Agosto», «Trimestre 3», «Año completo»: el período de la comparación interanual. */
+export function nombrePeriodoInteranual(unidad: string, idx: number): string {
+  switch (unidad) {
+    case "mes": return NOMBRE[idx - 1] ?? `Mes ${idx}`;
+    case "bimestre": return `Bimestre ${idx}`;
+    case "trimestre": return `Trimestre ${idx}`;
+    case "cuatrimestre": return `Cuatrimestre ${idx}`;
+    case "semestre": return `Semestre ${idx}`;
+    case "anio": return "Año completo";
+    default: return unidad;
+  }
+}
+
 export function etqNombre(etq: string): string {
   const m = ABREV.indexOf(etq.slice(0, 3));
   return m < 0 ? etq : `${NOMBRE[m]} ${etq.slice(3)}`;

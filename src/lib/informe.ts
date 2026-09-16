@@ -453,6 +453,28 @@ async function notasDelInforme(
   return redactarNotas(datos);
 }
 
+/** La EJECUCIÓN PRESUPUESTAL tal como la imprime el informe (páginas 5 a 7), para la
+ *  pantalla de Estados Financieros › Resultados › Ejecución Presupuestal: las mismas
+ *  filas y el mismo ensamblador, así la pantalla y el papel no pueden discrepar.
+ *  Requiere el dataset cargado (`ensureLoaded`). */
+export function ejecucionPresupuestal(etq: string) {
+  const p = D.periodo(etq);
+  const resultados = seccionResultados(etq);
+  const gastos = seccionGastos(etq);
+  return {
+    anio: p.anio,
+    mes: p.mes,
+    mesNombre: mesNombre[p.mes],
+    etiquetasMeses: resultados.etiquetasMeses,
+    resultados: resultados.filas,
+    gastos: gastos.filas,
+    /** La fila del total de administración, que encabeza el detalle de gastos. */
+    totalGastos: resultados.filas.find((f) => f.clave === "gastosAdmin") ?? null,
+    /** Sin presupuesto cargado para el año, todas las metas vienen en null. */
+    hayPresupuesto: resultados.filas.some((f) => f.pptoAnual !== null),
+  };
+}
+
 export async function construirInforme(etq: string): Promise<Informe> {
   await D.ensureLoaded();
   const p = D.periodo(etq);

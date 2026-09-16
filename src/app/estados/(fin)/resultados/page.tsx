@@ -1,32 +1,33 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
-import { type FilaEjec } from "@/lib/ejecucion";
-import { presupuestoArbol, ejecucionArbol, lineasMapeo } from "@/lib/presupuesto";
-import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
+import { ensureLoaded, mesesVista, periodo, periodos, resolverEtq } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
-import { accesoA, soloAdmin } from "@/lib/permisos";
+import { accesoA } from "@/lib/permisos";
 import { indicadoresMatriz } from "@/lib/indicadores";
-import { etqNombre, rangoNombre } from "@/lib/periodos";
-import { fmtCOP, fmtNum, fmtCont, fmtM } from "@/lib/format";
-import StatementMatrix from "@/components/StatementMatrix";
+import { ejecucionPresupuestal } from "@/lib/informe";
+import { etqNombre, rangoNombre, nombrePeriodoInteranual } from "@/lib/periodos";
+import { fmtNum, fmtCont } from "@/lib/format";
+import StatementMatrix, { CabeceraDocumento } from "@/components/StatementMatrix";
 import AnalisisTabs from "@/components/AnalisisTabs";
 import MesesSelector from "@/components/MesesSelector";
 import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
-import PresupuestoMatrix from "@/components/PresupuestoMatrix";
-import EjecucionMatrix from "@/components/EjecucionMatrix";
-import MapeoEditor from "@/components/MapeoEditor";
-import { Info, SlidersHorizontal, ArrowLeft } from "lucide-react";
+import EjecucionInforme from "@/components/EjecucionInforme";
+import { Info, SlidersHorizontal } from "lucide-react";
 
 export default async function ResultadosPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   await accesoA("/estados/resultados");
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
+  /* Direcciones viejas. La ejecución jerárquica se reemplazó por la hoja del informe, y
+     el presupuesto con su mapeo viven en su módulo: quien llegue con la ruta antigua
+     (un favorito, un enlace guardado) aterriza donde está ahora. */
+  if (vista === "ejec-acum" || vista === "ejec-mes") redirect(`/estados/resultados?vista=ejecucion${p ? `&p=${p}` : ""}`);
+  if (vista === "presupuesto" || vista === "mapeo") redirect(`/presupuesto?v=${vista === "mapeo" ? "mapeo" : "plan"}${anio ? `&anio=${anio}` : ""}`);
   const current = vista || "estado";
-  // El editor de mapeo escribe en el presupuesto: solo administrador.
   const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
-  if (current === "mapeo" && !esAdmin) await soloAdmin("/estados/resultados?vista=ejec-acum");
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
@@ -46,13 +47,10 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
         <AnalisisTabs current={current} />
       </div>
       {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
+      {current === "ejecucion" && <VistaEjecucion etq={etq} esAdmin={esAdmin} />}
+      {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
-      {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
-      {current === "presupuesto" && <VistaPresupuesto etq={etq} />}
-      {current === "mapeo" && <VistaMapeo etq={etq} anioForzado={Number(anio) || undefined} />}
-      {current === "ejec-acum" && <VistaEjecucion etq={etq} modo="acum" esAdmin={esAdmin} />}
-      {current === "ejec-mes" && <VistaEjecucion etq={etq} modo="mes" esAdmin={esAdmin} />}
     </div>
   );
 }
@@ -108,15 +106,25 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
         <AnioSelector current={anio} />
         {!anio && <MesesSelector current={nMeses} />}
         {modo === "horizontal" && (
-          <span className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-fg mr-1">Comparar contra:</span>
-            <Link href="?vista=horizontal" className={`px-2.5 py-1 rounded-md text-xs font-medium border ${contra === "anio" ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"}`}>Mismo mes, año anterior</Link>
-            <Link href="?vista=horizontal&contra=mes" className={`px-2.5 py-1 rounded-md text-xs font-medium border ${contra === "mes" ? "bg-royal text-white border-royal" : "border-line text-muted hover:text-fg hover:bg-card2"}`}>Mes anterior</Link>
+          <span className="flex items-center">
+            <span className="seg-label">Comparar contra</span>
+            <span className="seg">
+              <Link href="?vista=horizontal" className={contra === "anio" ? "on" : ""}>Mismo mes, año anterior</Link>
+              <Link href="?vista=horizontal&contra=mes" className={contra === "mes" ? "on" : ""}>Mes anterior</Link>
+            </span>
           </span>
         )}
       </div>
-      <AnalisisMatrix labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"} />
-      <p className="text-xs text-muted">
+      <AnalisisMatrix
+        labels={a.labels} secciones={a.secciones} filasFinales={a.filasFinales} colorear={modo === "horizontal"}
+        resaltar={meses.findIndex((x) => x.etiqueta === etq)}
+        encabezado={{
+          titulo: `Estado de Resultados · ${modo === "vertical" ? "Análisis vertical" : "Análisis horizontal"}`,
+          periodo: rangoNombre(meses.map((x) => x.etiqueta)),
+          unidad: modo === "vertical" ? `Participación de cada cuenta sobre ${a.base}` : `Variación de cada mes contra ${a.base}`,
+        }}
+      />
+      <p className="stmt-nota">
         {modo === "vertical"
           ? `Cada celda es la participación de la cuenta sobre ${a.base}. Los gastos van sin depreciaciones ni amortizaciones, que cierran la estructura EBITDA al pie.`
           : `Cada celda es la variación del mes contra ${a.base}; la raya (—) indica que no existe comparativo. El cierre EBITDA va al pie.`}
@@ -131,54 +139,59 @@ function VistaAnalisis({ modo, etq, nMeses, anio, contra = "anio" }: { modo: "ve
 function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }) {
   const d = interanualData("er", unidad, idx);
   const cats = indicadoresMatriz(d.periodosCierre);
+  const nombre = nombrePeriodoInteranual(unidad, idx);
+  const anios = d.labels.length > 1 ? `${d.labels[0]} – ${d.labels[d.labels.length - 1]}` : d.labels[0] ?? "";
+  const periodoTxt = `${nombre} · ${anios}`.replace(/\*/g, "");
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <InteranualSelector unidad={unidad} idx={idx} />
 
-      {/* Los tres recuadros, deslizando a la derecha */}
+      {/* Los tres documentos, deslizando a la derecha */}
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-4 w-max items-start">
-          <Recuadro titulo="Cifras del período" sub="cada celda SUMA los meses del período" tono="bg-royal">
+          <div className="shrink-0 max-w-full">
             <StatementMatrix
               labels={d.labels}
               conAcum={false}
+              encabezado={{ titulo: "Estado de Resultados · Cifras del período", periodo: periodoTxt, unidad: "Cada columna suma los meses del período · pesos colombianos" }}
               secciones={[
-                { titulo: "Ingresos", tono: "bg-pos", arbol: d.cifras[0].arbol, totalLabel: "Total ingresos", totalVals: d.cifras[0].totalVals },
-                { titulo: "Gastos (sin dep. ni amort.)", tono: "bg-gold", arbol: d.cifras[1].arbol, totalLabel: "Total gastos operativos", totalVals: d.cifras[1].totalVals },
+                { titulo: "Ingresos", arbol: d.cifras[0].arbol, totalLabel: "Total ingresos", totalVals: d.cifras[0].totalVals },
+                { titulo: "Gastos (sin dep. ni amort.)", arbol: d.cifras[1].arbol, totalLabel: "Total gastos operativos", totalVals: d.cifras[1].totalVals },
               ]}
               filasFinales={d.finalesCifras}
             />
-          </Recuadro>
-          <Recuadro titulo="Análisis Horizontal" sub="cada año contra el año anterior con datos" tono="bg-gold">
-            <AnalisisMatrix labels={d.labels} secciones={d.horizontal} filasFinales={d.finalesHorizontal} colorear />
-          </Recuadro>
-          <Recuadro titulo="Análisis Vertical" sub="participación dentro de su propio período" tono="bg-pos">
-            <AnalisisMatrix labels={d.labels} secciones={d.vertical} filasFinales={d.finalesVertical} />
-          </Recuadro>
+          </div>
+          <div className="shrink-0 max-w-full">
+            <AnalisisMatrix labels={d.labels} secciones={d.horizontal} filasFinales={d.finalesHorizontal} colorear
+              encabezado={{ titulo: "Estado de Resultados · Análisis horizontal", periodo: periodoTxt, unidad: "Cada año contra el año anterior con datos" }} />
+          </div>
+          <div className="shrink-0 max-w-full">
+            <AnalisisMatrix labels={d.labels} secciones={d.vertical} filasFinales={d.finalesVertical}
+              encabezado={{ titulo: "Estado de Resultados · Análisis vertical", periodo: periodoTxt, unidad: "Participación dentro de su propio período" }} />
+          </div>
         </div>
       </div>
 
       {/* Resumen del período: los dos motores, año contra año */}
-      <Recuadro titulo="Resumen del período" sub="los dos motores, año contra año">
-        <div className="card overflow-auto">
-          <table className="text-sm border-collapse w-max min-w-full">
+      <div className="card overflow-hidden">
+        <CabeceraDocumento titulo="Resumen del período" periodo={periodoTxt} unidad="Los dos motores del resultado, año contra año · pesos colombianos" />
+        <div className="stmt">
+          <table>
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-muted">
-                <th className="text-left font-normal px-5 py-2.5 border-b border-line min-w-[300px]">Concepto</th>
-                {d.labels.map((l) => <th key={l} className="text-right font-normal px-3 py-2.5 border-b border-line min-w-[122px]">{l}</th>)}
+              <tr>
+                <th className="col1">Concepto</th>
+                {d.labels.map((l) => <th key={l} className="num">{l}</th>)}
               </tr>
             </thead>
             <tbody>
               {d.resumen.map((r) => {
                 const total = r.nombre.startsWith("(=)");
                 return (
-                  <tr key={r.nombre} className={total ? "bg-card2 font-semibold" : ""}>
-                    <td className={`px-5 py-2.5 border-b border-line-soft ${total ? "uppercase text-[13px] tracking-wide" : "text-muted"}`}>{r.nombre}</td>
+                  <tr key={r.nombre} className={total ? "total" : "row"}>
+                    <td className="col1">{r.nombre}</td>
                     {r.vals.map((v, i) => (
-                      <td key={i} className="text-right tnum tabular-nums px-3 py-2.5 border-b border-line-soft whitespace-nowrap">
-                        <span className={total ? "border-t border-b-[3px] border-double border-fg/60 py-0.5 inline-block" : ""}>
-                          {v === null ? "—" : fmtCont(v, total)}
-                        </span>
+                      <td key={i} className="num">
+                        <span className={total && v !== null ? "rule-total" : ""}>{v === null ? "—" : fmtCont(v, total)}</span>
                       </td>
                     ))}
                   </tr>
@@ -187,13 +200,14 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
             </tbody>
           </table>
         </div>
-      </Recuadro>
+      </div>
 
-      <Recuadro titulo="Indicadores al cierre del período" sub="pasa el mouse por un indicador para ver qué es y cómo leerlo">
+      <div className="card overflow-hidden">
+        <CabeceraDocumento titulo="Indicadores al cierre del período" periodo={periodoTxt} unidad="Pasa el mouse por un indicador para ver qué es y cómo leerlo" />
         <IndicadoresTabla labels={d.labelsCierre} cats={cats} conAcum={false} />
-      </Recuadro>
+      </div>
 
-      <p className="text-xs text-muted">
+      <p className="stmt-nota">
         Columnas: el mismo período en cada año de funcionamiento.
         {d.algunParcial && <> Los años con <b>*</b> tienen el período incompleto (aún no existen todos sus meses); la raya (—) indica que no hay datos.</>}
       </p>
@@ -201,141 +215,52 @@ function VistaInteranual({ unidad, idx }: { unidad: UnidadPeriodo; idx: number }
   );
 }
 
-function Recuadro({ titulo, sub, tono, children }: { titulo: string; sub?: string; tono?: string; children: React.ReactNode }) {
+/* ---------- Ejecución presupuestal: LA HOJA DEL INFORME DE JUNTA, en pantalla ----------
+   Las mismas filas y el mismo ensamblador que imprime el informe (páginas 5 a 7): el
+   estado de resultados contra las tres metas y, debajo, el detalle de gastos de
+   administración. Decisión del usuario (2026-09-16): la ejecución que ve la Junta en
+   el papel es la que se ve aquí, no otra. */
+function VistaEjecucion({ etq, esAdmin }: { etq: string; esAdmin: boolean }) {
+  const e = ejecucionPresupuestal(etq);
+  const delAnio = periodos.filter((q) => q.anio === e.anio && q.mes <= e.mes).map((q) => q.etiqueta);
+  const periodoTxt = rangoNombre(delAnio);
+  if (!e.hayPresupuesto) {
+    return (
+      <AvisoInfo>
+        El presupuesto de {e.anio} aún no está cargado, así que no hay metas contra las que medir el año.
+        {esAdmin && <> Se carga en <Link href="/presupuesto?v=cargar" className="text-accent2 hover:underline">Presupuesto</Link>.</>}
+      </AvisoInfo>
+    );
+  }
   return (
-    <div className="rounded-2xl border-2 border-line bg-card2/40 p-4 space-y-3 shrink-0 max-w-full">
-      <div className="flex items-baseline gap-2 flex-wrap">
-        {tono && <span className={`w-1.5 h-4 rounded ${tono}`} />}
-        <h2 className="font-semibold">{titulo}</h2>
-        {sub && <span className="text-xs text-muted">{sub}</span>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/* ---------- Presupuesto: la plantilla anual completa, expandible ---------- */
-function VistaPresupuesto({ etq }: { etq: string }) {
-  const ANIO = periodo(etq).anio;
-  const p = presupuestoArbol(ANIO);
-  if (!p.hay) return <AvisoInfo>El presupuesto de {ANIO} aún no está cargado.</AvisoInfo>;
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted">Presupuesto {ANIO} · estructura EBITDA · el mismo orden del Estado de Resultados · pesos colombianos</p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <MiniKpi label="Ingresos de operación" valor={p.resumen.ingOperacion} />
-        <MiniKpi label="Gastos de administración" valor={p.resumen.gastosAdmin} />
-        <MiniKpi label="EBITDA presupuestado" valor={p.resumen.ebitda} />
-        <MiniKpi label="Utilidad neta presupuestada" valor={p.resumen.utilNeta} />
-      </div>
-      <PresupuestoMatrix labels={p.labels} roots={p.roots} />
-    </div>
-  );
-}
-
-/* ---------- Editor del mapeo presupuesto → cuentas PUC ---------- */
-function VistaMapeo({ etq, anioForzado }: { etq: string; anioForzado?: number }) {
-  /* El año sale del período seleccionado, salvo que venga en la URL: un presupuesto
-     recién cargado (2027 en diciembre de 2026) aún no tiene períodos y sin esto su
-     mapeo sería inalcanzable. Desde /presupuesto se llega con ?anio=. */
-  const ANIO = anioForzado ?? periodo(etq).anio;
-  const lineas = lineasMapeo(ANIO, periodo(etq).mes, "acum");
-  return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-muted">Mapeo de cuentas del presupuesto {ANIO}</p>
-        <Link href="?vista=ejec-acum" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><ArrowLeft size={12} /> Volver a la ejecución</Link>
-      </div>
-      <MapeoEditor anio={ANIO} lineas={lineas} />
-    </div>
-  );
-}
-
-/* ---------- Ejecución presupuestal JERÁRQUICA: presupuesto vs. real ---------- */
-function VistaEjecucion({ etq, modo, esAdmin }: { etq: string; modo: "acum" | "mes"; esAdmin: boolean }) {
-  const ANIO = periodo(etq).anio;
-  const mesHasta = periodo(etq).mes;
-  const e = ejecucionArbol(ANIO, mesHasta, modo);
-  if (!e.hay) return <AvisoInfo>El presupuesto de {ANIO} aún no está cargado.</AvisoInfo>;
-  if (!e.hayReal) return <div className="card p-6 text-sm text-muted">Aún no hay datos reales de {ANIO} para comparar.</div>;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-muted">Ejecución {e.periodoLabel} · el real (Estado de Resultados) frente al presupuesto de la Junta · pesos colombianos</p>
+        <p className="text-sm text-muted">La misma hoja del Informe de Junta: el real frente a las tres metas del presupuesto · pesos colombianos</p>
         {esAdmin && (
-          <Link href="?vista=mapeo" className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><SlidersHorizontal size={12} /> Editar mapeo de cuentas</Link>
+          <Link href={`/presupuesto?v=mapeo&anio=${e.anio}`} className="text-xs text-accent2 hover:underline inline-flex items-center gap-1"><SlidersHorizontal size={12} /> Editar mapeo de cuentas</Link>
         )}
       </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <KpiEjec label="Ingresos de operación" fila={e.kpis.ingOp} />
-        <KpiEjec label="Gastos de administración" fila={e.kpis.gastosAdmin} />
-        <KpiEjec label="EBITDA" fila={e.kpis.ebitda} />
-        <KpiEjec label="Utilidad neta" fila={e.kpis.utilNeta} />
-      </div>
-
-      <EjecucionMatrix roots={e.roots} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <div className="card p-5">
-          <h3 className="font-medium">Rubros que más se desvían del plan</h3>
-          <p className="text-xs text-muted mb-3">{e.fueraDeRango} rubro{e.fueraDeRango === 1 ? "" : "s"} fuera de rango (desvío &gt; 15%)</p>
-          {e.top.length === 0 ? <p className="text-sm text-faint">Sin desvíos materiales en el período.</p> : e.top.map((t) => {
-            const bien = t.clase === "gasto" ? t.variacion <= 0 : t.variacion >= 0;
-            return (
-              <div key={t.etiqueta} className="flex items-baseline justify-between gap-3 py-1.5 border-b border-line-soft last:border-0">
-                <span className="text-[13px] truncate">{t.etiqueta}</span>
-                <span className={`text-[13px] font-bold tnum whitespace-nowrap ${bien ? "text-pos" : "text-neg"}`} title={fmtCOP(t.variacion)}>
-                  {t.variacion >= 0 ? "+" : "−"}{fmtCont(Math.abs(t.variacion))} · {t.pctEjec?.toFixed(0)}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        {e.proyeccion && (
-          <div className="card p-5">
-            <h3 className="font-medium">Proyección de cierre del año</h3>
-            <p className="text-xs text-muted mb-3">al ritmo actual (real acumulado anualizado) frente al plan anual</p>
-            {e.proyeccion.map((r) => (
-              <div key={r.label} className="flex items-baseline justify-between gap-3 py-1.5 border-b border-line-soft last:border-0">
-                <span className="text-[13px]">{r.label}</span>
-                <span className="text-[13px] tnum whitespace-nowrap">
-                  <b title={r.proyectado !== null ? fmtCOP(r.proyectado) : undefined}>{r.proyectado === null ? "—" : fmtM(r.proyectado)}</b>
-                  <span className="text-faint"> / plan {fmtM(r.planAnual)}</span>
-                  {r.pct !== null && <span className="text-muted"> · {r.pct.toFixed(0)}%</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <EjecucionInforme
+        titulo="Estado de Resultados · Ejecución presupuestal"
+        periodo={periodoTxt}
+        unidad="El mes y el acumulado frente a las tres metas · pesos colombianos"
+        mesNombre={e.mesNombre}
+        filas={e.resultados}
+      />
+      <EjecucionInforme
+        titulo="Detalle de gastos de administración · Ejecución presupuestal"
+        periodo={periodoTxt}
+        unidad="Los rubros del presupuesto de la Junta · pesos colombianos"
+        mesNombre={e.mesNombre}
+        filas={e.gastos}
+        encabezaCon={e.totalGastos}
+        nota="Una subcuenta sin cuenta contable asociada imprime raya en el real, nunca un cero; «Otros» recoge lo que el rubro tiene y sus subcuentas no desglosan."
+      />
     </div>
   );
 }
 
-/* ---------- helpers de presupuesto / ejecución ---------- */
+/* ---------- helpers ---------- */
 function AvisoInfo({ children }: { children: React.ReactNode }) {
   return <div className="card p-6 flex items-start gap-3 border-accent/25"><Info size={18} className="text-accent2 mt-0.5 shrink-0" /><p className="text-sm text-muted">{children}</p></div>;
-}
-function MiniKpi({ label, valor }: { label: string; valor: number }) {
-  return (
-    <div className="card p-4">
-      <div className="text-xs text-muted leading-snug">{label}</div>
-      <div className="text-lg font-semibold tnum mt-1" title={fmtCOP(valor)}>{fmtM(valor)}</div>
-    </div>
-  );
-}
-function KpiEjec({ label, fila }: { label: string; fila: FilaEjec | null }) {
-  const col = fila?.semaforo === "bueno" ? "text-pos" : fila?.semaforo === "malo" ? "text-neg" : "text-muted";
-  return (
-    <div className="card p-4">
-      <div className="text-xs text-muted leading-snug">{label}</div>
-      <div className="text-lg font-semibold tnum mt-1" title={fila && fila.real !== null ? fmtCOP(fila.real) : undefined}>{fila && fila.real !== null ? fmtM(fila.real) : "—"}</div>
-      <div className="text-[11px] mt-0.5">
-        <span className={col}>{fila?.pctEjec != null ? `${fila.pctEjec.toFixed(0)}% del plan` : "—"}</span>
-        <span className="text-faint"> · plan {fila ? fmtM(fila.ppto) : "—"}</span>
-      </div>
-    </div>
-  );
 }
