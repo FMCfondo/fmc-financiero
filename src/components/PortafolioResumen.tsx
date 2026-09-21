@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { portafolio, Posicion, EstadoVenc } from "@/lib/inversiones";
 import { fmtCompact, fmtPct, fmtCont } from "@/lib/format";
 import { PctBars } from "@/components/Charts";
-import { Wallet, Percent, Droplets, Timer, AlertTriangle } from "lucide-react";
+import { Wallet, Percent, Droplets, AlertTriangle } from "lucide-react";
 
 /** Raya cuando falta la tasa del mes. Una cifra que no se capturó no se inventa. */
 const pctO = (v: number | null) => (v === null ? "—" : fmtPct(v));
@@ -30,20 +30,16 @@ export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnTyp
       )}
 
       {/* 1. KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Tres tarjetas. Hubo cinco: «Plazo promedio (WAM)» y «Próximo vencimiento» se quitaron a
+          pedido del usuario (2026-09-21): con «Disponible hoy» le basta para leer la liquidez, y
+          los vencimientos ya se ven en la tabla de posiciones. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Kpi icon={<Wallet size={16} />} label="Total invertido" value={fmtCompact(d.total)} sub={`${d.posiciones.length} posiciones`} />
         <Kpi icon={<Percent size={16} />} label="Tasa ponderada E.A." value={pctO(d.tasaPonderada)}
           sub={d.tasaPonderada === null ? "falta la tasa del mes en alguna posición"
             : d.benchmark > 0 ? `referencia ${fmtPct(d.benchmark)}` : "referencia sin definir"} />
         <Kpi icon={<Droplets size={16} />} label="Disponible hoy (a la vista)" value={fmtPct(d.pctLiquido)}
           sub={fmtCompact(d.posiciones.filter((x) => x.diasRestantes === null).reduce((s, x) => s + x.monto, 0))} />
-        {/* Cuántos días faltan, en promedio y pesando cada posición por su monto, para poder
-            disponer del dinero: las fiducias y bolsillos (a la vista) cuentan como 1 día y los
-            CDT lo que les falte para vencer. Se llamaba «Plazo promedio (WAM)» y el usuario
-            no lo entendía (2026-09-21); la tarjeta de «Próximo vencimiento» se quitó a su
-            pedido: los vencimientos ya se ven en la tabla de posiciones. */}
-        <Kpi icon={<Timer size={16} />} label="Días para disponer del dinero" value={`${Math.round(d.wamDias)} días`}
-          sub="promedio según el monto · a la vista cuenta como 1 día" />
       </div>
 
       {/* 2. Los dos gráficos protagonistas */}
