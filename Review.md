@@ -120,6 +120,18 @@ mueve una cifra, es un bug** — a menos que la tarea sea explícitamente contab
   sobresalía (solo se podía arrastrar la primera columna). El doble clic se detecta con
   dos `pointerdown` seguidos: al cancelar el `pointerdown`, los eventos de ratón
   derivados no son de fiar.
+- **Una recarga de datos por página, y en paralelo (2026-09-22).** El marco, la sección y
+  la página llaman a `ensureLoaded` A LA VEZ; la ventana de 2 s de `refreshParametros`
+  solo se cerraba al terminar, así que cada una lanzaba su propio refresco (Estados: 11
+  consultas; Informe: 13; carga completa: 16). Ahora hay un refresco en curso compartido
+  (`refrescoEnCurso`) y sus consultas —marca, parámetros, inversiones y tasas,
+  presupuesto— salen a la vez (`Promise.all`), igual que en `loadFromNeon`. Medido con un
+  build de producción local y la misma prueba antes y después: Estados 847 → 331 ms,
+  Informe 1.085 → 530, Portafolio 666 → 346; 6 consultas por página (8 en el informe, que
+  suma notas y textos). **Regla:** ninguna consulta nueva por petición en fila detrás de
+  otra; y cualquier cosa que llamen a la vez varias capas de la página, de una sola vuelta.
+  Aparte: la base (Neon, us-east-1) se suspende sin uso y la primera consulta tras eso
+  tarda ~5 s.
 - **Turbopack puede servir CSS viejo.** Si `globals.css` se edita con el servidor de
   desarrollo parado, al arrancar puede servir la compilación anterior de la caché (las
   reglas nuevas no existen en el navegador aunque estén en el archivo). Y las escrituras
