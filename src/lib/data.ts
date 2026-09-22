@@ -149,17 +149,22 @@ async function loadFromNeon() {
     const imp = facts[etq][CTA_IMPUESTO_RENTA];
     if (imp) facts[etq]["5"] = (facts[etq]["5"] ?? 0) - imp;
   }
+  aplicarParametros(pr as any[]);
+  // Lo demás, A LA VEZ: cada consulta a la base es un viaje de ida y vuelta, y en fila
+  // se suman.
+  const [, , marca] = await Promise.all([cargarInversiones(sql), cargarPresupuesto(sql), leerMarca(sql)]);
+  marcaDatos = marca;
+}
+
+function aplicarParametros(filas: any[]): void {
   parametros = {};
   parametrosJson = {};
-  for (const r of pr as any[]) {
+  for (const r of filas) {
     parametrosJson[String(r.clave)] = r.valor;
     const v = Number(r.valor);
     if (Number.isFinite(v)) parametros[String(r.clave)] = v;
   }
   tasaImpuesto = paramNum("tasa_imporenta", 0.35);
-  await cargarInversiones(sql);
-  await cargarPresupuesto(sql);
-  marcaDatos = await leerMarca(sql);
 }
 
 /* La tabla `ppto` puede no existir aún (migración pendiente): en ese caso el
@@ -182,10 +187,15 @@ async function cargarPresupuesto(sql: any): Promise<void> {
 /* La tabla `inversion` puede no existir aún (migración pendiente): en ese caso
    el portafolio queda vacío y la página lo indica, sin tumbar el resto de la app. */
 async function cargarInversiones(sql: any): Promise<void> {
+  // Las dos consultas salen a la vez; cada una puede fallar sola (tabla sin migrar).
+  const [inv, ts] = await Promise.all([
+    sql`select id, tipo, entidad, cuentas, tasa_ea, fecha_apertura, fecha_vencimiento,
+               calificacion, renovar, observaciones, activa
+          from inversion order by id`.catch(() => null),
+    sql`select inversion_id, anio, mes, tasa_ea from inversion_tasa`.catch(() => null),
+  ]);
   try {
-    const inv = await sql`select id, tipo, entidad, cuentas, tasa_ea, fecha_apertura, fecha_vencimiento,
-                                 calificacion, renovar, observaciones, activa
-                            from inversion order by id`;
+    if (!inv) throw new Error("sin tabla inversion");
     // Las fechas pueden llegar como Date (driver serverless) o como texto ISO
     // (driver pg local). String(Date) da "Wed Nov 21..." y recortarlo pierde el
     // año → JavaScript lo leía como 2001 y salían "vencidos hace 9.000 días".
@@ -205,7 +215,7 @@ async function cargarInversiones(sql: any): Promise<void> {
   // La tabla puede no existir aún (migración pendiente): sin ella no hay tasas y el
   // informe lo dice con una raya, no con un cero.
   try {
-    const ts = await sql`select inversion_id, anio, mes, tasa_ea from inversion_tasa`;
+    if (!ts) throw new Error("sin tabla inversion_tasa");
     tasasPeriodo = new Map((ts as any[]).map((r) =>
       [claveTasa(r.inversion_id, Number(r.anio), Number(r.mes)), Number(r.tasa_ea)]));
   } catch {
@@ -219,30 +229,41 @@ async function cargarInversiones(sql: any): Promise<void> {
    El mismo refresco compara la marca de frescura: si otra instancia ingresó un
    período nuevo, aquí se recarga el dataset completo (saldos + períodos). */
 let ultimaCargaParams = 0;
-async function refreshParametros(): Promise<void> {
-  if (Date.now() - ultimaCargaParams < 2000) return; // colapsa ráfagas de una misma página
+/* El refresco que está en marcha. El marco de la app, la sección y la página llaman a
+   `ensureLoaded` A LA VEZ al pintar una página; antes cada una disparaba su propio
+   refresco (la ventana de 2 s solo se cerraba al TERMINAR el primero) y una página hacía
+   entre 11 y 16 consultas en vez de 6 (medido el 2026-09-22). Ahora las que llegan
+   mientras hay uno en curso esperan ese mismo. */
+let refrescoEnCurso: Promise<void> | null = null;
+
+function refreshParametros(): Promise<void> {
+  if (Date.now() - ultimaCargaParams < 2000) return Promise.resolve(); // colapsa ráfagas de una misma página
+  if (refrescoEnCurso) return refrescoEnCurso;
+  refrescoEnCurso = refrescar().finally(() => { refrescoEnCurso = null; });
+  return refrescoEnCurso;
+}
+
+async function refrescar(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) return;
   const { neon } = await import("@neondatabase/serverless");
   const sql = neon(url);
-  const marca = await leerMarca(sql);
+  /* Todo a la vez: la marca de frescura, los parámetros, las inversiones con sus tasas y
+     el presupuesto. En fila eran cinco viajes a la base uno detrás de otro. */
+  const [marca, pr] = await Promise.all([
+    leerMarca(sql),
+    sql`select clave, valor from parametro`,
+    cargarInversiones(sql),    // editables desde la app → misma frescura
+    cargarPresupuesto(sql),    // el mapeo del presupuesto también se edita en la app
+  ]);
   if (marca !== null && marca !== marcaDatos) {
-    await loadFromNeon(); // también refresca parámetros e inversiones y actualiza la marca
+    // Otra instancia cargó un período nuevo: se recarga el dataset completo.
+    await loadFromNeon();
     buildIndexes();
     ultimaCargaParams = Date.now();
     return;
   }
-  const pr = await sql`select clave, valor from parametro`;
-  parametros = {};
-  parametrosJson = {};
-  for (const r of pr as any[]) {
-    parametrosJson[String(r.clave)] = r.valor;
-    const v = Number(r.valor);
-    if (Number.isFinite(v)) parametros[String(r.clave)] = v;
-  }
-  tasaImpuesto = paramNum("tasa_imporenta", 0.35);
-  await cargarInversiones(sql);   // editables desde la app → misma frescura
-  await cargarPresupuesto(sql);   // el mapeo del presupuesto también se edita en la app
+  aplicarParametros(pr as any[]);
   ultimaCargaParams = Date.now();
 }
 
