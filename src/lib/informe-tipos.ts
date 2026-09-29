@@ -88,6 +88,10 @@ export type PosicionPortafolio = {
   /** Fracción: 0.12 significa 12 % E.A. La del MES del corte para las posiciones a la
    *  vista; null cuando falta capturarla — se imprime raya, nunca un cero. */
   tasaEA: number | null;
+  /** Calificación de riesgo de la posición (BRC, Fitch…), capturada a mano en la
+   *  inversión. Fija por inversión, no por mes: un informe viejo muestra la vigente.
+   *  null ⇒ sin capturar, se imprime raya. */
+  calificacion: string | null;
 };
 
 export type Portafolio = {

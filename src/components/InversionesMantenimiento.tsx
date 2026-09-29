@@ -49,8 +49,9 @@ export default function InversionesMantenimiento({ inversiones, benchPct, ipcPct
         <table className="text-sm border-collapse w-max min-w-full">
           <thead>
             <tr className="text-[11px] uppercase tracking-wider text-muted">
-              {["", "ID", "Tipo", "Entidad", "Tasa E.A.", "Apertura", "Vencimiento", "Cuentas PUC", "Activa"].map((h, i) => (
-                <th key={i} className={`px-3 py-2.5 border-b border-line font-normal ${i >= 4 && i <= 6 ? "text-right" : "text-left"}`}>{h}</th>
+              {["", "ID", "Tipo", "Entidad", "Tasa E.A.", "Calificación", "Apertura", "Vencimiento", "Cuentas PUC", "Activa"].map((h, i) => (
+                <th key={i} className={`px-3 py-2.5 border-b border-line font-normal ${
+                  ["Tasa E.A.", "Apertura", "Vencimiento"].includes(h) ? "text-right" : h === "Calificación" ? "text-center" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -65,6 +66,10 @@ export default function InversionesMantenimiento({ inversiones, benchPct, ipcPct
                 <td className="px-3 py-2 border-b border-line-soft font-medium">{inv.entidad}</td>
                 <td className="px-3 py-2 border-b border-line-soft text-right tnum">
                   {inv.fechaVencimiento ? `${(inv.tasaEa * 100).toFixed(2)}%` : <span className="text-muted text-xs">por mes ↑</span>}
+                </td>
+                {/* Sin calificación, el informe de Junta imprime raya: aquí se marca para llenarla. */}
+                <td className="px-3 py-2 border-b border-line-soft text-center whitespace-nowrap">
+                  {inv.calificacion ?? <span className="text-neg text-xs">falta</span>}
                 </td>
                 <td className="px-3 py-2 border-b border-line-soft text-right tnum">{inv.fechaApertura ?? "—"}</td>
                 <td className="px-3 py-2 border-b border-line-soft text-right tnum">{inv.fechaVencimiento ?? "a la vista"}</td>
@@ -127,7 +132,7 @@ function Editor({ inv, onClose }: { inv: InvEdit; onClose: () => void }) {
             : <div className="text-xs text-muted self-end pb-2">A la vista: la tasa se captura cada mes en «Tasas del mes».</div>}
           <Campo label="Fecha apertura" v={f.fechaApertura} on={(v) => set("fechaApertura", v)} date />
           <Campo label="Vencimiento (vacío = a la vista)" v={f.fechaVencimiento} on={(v) => set("fechaVencimiento", v)} date />
-          <Campo label="Calificación (BRC/Fitch)" v={f.calificacion} on={(v) => set("calificacion", v)} />
+          <Campo label="Calificación (BRC/Fitch)" v={f.calificacion} on={(v) => set("calificacion", v)} ph="p. ej. AAA (BRC) o F1+ (Fitch)" />
           <Campo label="¿Renovar?" v={f.renovar} on={(v) => set("renovar", v)} />
           <label className="flex items-end gap-2 text-sm text-muted pb-2 cursor-pointer">
             <input type="checkbox" checked={f.activa} onChange={(e) => set("activa", e.target.checked)} className="accent-[#13286E]" />
@@ -248,14 +253,14 @@ function Referencias({ benchPct, ipcPct }: { benchPct: number; ipcPct: number })
   );
 }
 
-function Campo({ label, v, on, num, date, disabled, w }: {
-  label: string; v: string; on: (v: string) => void; num?: boolean; date?: boolean; disabled?: boolean; w?: string;
+function Campo({ label, v, on, num, date, disabled, w, ph }: {
+  label: string; v: string; on: (v: string) => void; num?: boolean; date?: boolean; disabled?: boolean; w?: string; ph?: string;
 }) {
   return (
     <div className={w}>
       <label className="text-xs text-muted block mb-1">{label}</label>
       <input
-        type={date ? "date" : num ? "number" : "text"} value={v} disabled={disabled}
+        type={date ? "date" : num ? "number" : "text"} value={v} disabled={disabled} placeholder={ph}
         onChange={(e) => on(e.target.value)}
         className={`w-full bg-card2 border border-line rounded-lg px-3 py-2 text-sm outline-none focus:border-accent ${num ? "tnum text-right" : ""} ${disabled ? "opacity-50" : ""}`}
       />

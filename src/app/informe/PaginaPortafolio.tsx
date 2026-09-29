@@ -1,5 +1,7 @@
 /* Página 7: el portafolio de inversiones activas.
  * Cuatro cifras · composición por tipo · detalle por posición · concentración por entidad.
+ * El detalle lleva la calificación de riesgo junto a la tasa (pedido de la Junta,
+ * 2026-09-29); se captura a mano en la inversión y sin dato se imprime raya.
  *
  * La barra de concentración se escala contra la MAYOR, no contra el total: así las
  * entidades se comparan entre sí, que es la pregunta que responde esa sección.
@@ -90,7 +92,7 @@ export default function PaginaPortafolio({
             <thead>
               <tr className="cols">
                 <th className="l">ID</th><th className="l">Tipo</th><th className="l">Entidad</th>
-                <th>Monto</th><th>Plazo</th><th>Tasa</th>
+                <th>Monto</th><th>Plazo</th><th>Tasa</th><th>Calificación</th>
               </tr>
             </thead>
             <tbody>
@@ -102,6 +104,7 @@ export default function PaginaPortafolio({
                   <td>{fmtCont(x.monto)}</td>
                   <td>{x.diasPlazo === null ? "a la vista" : `${x.diasPlazo} d`}</td>
                   <td>{pct2(x.tasaEA)}</td>
+                  <td>{x.calificacion ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

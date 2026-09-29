@@ -148,6 +148,7 @@ function seccionPortafolio(etq: string): Portafolio {
       monto: x.monto,
       diasPlazo: x.diasPlazo,
       tasaEA: x.tasaEa,
+      calificacion: x.calificacion,
     })).sort((a, b) => (a.tipo === b.tipo ? a.id.localeCompare(b.id) : a.tipo === "CDT" ? -1 : 1)),
     concentracion: [...porEntidad.entries()]
       .map(([entidad, monto]) => ({ entidad, monto, pct: total ? monto / total : 0 }))
