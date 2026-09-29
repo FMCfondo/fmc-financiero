@@ -421,6 +421,16 @@ Antes de dar por terminado un módulo:
   resto de avisos. Solo agosto de 2026 quedó sembrado —con las tasas que el usuario
   corrigió ese cierre—; **los meses anteriores no tienen tasa y lo dicen**. Si hace
   falta un informe viejo con tasas, se capturan para ese mes desde el mismo panel.
+- **Calificación de riesgo por posición — HECHO (2026-09-29, pedido de la Junta).** La
+  columna «Calificación» va junto a la tasa en el detalle por inversión del Informe de
+  Junta (hoja 7), en la tabla de posiciones de Portafolio / Estados › Inversiones (sale la
+  etiqueta que iba junto a la entidad) y en la lista de Mantenimiento (marca «falta» en
+  rojo). Usa el campo `inversion.calificacion` que ya existía, **fijo por inversión**
+  (decisión del usuario): un informe viejo muestra la calificación vigente, no la de su
+  mes. Se llena a mano en el editor de la inversión; sin dato se imprime raya. Va por
+  posición, no por entidad: la de un fondo de inversión es del fondo, no de la fiduciaria.
+  En la tabla de posiciones la alineación de columnas pasó a ser por nombre
+  (`ALINEACION`), para que insertar una columna no corra las demás.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist

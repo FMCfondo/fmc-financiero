@@ -7,6 +7,15 @@ import { Wallet, Percent, Droplets, AlertTriangle } from "lucide-react";
 /** Raya cuando falta la tasa del mes. Una cifra que no se capturó no se inventa. */
 const pctO = (v: number | null) => (v === null ? "—" : fmtPct(v));
 
+/** Alineación de cada columna de la tabla de posiciones, por nombre: las cifras a la
+ *  derecha y la calificación centrada. Por nombre y no por posición, para que agregar
+ *  una columna no corra la alineación de las demás. */
+const ALINEACION: Record<string, string> = {
+  "Monto": "text-right", "% Port.": "text-right", "Tasa E.A.": "text-right",
+  "Calificación": "text-center", "Interés est./mes": "text-right", "Apertura": "text-right",
+  "Vencimiento": "text-right", "Días rest.": "text-right",
+};
+
 /* Resumen del Portafolio de Inversiones — compartido entre /portafolio y la
    pestaña Inversiones del módulo financiero (misma fuente, cero duplicación).
    Orden (revisión del analista): KPIs → Concentración + Tasa vs. referencia →
@@ -76,8 +85,8 @@ export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnTyp
         <table className="text-sm border-collapse w-max min-w-full">
           <thead>
             <tr className="text-[11px] uppercase tracking-wider text-muted">
-              {["Estado", "Entidad", "Tipo", "Monto", "% Port.", "Tasa E.A.", "Interés est./mes", "Apertura", "Vencimiento", "Días rest.", "Observaciones"].map((h, i) => (
-                <th key={h} className={`px-3 py-2.5 border-b border-line font-normal whitespace-nowrap ${i >= 3 && i <= 9 ? "text-right" : "text-left"}`}>{h}</th>
+              {["Estado", "Entidad", "Tipo", "Monto", "% Port.", "Tasa E.A.", "Calificación", "Interés est./mes", "Apertura", "Vencimiento", "Días rest.", "Observaciones"].map((h) => (
+                <th key={h} className={`px-3 py-2.5 border-b border-line font-normal whitespace-nowrap ${ALINEACION[h] ?? "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -85,13 +94,12 @@ export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnTyp
             {d.posiciones.map((x) => (
               <tr key={x.id} className="hover:bg-card2/60">
                 <td className="px-3 py-2.5 border-b border-line-soft"><Badge estado={x.estadoVenc} /></td>
-                <td className="px-3 py-2.5 border-b border-line-soft font-medium whitespace-nowrap">{x.entidad}
-                  {x.calificacion && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted border border-line rounded px-1 py-0.5">{x.calificacion}</span>}
-                </td>
+                <td className="px-3 py-2.5 border-b border-line-soft font-medium whitespace-nowrap">{x.entidad}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft">{x.tipo}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum tabular-nums">{fmtCont(x.monto)}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{fmtPct(x.pct)}</td>
                 <td className={`px-3 py-2.5 border-b border-line-soft text-right tnum font-medium ${x.tasaEa === null ? "text-neg" : ""}`}>{pctO(x.tasaEa)}</td>
+                <td className="px-3 py-2.5 border-b border-line-soft text-center whitespace-nowrap">{x.calificacion ?? <span className="text-muted">—</span>}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.interesMes === null ? "—" : fmtCont(x.interesMes)}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.fechaApertura ?? "—"}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.fechaVencimiento ?? "a la vista"}</td>
