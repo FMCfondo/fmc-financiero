@@ -76,9 +76,9 @@ export default function PaginaPortafolio({
       <h2 className="sec-t">Composición por tipo de activo</h2>
       <div className="compo">
         {porTipo.map((t, i) => (
-          <span key={t.tipo} className="seg"
+          <span key={t.tipo} className="tramo"
             style={{ width: `${(t.pct * 100).toFixed(1)}%`, background: i === 0 ? "var(--royal)" : "#8fb3e0" }}>
-            <span className={`seg-lbl${i === 0 ? "" : " osc"}`}>
+            <span className={`tramo-lbl${i === 0 ? "" : " osc"}`}>
               {t.tipo} · {mill(t.monto)} · {pct1(t.pct)}
             </span>
           </span>
