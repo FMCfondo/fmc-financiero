@@ -139,8 +139,9 @@ function seccionPortafolio(etq: string): Portafolio {
 
   return {
     total,
-    /* Orden del informe: primero los CDT y luego las fiducias, y dentro de cada tipo
-       por identificador. No por monto: la página se lee por clase de activo. */
+    /* En el orden que fijó el administrador en Mantenimiento (llega así del motor).
+       Sin orden guardado: primero los CDT y luego lo que está a la vista, cada grupo
+       por identificador. */
     posiciones: activas.map((x) => ({
       id: x.id,
       tipo: x.cuentas.includes(CTA_BOLD) || /fiducia/i.test(x.tipo) ? "FIDUCIA" : "CDT",
@@ -149,7 +150,7 @@ function seccionPortafolio(etq: string): Portafolio {
       diasPlazo: x.diasPlazo,
       tasaEA: x.tasaEa,
       calificacion: x.calificacion,
-    })).sort((a, b) => (a.tipo === b.tipo ? a.id.localeCompare(b.id) : a.tipo === "CDT" ? -1 : 1)),
+    })),
     concentracion: [...porEntidad.entries()]
       .map(([entidad, monto]) => ({ entidad, monto, pct: total ? monto / total : 0 }))
       .sort((a, b) => b.monto - a.monto),
@@ -160,7 +161,11 @@ function seccionPortafolio(etq: string): Portafolio {
     tasasFaltantes: p.tasasFaltantes,
     pctActivo: activo ? total / activo : 0,
     // Barrera: el total del portafolio tiene que ser el de Inversiones líquidas.
-    concilia: Math.abs(total - (D.fact(etq, "12") + D.fact(etq, CTA_BOLD))) <= 1,
+    concilia: p.descuadre === null,
+    descuadre: p.descuadre,
+    vencidos: p.posiciones
+      .filter((x) => x.estadoVenc === "vencido" && x.fechaVencimiento)
+      .map((x) => ({ id: x.id, entidad: x.entidad, fecha: x.fechaVencimiento as string, dias: x.diasRestantes as number })),
   };
 }
 

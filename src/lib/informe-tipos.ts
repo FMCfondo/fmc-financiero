@@ -110,6 +110,12 @@ export type Portafolio = {
   /** Debe ser true: el total tiene que cuadrar con Inversiones líquidas del
    *  balance. Si es false, el informe no debe exportarse. */
   concilia: boolean;
+  /** Cuando no cuadra: las dos cifras y qué cuenta las separa, en frases. Es para la
+   *  barra del administrador; la hoja impresa solo dice «NO cuadra». */
+  descuadre: { balance: number; portafolio: number; diferencia: number; causas: string[] } | null;
+  /** CDT que ya pasaron su fecha de vencimiento (contra HOY, no contra el corte):
+   *  casi siempre una renovación que no se actualizó. Recado para el administrador. */
+  vencidos: { id: string; entidad: string; fecha: string; dias: number }[];
 };
 
 /** Los bloques del informe que pueden llevar texto al pie. Los cuatro primeros

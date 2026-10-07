@@ -25,10 +25,23 @@ const v = (etq: string, cod: string, modo: Modo) =>
 
 /* ---------------------------------------------------------------- cuentas --- */
 
-/** Bolsillo digital Bold. Está contabilizado en efectivo (11) pero el informe lo
- *  presenta dentro de las inversiones y rotulado como FIDUCIA. Lleva fila propia
- *  en el detalle: lo que se pliega es el TIPO, no la posición. */
+/** Bolsillo digital Bold. Está contabilizado en efectivo (11). HASTA AGOSTO DE 2026 el
+ *  informe lo presentó dentro de las inversiones, rotulado como FIDUCIA y con fila
+ *  propia en el detalle (lo que se pliega es el TIPO, no la posición). */
 export const CTA_BOLD = "1110050104";
+
+/* DESDE SEPTIEMBRE DE 2026 BOLD ES EFECTIVO. Decisión del usuario (2026-10-07): ya no
+   es una inversión sino una cuenta de ahorros sin rentabilidad (desde junio quedó con
+   un saldo fijo). Se aplica desde septiembre, el primer informe tras la decisión, para
+   que los de enero a agosto, ya presentados, sigan diciendo exactamente lo mismo. Hasta
+   agosto Bold cuenta como inversión aunque su posición esté marcada como inactiva; desde
+   septiembre, nunca. */
+const BOLD_INVERSION_HASTA = { anio: 2026, mes: 8 };
+export function boldEsInversion(etq: string): boolean {
+  const p = D.periodo(etq);
+  return p.anio * 100 + p.mes <= BOLD_INVERSION_HASTA.anio * 100 + BOLD_INVERSION_HASTA.mes;
+}
+const boldEnInversiones = (etq: string) => (boldEsInversion(etq) ? D.fact(etq, CTA_BOLD) : 0);
 
 /** Intereses de cuentas de ahorro (4210) y diversos (4295). NO son ingreso de
  *  operación, pero SÍ entran al EBITDA: bajan como «otros ingresos» antes de él.
@@ -64,11 +77,11 @@ export const otrosGastos = (etq: string, modo: Modo) =>
 
 /* --------------------------------------------------------------- balance --- */
 
-/** Efectivo, sin Bold (que el informe presenta entre las inversiones). */
-export const disponible = (etq: string) => D.fact(etq, "11") - D.fact(etq, CTA_BOLD);
+/** Efectivo. Hasta agosto de 2026 sin Bold, que iba entre las inversiones. */
+export const disponible = (etq: string) => D.fact(etq, "11") - boldEnInversiones(etq);
 
-/** Inversiones líquidas, con Bold incluido. */
-export const inversionesLiquidas = (etq: string) => D.fact(etq, "12") + D.fact(etq, CTA_BOLD);
+/** Inversiones líquidas: el grupo 12, más Bold hasta agosto de 2026. */
+export const inversionesLiquidas = (etq: string) => D.fact(etq, "12") + boldEnInversiones(etq);
 
 /** Clientes = ingresos por cobrar + cuentas por cobrar en contratos.
  *  OJO 138005, no 1380: el informe separa 138095 en «Otras cuentas por cobrar»,

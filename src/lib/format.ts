@@ -78,3 +78,17 @@ export const mesNombre = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 export const mesCorto = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+/** "2026-06-07" → "7 jun 2026". Para fechas de vencimiento leídas en una frase. */
+export function fmtFecha(iso: string): string {
+  const [a, m, d] = iso.split("-").map(Number);
+  return `${d} ${mesCorto[m]?.toLowerCase() ?? m} ${a}`;
+}
+
+/** Los días que faltan para un vencimiento, en palabras: «vence en 5 días»,
+ *  «vence hoy», «venció hace 92 días». */
+export function textoVenc(dias: number): string {
+  if (dias === 0) return "vence hoy";
+  const n = Math.abs(dias), u = n === 1 ? "día" : "días";
+  return dias > 0 ? `vence en ${n} ${u}` : `venció hace ${n} ${u}`;
+}
