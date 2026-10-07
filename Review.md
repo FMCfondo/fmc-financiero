@@ -446,6 +446,12 @@ Antes de dar por terminado un módulo:
   con el mismo plazo; la tasa se pone a mano). «Hoy» se mide en hora de Colombia.
   **Límite conocido:** la tasa de un CDT es una sola; al renovarlo con otra tasa, los
   informes de meses anteriores mostrarán la nueva.
+- **Bold es efectivo desde septiembre de 2026 — HECHO (2026-10-07, decisión del usuario).**
+  Ya no es inversión: es una cuenta de ahorros sin rentabilidad (saldo fijo desde junio).
+  `boldEsInversion(etq)` en informe-cuentas.ts: hasta AGO2026 va en Inversiones líquidas
+  y en el portafolio (aunque INV-008 esté inactiva); desde SEP2026, en Disponible y fuera
+  del portafolio. Comparado contra main: los informes de enero a agosto no cambian una
+  cifra; en septiembre solo se mueven las dos líneas del balance, y el informe cuadra.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
