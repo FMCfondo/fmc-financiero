@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { portafolio } from "@/lib/inversiones";
-import { ensureLoaded, inversiones, paramNum, resolverEtq, periodo, esALaVista, tasaDe } from "@/lib/data";
+import { portafolio, diasAlVencimiento } from "@/lib/inversiones";
+import { ensureLoaded, inversiones, paramNum, resolverEtq, periodo, esALaVista, tasaDe, enOrden } from "@/lib/data";
 import { etqNombre } from "@/lib/periodos";
 import { accesoA, soloAdmin } from "@/lib/permisos";
 import PortafolioResumen from "@/components/PortafolioResumen";
@@ -50,7 +50,7 @@ export default async function PortafolioPage({ searchParams }: { searchParams: P
         <div className="card p-6 text-sm text-muted">No hay inversiones registradas para este período.</div>
       ) : v === "mantenimiento" ? (
         <InversionesMantenimiento
-          inversiones={inversiones}
+          inversiones={enOrden(inversiones).map((i) => ({ ...i, diasRestantes: diasAlVencimiento(i) }))}
           benchPct={+(paramNum("bench_cdt180", 0) * 100).toFixed(2)}
           ipcPct={+(paramNum("ipc_12m", 0) * 100).toFixed(2)}
           periodo={{ anio: per.anio, mes: per.mes, nombre: etqNombre(etq) }}

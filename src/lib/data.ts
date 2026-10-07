@@ -56,6 +56,26 @@ export function tasaDe(inv: Inversion, anio: number, mes: number): number | null
   return tasasPeriodo.get(claveTasa(inv.id, anio, mes)) ?? null;
 }
 
+/* EL ORDEN DE LAS INVERSIONES lo fija el administrador en Mantenimiento (pedido del
+   usuario, 2026-10-07) y lo siguen el informe de Junta, Portafolio y Mantenimiento.
+   Vive en `parametro` como lista de IDs. Las que no estén en la lista (una recién
+   creada) van al final con el orden de siempre: primero los CDT y después lo que está
+   a la vista, cada grupo por ID. */
+export const CLAVE_ORDEN_INVERSIONES = "orden_inversiones";
+export function ordenInversiones(): string[] {
+  const v = paramJson(CLAVE_ORDEN_INVERSIONES);
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+export function enOrden<T extends { id: string; fechaVencimiento: string | null }>(xs: T[]): T[] {
+  const pos = new Map(ordenInversiones().map((id, i) => [id, i]));
+  const grupo = (x: T) => (x.fechaVencimiento === null ? 1 : 0);
+  return [...xs].sort((a, b) => {
+    const pa = pos.get(a.id) ?? Infinity, pb = pos.get(b.id) ?? Infinity;
+    if (pa !== pb) return pa - pb;
+    return grupo(a) - grupo(b) || a.id.localeCompare(b.id);
+  });
+}
+
 /* Presupuesto (tabla `ppto`): el Estado de Resultados presupuestado, cargado TAL
    CUAL de la hoja PPTO del Excel. `cuentas`/`formula` mapean cada línea al real
    para la ejecución presupuestal. `meses` = 12 valores ENE..DIC. */

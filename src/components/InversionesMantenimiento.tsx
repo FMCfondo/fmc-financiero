@@ -1,8 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { guardarInversion, guardarReferencias, guardarTasasPeriodo } from "@/app/portafolio/actions";
-import { Save, CheckCircle2, AlertTriangle, Plus, Pencil } from "lucide-react";
+import { guardarInversion, guardarOrdenInversiones, guardarReferencias, guardarTasasPeriodo } from "@/app/portafolio/actions";
+import { fmtFecha, textoVenc } from "@/lib/format";
+import { Save, CheckCircle2, AlertTriangle, Plus, Pencil, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 
 /* Mantenimiento del portafolio: edita lo MANUAL de cada posición (fechas,
    calificación, observaciones y el mapeo a auxiliares del PUC).
@@ -12,7 +13,10 @@ import { Save, CheckCircle2, AlertTriangle, Plus, Pencil } from "lucide-react";
    · los CDT pactan una tasa fija por todo el plazo → un campo en la inversión;
    · las fiducias y los bolsillos rinden distinto cada mes → se capturan por mes en
      «Tasas del mes», para el período que esté seleccionado arriba. Así el informe
-     de agosto sigue diciendo lo de agosto aunque en octubre se capturen otras. */
+     de agosto sigue diciendo lo de agosto aunque en octubre se capturen otras.
+
+   EL ORDEN de esta lista es el que siguen el informe de Junta y Portafolio: se cambia
+   con las flechas y se guarda con un botón (pedido del usuario, 2026-10-07). */
 
 export type TasaMes = {
   id: string; entidad: string; tipo: string;
@@ -27,7 +31,14 @@ export type InvEdit = {
   tasaEa: number; fechaApertura: string | null; fechaVencimiento: string | null;
   calificacion: string | null; renovar: string | null; observaciones: string | null;
   activa: boolean;
+  /** Días de hoy al vencimiento (negativo = vencido), calculados en el servidor para
+   *  que la pantalla y el informe digan lo mismo. null = a la vista. */
+  diasRestantes?: number | null;
 };
+
+/** Desde cuántos días antes del vencimiento se avisa. Es la misma ventana que el
+ *  semáforo «por vencer» del motor (inversiones.ts). */
+const VENTANA_AVISO = 30;
 
 const VACIA: InvEdit = {
   id: "", tipo: "CDT", entidad: "", cuentas: [], tasaEa: 0,
@@ -40,24 +51,74 @@ export default function InversionesMantenimiento({ inversiones, benchPct, ipcPct
   tasasMes: TasaMes[];
 }) {
   const [sel, setSel] = useState<InvEdit | null>(null);
+  const router = useRouter();
+  const [guardandoOrden, startOrden] = useTransition();
+  const [errorOrden, setErrorOrden] = useState<string | null>(null);
+
+  // El orden se mueve en pantalla y solo se guarda al pulsar el botón. Si el servidor
+  // manda otra lista (tras guardar, o una inversión nueva), se parte de ella.
+  const original = inversiones.map((i) => i.id);
+  const claveOriginal = original.join(",");
+  const [orden, setOrden] = useState(original);
+  const [base, setBase] = useState(claveOriginal);
+  if (base !== claveOriginal) { setBase(claveOriginal); setOrden(original); }
+  const cambiado = orden.join(",") !== claveOriginal;
+  const porId = new Map(inversiones.map((i) => [i.id, i]));
+  const filas = orden.map((id) => porId.get(id)).filter((x): x is InvEdit => !!x);
+  const mover = (i: number, paso: -1 | 1) => setOrden((o) => {
+    const j = i + paso;
+    if (j < 0 || j >= o.length) return o;
+    const n = [...o]; [n[i], n[j]] = [n[j], n[i]]; return n;
+  });
+  const guardarOrden = () => startOrden(async () => {
+    setErrorOrden(null);
+    const r = await guardarOrdenInversiones(orden);
+    if (!r.ok) { setErrorOrden(r.error ?? "No se pudo guardar el orden."); return; }
+    router.refresh();
+  });
+
   return (
     <div className="space-y-4">
       <TasasDelMes periodo={periodo} tasas={tasasMes} />
       <Referencias benchPct={benchPct} ipcPct={ipcPct} />
 
       <div className="card overflow-auto">
+        <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-line ${cambiado ? "bg-gold/10" : ""}`}>
+          <p className="text-xs text-muted">
+            {cambiado
+              ? <b className="font-semibold text-fg">Cambiaste el orden: guárdalo para que lo sigan el informe de Junta y Portafolio.</b>
+              : <>Con las flechas ordenas las inversiones: este es el orden del informe de Junta y de Portafolio.</>}
+            {errorOrden && <span className="ml-2 text-neg">{errorOrden}</span>}
+          </p>
+          {cambiado && (
+            <div className="flex gap-2">
+              <button onClick={() => setOrden(original)} disabled={guardandoOrden}
+                className="px-3 py-1.5 rounded-lg border border-line text-xs text-muted hover:text-fg">Deshacer</button>
+              <button onClick={guardarOrden} disabled={guardandoOrden}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg brand-grad text-white text-xs font-medium disabled:opacity-60">
+                <Save size={13} /> {guardandoOrden ? "Guardando…" : "Guardar orden"}
+              </button>
+            </div>
+          )}
+        </div>
         <table className="text-sm border-collapse w-max min-w-full">
           <thead>
             <tr className="text-[11px] uppercase tracking-wider text-muted">
-              {["", "ID", "Tipo", "Entidad", "Tasa E.A.", "Calificación", "Apertura", "Vencimiento", "Cuentas PUC", "Activa"].map((h, i) => (
+              {["Orden", "", "ID", "Tipo", "Entidad", "Tasa E.A.", "Calificación", "Apertura", "Vencimiento", "Cuentas PUC", "Activa"].map((h, i) => (
                 <th key={i} className={`px-3 py-2.5 border-b border-line font-normal ${
                   ["Tasa E.A.", "Apertura", "Vencimiento"].includes(h) ? "text-right" : h === "Calificación" ? "text-center" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {inversiones.map((inv) => (
-              <tr key={inv.id} className={`hover:bg-card2/60 ${!inv.activa ? "opacity-45" : ""}`}>
+            {filas.map((inv, i) => (
+              <tr key={inv.id} className={`hover:bg-card2/60 ${!inv.activa ? "opacity-45" : ""} ${tinteVenc(inv)}`}>
+                <td className="px-2 py-1 border-b border-line-soft whitespace-nowrap">
+                  <button onClick={() => mover(i, -1)} disabled={i === 0} title="Subir" aria-label={`Subir ${inv.id}`}
+                    className="p-1 rounded text-muted hover:text-fg hover:bg-card2 disabled:opacity-25 disabled:hover:bg-transparent"><ChevronUp size={14} /></button>
+                  <button onClick={() => mover(i, 1)} disabled={i === filas.length - 1} title="Bajar" aria-label={`Bajar ${inv.id}`}
+                    className="p-1 rounded text-muted hover:text-fg hover:bg-card2 disabled:opacity-25 disabled:hover:bg-transparent"><ChevronDown size={14} /></button>
+                </td>
                 <td className="px-3 py-2 border-b border-line-soft">
                   <button onClick={() => setSel(inv)} className="text-accent2 hover:text-fg" title="Editar"><Pencil size={14} /></button>
                 </td>
@@ -72,7 +133,10 @@ export default function InversionesMantenimiento({ inversiones, benchPct, ipcPct
                   {inv.calificacion ?? <span className="text-neg text-xs">falta</span>}
                 </td>
                 <td className="px-3 py-2 border-b border-line-soft text-right tnum">{inv.fechaApertura ?? "—"}</td>
-                <td className="px-3 py-2 border-b border-line-soft text-right tnum">{inv.fechaVencimiento ?? "a la vista"}</td>
+                <td className="px-3 py-2 border-b border-line-soft text-right tnum whitespace-nowrap">
+                  {inv.fechaVencimiento ?? "a la vista"}
+                  <AvisoVenc inv={inv} />
+                </td>
                 <td className="px-3 py-2 border-b border-line-soft tnum text-xs text-muted">{inv.cuentas.join(", ")}</td>
                 <td className="px-3 py-2 border-b border-line-soft">{inv.activa ? "Sí" : "No"}</td>
               </tr>
@@ -104,6 +168,17 @@ function Editor({ inv, onClose }: { inv: InvEdit; onClose: () => void }) {
     activa: inv.activa,
   });
   const set = (k: string, v: unknown) => setF((x) => ({ ...x, [k]: v }));
+  const [renovado, setRenovado] = useState(false);
+
+  /* RENOVAR: un CDT que se renueva arranca donde terminó el anterior. Se corren las
+     fechas con el mismo plazo y queda a la vista la tasa, que casi siempre cambia en la
+     renovación. Nada se guarda hasta pulsar «Guardar». */
+  const plazo = f.fechaApertura && f.fechaVencimiento ? diasEntre(f.fechaApertura, f.fechaVencimiento) : null;
+  const renovar = () => {
+    if (!plazo || plazo <= 0) return;
+    setF((x) => ({ ...x, fechaApertura: x.fechaVencimiento, fechaVencimiento: sumarDias(x.fechaVencimiento, plazo) }));
+    setRenovado(true);
+  };
 
   const guardar = () =>
     start(async () => {
@@ -116,7 +191,28 @@ function Editor({ inv, onClose }: { inv: InvEdit; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[90] bg-black/30 grid place-items-center p-4" onClick={onClose}>
       <div className="card p-5 w-full max-w-2xl space-y-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-semibold">{inv.id ? `Editar ${inv.id}` : "Nueva inversión"}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold">{inv.id ? `Editar ${inv.id}` : "Nueva inversión"}</h2>
+          {inv.id && plazo !== null && plazo > 0 && (
+            <button onClick={renovar} title="Corre las fechas con el mismo plazo, desde el vencimiento actual"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-xs font-medium text-fg hover:bg-card2">
+              <RefreshCw size={13} /> Renovar ({plazo} días)
+            </button>
+          )}
+        </div>
+        {inv.diasRestantes != null && inv.diasRestantes < 0 && !renovado && (
+          <p className="flex items-start gap-2 rounded-lg bg-neg/10 px-3 py-2 text-xs text-neg">
+            <AlertTriangle size={14} className="mt-px shrink-0" />
+            <span>Este CDT {textoVenc(inv.diasRestantes)} (el {fmtFecha(inv.fechaVencimiento as string)}). Si se renovó, pulsa
+              «Renovar», revisa la tasa y guarda. Si ya se cobró, desmarca «Activa».</span>
+          </p>
+        )}
+        {renovado && (
+          <p className="rounded-lg bg-gold/15 px-3 py-2 text-xs text-fg">
+            Fechas corridas: del {fmtFecha(f.fechaApertura)} al {fmtFecha(f.fechaVencimiento)}. <b className="font-semibold">Pon la tasa
+            pactada en la renovación</b> y guarda.
+          </p>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <Campo label="ID (INV-001)" v={f.id} on={(v) => set("id", v)} disabled={!!inv.id} />
           <div>
@@ -265,5 +361,25 @@ function Campo({ label, v, on, num, date, disabled, w, ph }: {
         className={`w-full bg-card2 border border-line rounded-lg px-3 py-2 text-sm outline-none focus:border-accent ${num ? "tnum text-right" : ""} ${disabled ? "opacity-50" : ""}`}
       />
     </div>
+  );
+}
+
+/* ---------- vencimientos ---------- */
+const DIA = 86_400_000;
+const diasEntre = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / DIA);
+const sumarDias = (iso: string, n: number) => new Date(Date.parse(iso) + n * DIA).toISOString().slice(0, 10);
+
+function tinteVenc(inv: InvEdit): string {
+  const d = inv.diasRestantes;
+  if (!inv.activa || d == null) return "";
+  return d < 0 ? "bg-neg/[0.06]" : d <= VENTANA_AVISO ? "bg-gold/[0.08]" : "";
+}
+
+/** Bajo la fecha: «venció hace 92 días» en rojo o «vence en 12 días» en ámbar. */
+function AvisoVenc({ inv }: { inv: InvEdit }) {
+  const d = inv.diasRestantes;
+  if (!inv.activa || d == null || d > VENTANA_AVISO) return null;
+  return (
+    <span className={`block text-[11px] font-semibold ${d < 0 ? "text-neg" : "text-[#8A6A1D]"}`}>{textoVenc(d)}</span>
   );
 }

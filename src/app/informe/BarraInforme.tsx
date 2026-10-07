@@ -21,6 +21,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, ChevronLeft, ChevronRight } from "lucide-react";
 import { usePantallaCompleta } from "@/components/PantallaCompleta";
+import { fmtCont, fmtFecha, textoVenc } from "@/lib/format";
+import type { Portafolio } from "@/lib/informe-tipos";
 
 /** Ancho de una hoja carta apaisada, en px de CSS. */
 const ANCHO_HOJA = 1056;
@@ -59,6 +61,10 @@ type Props = {
   pendientes: string[];
   /** El portafolio cuadra contra las inversiones líquidas del balance. */
   portafolioConcilia: boolean;
+  /** Si no cuadra, qué lo separa del balance, cuenta por cuenta. */
+  descuadre: Portafolio["descuadre"];
+  /** CDT que pasaron su vencimiento sin que nadie actualizara sus fechas. */
+  vencidos: Portafolio["vencidos"];
   /** Posiciones a la vista sin la tasa de ESTE mes: la página 9 las imprime con raya. */
   tasasFaltantes: string[];
   /** Los avisos (explicaciones que faltan, tasas, hojas cortadas) son recados para
@@ -66,7 +72,7 @@ type Props = {
   mostrarAvisos: boolean;
 };
 
-export default function BarraInforme({ periodo, pendientes, portafolioConcilia, tasasFaltantes, mostrarAvisos }: Props) {
+export default function BarraInforme({ periodo, pendientes, portafolioConcilia, descuadre, vencidos, tasasFaltantes, mostrarAvisos }: Props) {
   const [cortadas, setCortadas] = useState<number[]>([]);
 
   /* El informe se dibuja a tamano de papel, que en pantalla se lee pequeno. El
@@ -219,7 +225,7 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
 
   const bloqueos = [
     ...pendientes.map((p) => `falta la explicación de ${p}`),
-    ...(portafolioConcilia ? [] : ["el portafolio no cuadra contra el balance"]),
+    ...(portafolioConcilia ? [] : ["el portafolio no cuadra contra el balance (el detalle, abajo)"]),
     ...(tasasFaltantes.length
       ? [`falta la tasa de ${periodo.toLowerCase()} de ${tasasFaltantes.join(", ")} (Portafolio › Mantenimiento › Tasas del mes)`]
       : []),
@@ -304,6 +310,36 @@ export default function BarraInforme({ periodo, pendientes, portafolioConcilia, 
             contra la cuenta que la motivó.</>
           )}
         </p>
+      )}
+
+      {/* EL DESCUADRE, CON NOMBRE PROPIO. «No cuadra» a secas obligaba a buscar a mano
+          cuenta por cuenta (septiembre de 2026). Solo lo ve el administrador. */}
+      {mostrarAvisos && descuadre && (
+        <div className="border-t border-line px-5 py-3 text-xs leading-relaxed">
+          <p className="text-neg">
+            <b className="font-semibold">El portafolio no cuadra con el balance por {fmtCont(Math.abs(descuadre.diferencia), true)}.</b>{" "}
+            <span className="text-muted">
+              Inversiones líquidas en el balance: {fmtCont(descuadre.balance, true)} · suma de las inversiones activas:{" "}
+              {fmtCont(descuadre.portafolio, true)}.
+            </span>
+          </p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-fg">
+            {descuadre.causas.map((c) => <li key={c}>{c[0].toUpperCase() + c.slice(1)}.</li>)}
+          </ul>
+        </div>
+      )}
+
+      {mostrarAvisos && vencidos.length > 0 && (
+        <div className="border-t border-line px-5 py-3 text-xs leading-relaxed">
+          <p className="text-neg">
+            <b className="font-semibold">{vencidos.length === 1 ? "Un CDT figura vencido" : `${vencidos.length} CDT figuran vencidos`}:</b>{" "}
+            {vencidos.map((v) => `${v.id} · ${v.entidad} (${textoVenc(v.dias)}, el ${fmtFecha(v.fecha)})`).join(" · ")}.
+          </p>
+          <p className="mt-1 text-muted">
+            Si se renovó, actualiza sus fechas y su tasa en Portafolio › Mantenimiento (botón «Renovar»). Si ya se cobró,
+            márcalo como inactivo.
+          </p>
+        </div>
       )}
 
       {mostrarAvisos && cortadas.length > 0 && (

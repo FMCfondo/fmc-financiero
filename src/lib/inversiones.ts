@@ -1,5 +1,7 @@
 import "server-only";
 import * as D from "./data";
+import { CTA_BOLD } from "./informe-cuentas";
+import { fmtCont } from "./format";
 
 /*
   Motor del Portafolio de Inversiones.
@@ -31,8 +33,13 @@ export type Posicion = Omit<D.Inversion, "tasaEa"> & {
 };
 
 const DIA = 86_400_000;
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+/* HOY en Colombia (UTC−5, sin horario de verano). Con la fecha UTC, de las siete de la
+   noche en adelante «hoy» ya era mañana y los días al vencimiento salían con uno menos. */
+const hoyISO = () => new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 10);
 const dias = (a: string, b: string) => Math.round((new Date(b).getTime() - new Date(a).getTime()) / DIA);
+/** Días de hoy al vencimiento; negativo si ya venció, null si es a la vista. */
+export const diasAlVencimiento = (inv: { fechaVencimiento: string | null }) =>
+  inv.fechaVencimiento ? dias(hoyISO(), inv.fechaVencimiento) : null;
 
 function estadoDe(diasRestantes: number | null): EstadoVenc {
   if (diasRestantes === null) return "vista";
@@ -42,16 +49,72 @@ function estadoDe(diasRestantes: number | null): EstadoVenc {
   return "vigente";
 }
 
+/* EL PORTAFOLIO CONTRA EL BALANCE, CON LA CAUSA. El informe solo sabía decir «no
+   cuadra»; el usuario subió septiembre y no tenía cómo saber en qué (2026-10-07). Aquí
+   se busca cuenta por cuenta lo que separa las dos cifras:
+     1. saldo en el balance que ninguna inversión activa toma (cuenta sin asignar, o
+        asignada a una inversión marcada como inactiva);
+     2. saldo que el portafolio suma y el balance no cuenta como inversión líquida;
+     3. una misma cuenta en dos inversiones, que se suma dos veces.
+   Lo que esas tres no expliquen se dice como resto. Es un recado para el
+   administrador: no va a la hoja impresa. */
+export type Descuadre = { balance: number; portafolio: number; diferencia: number; causas: string[] };
+
+const esLiquida = (c: string) => c.startsWith("12") || c === CTA_BOLD;
+
+function descuadreDe(etq: string, activas: D.Inversion[], total: number): Descuadre | null {
+  const balance = D.fact(etq, "12") + D.fact(etq, CTA_BOLD);
+  const diferencia = balance - total;
+  if (Math.abs(diferencia) <= 1) return null;
+  const $ = (v: number) => fmtCont(v, true);
+  const nombre = (c: string) => D.cuentaByCodigo.get(c)?.nombre ?? "sin nombre";
+  const causas: string[] = [];
+  let explicado = 0;
+
+  const tomadas = new Map<string, string[]>(); // cuenta → inversiones activas que la toman
+  for (const i of activas) for (const c of i.cuentas) tomadas.set(c, [...(tomadas.get(c) ?? []), i.id]);
+
+  for (const cta of D.cuentas) {
+    if (!cta.es_hoja || !esLiquida(cta.codigo) || tomadas.has(cta.codigo)) continue;
+    const v = D.fact(etq, cta.codigo);
+    if (Math.round(v) === 0) continue;
+    explicado += v;
+    const inactiva = D.inversiones.find((i) => !i.activa && i.cuentas.includes(cta.codigo));
+    causas.push(inactiva
+      ? `la cuenta ${cta.codigo} (${cta.nombre}) tiene ${$(v)} en el balance, pero su inversión ${inactiva.id} · ${inactiva.entidad} está marcada como inactiva. Actívala en Mantenimiento; si ya se cerró, la cuenta no debería conservar saldo`
+      : `la cuenta ${cta.codigo} (${cta.nombre}) tiene ${$(v)} en el balance y no está asignada a ninguna inversión. Agrégala en Mantenimiento a la que corresponda, o crea una nueva`);
+  }
+  for (const [c, ids] of tomadas) {
+    const v = D.fact(etq, c);
+    if (Math.round(v) === 0) continue;
+    if (!esLiquida(c)) {
+      explicado -= v * ids.length;
+      causas.push(`${ids.join(" y ")} toma la cuenta ${c} (${nombre(c)}) con ${$(v)}, que en el balance no es una inversión líquida (grupo 12 o Bold). Revisa sus cuentas en Mantenimiento`);
+    } else if (ids.length > 1) {
+      explicado -= v * (ids.length - 1);
+      causas.push(`la cuenta ${c} (${nombre(c)}) está en ${ids.join(" y ")}, así que su saldo de ${$(v)} se suma ${ids.length} veces. Déjala en una sola`);
+    }
+  }
+  const resto = diferencia - explicado;
+  if (Math.abs(resto) > 1) {
+    causas.push(causas.length
+      ? `quedan ${$(resto)} sin una causa identificada`
+      : `no apareció ninguna cuenta sin inversión ni de más en ellas; la diferencia de ${$(resto)} viene de otro lado`);
+  }
+  return { balance, portafolio: total, diferencia, causas };
+}
+
 export function portafolio(etq: string) {
-  const hoy = hoyISO();
   const per = D.periodo(etq);
   const activas = D.inversiones.filter((i) => i.activa);
 
-  const posiciones: Posicion[] = activas.map((inv) => {
+  /* En el orden que fijó el administrador en Mantenimiento (`enOrden`). Antes se
+     ordenaba por monto; los gráficos que necesitan otro orden lo hacen ellos. */
+  const posiciones: Posicion[] = D.enOrden(activas).map((inv) => {
     const monto = inv.cuentas.reduce((s, c) => s + D.fact(etq, c), 0);
     const tasa = D.tasaDe(inv, per.anio, per.mes);
     const mensual = tasa === null ? null : (1 + tasa) ** (1 / 12) - 1;
-    const diasRestantes = inv.fechaVencimiento ? dias(hoy, inv.fechaVencimiento) : null;
+    const diasRestantes = diasAlVencimiento(inv);
     const diasPlazo = inv.fechaApertura && inv.fechaVencimiento ? dias(inv.fechaApertura, inv.fechaVencimiento) : null;
     return {
       ...inv,
@@ -67,9 +130,10 @@ export function portafolio(etq: string) {
       diasRestantes,
       estadoVenc: estadoDe(diasRestantes),
     };
-  }).sort((a, b) => b.monto - a.monto);
+  });
 
-  const total = posiciones.reduce((s, p) => s + p.monto, 0) || 1;
+  const suma = posiciones.reduce((s, p) => s + p.monto, 0);
+  const total = suma || 1;
   posiciones.forEach((p) => (p.pct = p.monto / total));
 
   // --- KPIs ---
@@ -116,6 +180,7 @@ export function portafolio(etq: string) {
   return {
     posiciones, total, tasaPonderada, tasasFaltantes, pctLiquido, wamDias, proxVenc, interesMesTotal,
     porEntidad, top1, top3, porTipo, alertas,
+    descuadre: descuadreDe(etq, activas, suma),
     benchmark: D.paramNum("bench_cdt180", 0),
     ipc: D.paramNum("ipc_12m", 0),
     hayDatos: activas.length > 0,

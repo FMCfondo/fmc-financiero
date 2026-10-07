@@ -431,6 +431,21 @@ Antes de dar por terminado un módulo:
   posición, no por entidad: la de un fondo de inversión es del fondo, no de la fiduciaria.
   En la tabla de posiciones la alineación de columnas pasó a ser por nombre
   (`ALINEACION`), para que insertar una columna no corra las demás.
+- **Portafolio: descuadre con causa, orden manual y vencimientos — HECHO (2026-10-07).**
+  · *Descuadre:* `descuadreDe` (inversiones.ts) busca cuenta por cuenta qué separa el
+  portafolio de Inversiones líquidas (cuenta con saldo sin inversión activa, o con una
+  inactiva; cuenta fuera del grupo 12/Bold; cuenta en dos inversiones) y lo dice en
+  frases en la barra del informe y en Portafolio, **solo al administrador**. La hoja
+  impresa sigue diciendo solo «NO cuadra». Septiembre de 2026: era Bold (INV-008 inactiva
+  con saldo). · *Orden:* parámetro `orden_inversiones` (lista de IDs), se fija con
+  flechas en Mantenimiento y lo siguen el informe (hoja 7), Portafolio y Mantenimiento
+  (`enOrden`); sin orden guardado, CDT primero y luego lo que está a la vista, por ID. La
+  tabla de Portafolio dejó de ordenarse por monto. · *Vencimientos:* aviso arriba en
+  Portafolio (vencidos en rojo, próximos 30 días en ámbar), etiqueta con los días, filas
+  teñidas, aviso en la barra del informe y botón «Renovar» en el editor (corre las fechas
+  con el mismo plazo; la tasa se pone a mano). «Hoy» se mide en hora de Colombia.
+  **Límite conocido:** la tasa de un CDT es una sola; al renovarlo con otra tasa, los
+  informes de meses anteriores mostrarán la nueva.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { portafolio, Posicion, EstadoVenc } from "@/lib/inversiones";
-import { fmtCompact, fmtPct, fmtCont } from "@/lib/format";
+import { fmtCompact, fmtPct, fmtCont, fmtFecha, textoVenc } from "@/lib/format";
 import { PctBars } from "@/components/Charts";
-import { Wallet, Percent, Droplets, AlertTriangle } from "lucide-react";
+import { Wallet, Percent, Droplets, AlertTriangle, CalendarClock } from "lucide-react";
 
 /** Raya cuando falta la tasa del mes. Una cifra que no se capturó no se inventa. */
 const pctO = (v: number | null) => (v === null ? "—" : fmtPct(v));
@@ -24,8 +24,51 @@ const ALINEACION: Record<string, string> = {
 /* `esAdmin`: el aviso de tasas faltantes y su enlace a Mantenimiento son del analista.
    La Junta no ve aquí instrucciones de dónde se edita nada: lee cifras. */
 export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnType<typeof portafolio>; esAdmin?: boolean }) {
+  /* LOS VENCIMIENTOS, A LA VISTA. Antes solo los decía la etiqueta de la tabla, al
+     fondo de la página, y un CDT de Bancamía renovado en junio siguió diciendo
+     «Vencido» hasta septiembre sin que nadie lo notara (2026-10-07). Ahora, arriba, en
+     frase y con los días. Lo ve también la Junta; la instrucción de dónde se arregla,
+     solo el administrador. */
+  const vencidos = d.posiciones.filter((x) => x.estadoVenc === "vencido");
+  const porVencer = d.posiciones.filter((x) => x.estadoVenc === "decision" || x.estadoVenc === "por_vencer");
+  const fraseVenc = (x: Posicion) =>
+    `${x.id} · ${x.entidad} ${textoVenc(x.diasRestantes as number)} (${fmtFecha(x.fechaVencimiento as string)})`;
   return (
     <div className="space-y-5">
+      {esAdmin && d.descuadre && (
+        <div className="card p-4 flex items-start gap-3 border-neg/30">
+          <AlertTriangle size={16} className="text-neg mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p>
+              <b className="font-semibold">El portafolio no cuadra con el balance por {fmtCont(Math.abs(d.descuadre.diferencia), true)}.</b>{" "}
+              <span className="text-muted">Inversiones líquidas en el balance: {fmtCont(d.descuadre.balance, true)} · suma de las
+              inversiones activas: {fmtCont(d.descuadre.portafolio, true)}.</span>
+            </p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-5">
+              {d.descuadre.causas.map((c) => <li key={c}>{c[0].toUpperCase() + c.slice(1)}.</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {(vencidos.length > 0 || porVencer.length > 0) && (
+        <div className={`card p-4 flex items-start gap-3 ${vencidos.length ? "border-neg/40 bg-neg/[0.04]" : "border-gold/50 bg-gold/[0.07]"}`}>
+          <CalendarClock size={16} className={`mt-0.5 shrink-0 ${vencidos.length ? "text-neg" : "text-[#8A6A1D]"}`} />
+          <div className="text-sm space-y-1">
+            {vencidos.length > 0 && (
+              <p><b className="font-semibold text-neg">{vencidos.length === 1 ? "Vencido" : "Vencidos"}:</b> {vencidos.map(fraseVenc).join(" · ")}.
+                {esAdmin && <span className="text-muted"> Si se renovó, actualiza sus fechas y su tasa en{" "}
+                  <Link href="/portafolio?v=mantenimiento" className="text-accent2 hover:underline">Mantenimiento</Link> (botón «Renovar»);
+                  si ya se cobró, márcalo como inactivo.</span>}
+              </p>
+            )}
+            {porVencer.length > 0 && (
+              <p><b className="font-semibold text-[#8A6A1D]">Por vencer en los próximos 30 días:</b> {porVencer.map(fraseVenc).join(" · ")}.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {esAdmin && d.tasasFaltantes.length > 0 && (
         <div className="card p-4 flex items-start gap-3 border-neg/30">
           <AlertTriangle size={16} className="text-neg mt-0.5 shrink-0" />
@@ -92,8 +135,8 @@ export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnTyp
           </thead>
           <tbody>
             {d.posiciones.map((x) => (
-              <tr key={x.id} className="hover:bg-card2/60">
-                <td className="px-3 py-2.5 border-b border-line-soft"><Badge estado={x.estadoVenc} /></td>
+              <tr key={x.id} className={`hover:bg-card2/60 ${TINTE[x.estadoVenc]}`}>
+                <td className="px-3 py-2.5 border-b border-line-soft whitespace-nowrap"><Badge estado={x.estadoVenc} dias={x.diasRestantes} /></td>
                 <td className="px-3 py-2.5 border-b border-line-soft font-medium whitespace-nowrap">{x.entidad}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft">{x.tipo}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum tabular-nums">{fmtCont(x.monto)}</td>
@@ -103,7 +146,9 @@ export default function PortafolioResumen({ d, esAdmin = false }: { d: ReturnTyp
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.interesMes === null ? "—" : fmtCont(x.interesMes)}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.fechaApertura ?? "—"}</td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.fechaVencimiento ?? "a la vista"}</td>
-                <td className="px-3 py-2.5 border-b border-line-soft text-right tnum">{x.diasRestantes === null ? "—" : x.diasRestantes}</td>
+                <td className={`px-3 py-2.5 border-b border-line-soft text-right tnum ${x.estadoVenc === "vencido" || x.estadoVenc === "decision" ? "text-neg font-semibold" : x.estadoVenc === "por_vencer" ? "text-[#8A6A1D] font-semibold" : ""}`}>
+                  {x.diasRestantes === null ? "—" : x.diasRestantes}
+                </td>
                 <td className="px-3 py-2.5 border-b border-line-soft text-xs text-muted max-w-[220px] truncate">{x.observaciones ?? ""}</td>
               </tr>
             ))}
@@ -168,14 +213,18 @@ function Kpi({ icon, label, value, sub }: { icon: React.ReactNode; label: string
     </div>
   );
 }
-const BADGE: Record<EstadoVenc, [string, string]> = {
-  vista: ["A la vista", "bg-pos/10 text-pos"],
-  vigente: ["Vigente", "bg-royal/10 text-royal"],
-  por_vencer: ["Por vencer", "bg-gold/20 text-[#8A6A1D]"],
-  decision: ["Decisión", "bg-neg/10 text-neg"],
-  vencido: ["Vencido", "bg-neg/10 text-neg"],
+/* La etiqueta dice los DÍAS: «Vence en 8 d» se entiende sin leyenda; «Decisión» no. */
+const BADGE: Record<EstadoVenc, [(d: number) => string, string]> = {
+  vista: [() => "A la vista", "bg-pos/10 text-pos"],
+  vigente: [() => "Vigente", "bg-royal/10 text-royal"],
+  por_vencer: [(d) => `Vence en ${d} d`, "bg-gold/25 text-[#7A5C14]"],
+  decision: [(d) => (d === 0 ? "Vence hoy" : `Vence en ${d} d`), "bg-neg/15 text-neg"],
+  vencido: [(d) => `Vencido hace ${-d} d`, "bg-neg text-white"],
 };
-function Badge({ estado }: { estado: EstadoVenc }) {
+const TINTE: Record<EstadoVenc, string> = {
+  vista: "", vigente: "", por_vencer: "bg-gold/[0.07]", decision: "bg-neg/[0.05]", vencido: "bg-neg/[0.07]",
+};
+function Badge({ estado, dias }: { estado: EstadoVenc; dias: number | null }) {
   const [label, cls] = BADGE[estado];
-  return <span className={`inline-block text-[10px] font-semibold uppercase tracking-wide rounded-md px-2 py-1 ${cls}`}>{label}</span>;
+  return <span className={`inline-block text-[10px] font-semibold uppercase tracking-wide rounded-md px-2 py-1 ${cls}`}>{label(dias ?? 0)}</span>;
 }

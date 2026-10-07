@@ -112,6 +112,8 @@ export default async function InformePage({
         periodo={periodo}
         pendientes={barrera.pendientes}
         portafolioConcilia={inf.portafolio.concilia}
+        descuadre={inf.portafolio.descuadre}
+        vencidos={inf.portafolio.vencidos}
         tasasFaltantes={inf.portafolio.tasasFaltantes}
         mostrarAvisos={esAdmin}
       />

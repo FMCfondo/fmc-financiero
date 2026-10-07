@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { guardarInversionDb, guardarParametros, guardarTasasPeriodoDb, cuentaByCodigo, ensureLoaded, inversiones, esALaVista, type Inversion } from "@/lib/data";
+import { guardarInversionDb, guardarParametros, guardarParametroJson, guardarTasasPeriodoDb, cuentaByCodigo, ensureLoaded, inversiones, esALaVista, CLAVE_ORDEN_INVERSIONES, type Inversion } from "@/lib/data";
 import { exigirAdminAccion } from "@/lib/permisos";
 
 /* Mantenimiento del portafolio: guarda los datos manuales de una inversión.
@@ -72,6 +72,21 @@ export async function guardarTasasPeriodo(input: {
     tasas[t.id] = t.pct / 100;
   }
   await guardarTasasPeriodoDb(input.anio, input.mes, tasas);
+  revalidatePath("/portafolio");
+  revalidatePath("/informe");
+  revalidatePath("/estados/inversiones");
+  return { ok: true };
+}
+
+/** El orden en que se listan las inversiones (informe de Junta, Portafolio y
+ *  Mantenimiento). Llega la lista completa de IDs, de la primera a la última. */
+export async function guardarOrdenInversiones(ids: string[]): Promise<{ ok: boolean; error?: string }> {
+  const denegado = await exigirAdminAccion(); if (denegado) return denegado;
+  await ensureLoaded();
+  const existentes = new Set(inversiones.map((i) => i.id));
+  const limpios = [...new Set(ids)].filter((id) => existentes.has(id));
+  if (!limpios.length) return { ok: false, error: "No llegó ninguna inversión para ordenar." };
+  await guardarParametroJson(CLAVE_ORDEN_INVERSIONES, limpios);
   revalidatePath("/portafolio");
   revalidatePath("/informe");
   revalidatePath("/estados/inversiones");
