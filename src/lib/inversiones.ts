@@ -1,6 +1,6 @@
 import "server-only";
 import * as D from "./data";
-import { CTA_BOLD } from "./informe-cuentas";
+import { CTA_BOLD, boldEsInversion, inversionesLiquidas } from "./informe-cuentas";
 import { fmtCont } from "./format";
 
 /*
@@ -60,10 +60,9 @@ function estadoDe(diasRestantes: number | null): EstadoVenc {
    administrador: no va a la hoja impresa. */
 export type Descuadre = { balance: number; portafolio: number; diferencia: number; causas: string[] };
 
-const esLiquida = (c: string) => c.startsWith("12") || c === CTA_BOLD;
-
 function descuadreDe(etq: string, activas: D.Inversion[], total: number): Descuadre | null {
-  const balance = D.fact(etq, "12") + D.fact(etq, CTA_BOLD);
+  const esLiquida = (c: string) => c.startsWith("12") || (c === CTA_BOLD && boldEsInversion(etq));
+  const balance = inversionesLiquidas(etq);
   const diferencia = balance - total;
   if (Math.abs(diferencia) <= 1) return null;
   const $ = (v: number) => fmtCont(v, true);
@@ -89,7 +88,7 @@ function descuadreDe(etq: string, activas: D.Inversion[], total: number): Descua
     if (Math.round(v) === 0) continue;
     if (!esLiquida(c)) {
       explicado -= v * ids.length;
-      causas.push(`${ids.join(" y ")} toma la cuenta ${c} (${nombre(c)}) con ${$(v)}, que en el balance no es una inversión líquida (grupo 12 o Bold). Revisa sus cuentas en Mantenimiento`);
+      causas.push(`${ids.join(" y ")} toma la cuenta ${c} (${nombre(c)}) con ${$(v)}, que en el balance no es una inversión líquida. Revisa sus cuentas en Mantenimiento`);
     } else if (ids.length > 1) {
       explicado -= v * (ids.length - 1);
       causas.push(`la cuenta ${c} (${nombre(c)}) está en ${ids.join(" y ")}, así que su saldo de ${$(v)} se suma ${ids.length} veces. Déjala en una sola`);
@@ -106,7 +105,10 @@ function descuadreDe(etq: string, activas: D.Inversion[], total: number): Descua
 
 export function portafolio(etq: string) {
   const per = D.periodo(etq);
-  const activas = D.inversiones.filter((i) => i.activa);
+  /* Bold no sigue la marca de activa sino la fecha: es inversión hasta agosto de 2026
+     y efectivo desde septiembre (ver `boldEsInversion`). */
+  const activas = D.inversiones.filter((i) =>
+    i.cuentas.includes(CTA_BOLD) ? boldEsInversion(etq) : i.activa);
 
   /* En el orden que fijó el administrador en Mantenimiento (`enOrden`). Antes se
      ordenaba por monto; los gráficos que necesitan otro orden lo hacen ellos. */
