@@ -21,7 +21,7 @@ export function BarrasCobertura({ respaldo, obligaciones }: { respaldo: number; 
   const mmm = (v: number) => v.toLocaleString("es-CO", { maximumFractionDigits: 0 });
   return (
     <div className="space-y-3">
-      <Barra label="Respaldo líquido" sub="efectivo + inversiones" valor={respaldo} pct={(respaldo / max) * 100} color="var(--color-pos)" fuerte />
+      <Barra label="Disponible e inversiones" sub="efectivo en bancos + inversiones" valor={respaldo} pct={(respaldo / max) * 100} color="var(--color-pos)" fuerte />
       <Barra label="Obligaciones de garantía" sub="lo que el fondo debe respaldar" valor={obligaciones} pct={(obligaciones / max) * 100} color="var(--color-comparativo, #8A94A6)" />
       <div className="flex items-baseline justify-between pt-2.5 border-t border-line">
         <span className="text-[12.5px] text-muted">{excedente >= 0 ? "Excedente de respaldo" : "Faltante de respaldo"}</span>
