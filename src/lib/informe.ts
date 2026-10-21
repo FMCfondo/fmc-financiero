@@ -294,9 +294,12 @@ function seccionResumen(etq: string, res: { filas: FilaResultados[] }, port: Por
     { etiqueta: "Activo total", valor: e.totalActivo,
       destacado: pctTxt(vActivo, true), contexto: prev ? `frente a ${mesNombre[prev.mes].toLowerCase()} ${prev.anio}` : "sin comparativo",
       tono: vActivo === null ? null : vActivo >= 0 ? "pos" : "neg" },
-    { etiqueta: "Respaldo líquido", valor: respaldo,
+    // Los nombres de estas dos tarjetas son los de su línea del balance (pedido del
+    // usuario, 2026-10-21): «Respaldo líquido» no se entendía y «Reservas técnicas»
+    // mostraba algo más que las reservas (honorarios y la provisión de renta).
+    { etiqueta: "Disponible e inversiones", valor: respaldo,
       contexto: `${pct1(e.totalActivo ? (respaldo / e.totalActivo) * 100 : null)} del activo total`, tono: null },
-    { etiqueta: "Reservas técnicas", valor: C.pasivosEstimados(etq),
+    { etiqueta: "Pasivos estimados y provisiones", valor: C.pasivosEstimados(etq),
       contexto: `${pct1(e.totalPasivo ? (C.pasivosEstimados(etq) / e.totalPasivo) * 100 : null)} del pasivo`, tono: null },
     { etiqueta: "Patrimonio", valor: e.totalPatrim,
       destacado: pctTxt(vPatrim, true), contexto: "interanual",

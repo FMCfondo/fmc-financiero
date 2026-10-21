@@ -223,12 +223,15 @@ export function notasSituacion(d: DatosNotas): Nota[] {
       texto: `La Utilidad Neta acumulada cerró en ${money(un.acumulado)}, alcanzando un cumplimiento ` +
         `del ${pct(un.ejecAnualPct, 2)} frente a la meta anual de ${money(un.pptoAnual ?? 0)}.`,
     },
+    /* Contra la meta ACUMULADA, como sus tarjetas de la hoja 1. Antes decía la anual y
+       la Junta leía 136 % en la tarjeta y 97 % en el texto para la misma cifra
+       (2026-10-21). EBITDA y utilidad sí van contra la anual, igual que sus tarjetas. */
     {
       bloque: "situacion",
       texto: `Los ingresos de operación acumulados suman ${money(ing.acumulado)} ` +
-        `(${pct(ing.ejecAnualPct, 2)} vs meta anual de ${money(ing.pptoAnual ?? 0)}), mientras los ` +
-        `Gastos Administrativos acumulados cierran en ${money(gas.acumulado)}, con una ejecución del ` +
-        `${pct(gas.ejecAnualPct, 2)}.`,
+        `(${pct(ing.cumplAcumPct, 2)} de la meta acumulada a ${mes} de ${money(ing.pptoAcumulado ?? 0)}), ` +
+        `mientras los Gastos Administrativos acumulados cierran en ${money(gas.acumulado)}, con una ` +
+        `ejecución del ${pct(gas.cumplAcumPct, 2)} frente a su meta acumulada de ${money(gas.pptoAcumulado ?? 0)}.`,
     },
   ];
 }
