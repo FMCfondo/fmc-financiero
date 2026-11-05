@@ -452,6 +452,14 @@ Antes de dar por terminado un módulo:
   y en el portafolio (aunque INV-008 esté inactiva); desde SEP2026, en Disponible y fuera
   del portafolio. Comparado contra main: los informes de enero a agosto no cambian una
   cifra; en septiembre solo se mueven las dos líneas del balance, y el informe cuadra.
+- **Balances en Excel — HECHO (2026-11-05, pedido del usuario).** Botón en /balances, solo
+  administrador: `GET /api/balances/excel?modo=mes|acumulado` (`balances-excel.ts`). Una
+  hoja, cuentas en filas, meses en columnas y una columna en blanco entre años. En
+  «acumulado» las clases 4 a 7 salen con `D.ytd`; las de balance son siempre el saldo al
+  cierre. Omite las cuentas sin valor en ningún mes. Usa ExcelJS porque la edición libre
+  de SheetJS no escribe estilos ni inmoviliza paneles. El acumulado de la app coincide al
+  peso con el de Siigo salvo la cuenta 54050501 en dic-2024 y dic-2025, que la app no
+  trata como gasto.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
