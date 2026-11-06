@@ -16,6 +16,7 @@ import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
 import EjecucionInforme from "@/components/EjecucionInforme";
+import DescargarEstado from "@/components/DescargarEstado";
 import StmtScroll from "@/components/StmtScroll";
 import { Info, SlidersHorizontal } from "lucide-react";
 
@@ -47,7 +48,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
         <p className="text-sm text-muted">{etqNombre(etq)} · pesos colombianos</p>
         <AnalisisTabs current={current} />
       </div>
-      {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
+      {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} esAdmin={esAdmin} />}
       {current === "ejecucion" && <VistaEjecucion etq={etq} esAdmin={esAdmin} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
@@ -57,7 +58,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
 }
 
 /* ---------- Estado: árbol completo, meses de izquierda a derecha + Acumulado ---------- */
-function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?: number }) {
+function VistaEstado({ etq, nMeses, anio, esAdmin }: { etq: string; nMeses: number; anio?: number; esAdmin: boolean }) {
   const meses = mesesVista(etq, anio, nMeses);
   if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
   const m = erMatrizArbol(meses);
@@ -67,6 +68,7 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
       <div className="flex items-center gap-5 flex-wrap">
         <AnioSelector current={anio} />
         {!anio && <MesesSelector current={nMeses} />}
+        {esAdmin && <DescargarEstado estado="er" />}
       </div>
       <StatementMatrix
         labels={m.labels}

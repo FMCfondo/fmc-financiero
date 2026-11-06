@@ -1,4 +1,5 @@
 import { accesoA } from "@/lib/permisos";
+import { obtenerSesion } from "@/lib/auth";
 import Link from "next/link";
 import { esfMatrizArbol, analisisMatriz, interanualData, provisionRenta, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, resolverEtq } from "@/lib/data";
@@ -12,12 +13,14 @@ import AnalisisMatrix from "@/components/AnalisisMatrix";
 import AnioSelector from "@/components/AnioSelector";
 import InteranualSelector from "@/components/InteranualSelector";
 import IndicadoresTabla from "@/components/IndicadoresTabla";
+import DescargarEstado from "@/components/DescargarEstado";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default async function SituacionPage({ searchParams }: { searchParams: Promise<{ p?: string; vista?: string; meses?: string; anio?: string; contra?: string; unidad?: string; idx?: string }> }) {
   await accesoA("/estados/situacion");
   const { p, vista, meses, anio, contra, unidad, idx } = await searchParams;
   const current = vista || "estado";
+  const esAdmin = (await obtenerSesion())?.usuario.rol === "admin";
   const nMeses = Math.min(Math.max(parseInt(meses || "4") || 4, 1), 24);
   const vContra = contra === "mes" ? "mes" as const : "anio" as const;
   await ensureLoaded();
@@ -36,7 +39,7 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
         <p className="text-sm text-muted">{etqNombre(etq)} · cifras en pesos colombianos</p>
         <AnalisisTabs current={current} ejec={false} />
       </div>
-      {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} />}
+      {current === "estado" && <VistaEstado etq={etq} nMeses={nMeses} anio={nAnio} esAdmin={esAdmin} />}
       {current === "vertical" && <VistaAnalisis modo="vertical" etq={etq} nMeses={nMeses} anio={nAnio} />}
       {current === "horizontal" && <VistaAnalisis modo="horizontal" etq={etq} nMeses={nMeses} anio={nAnio} contra={vContra} />}
       {current === "interanual" && <VistaInteranual unidad={vUnidad} idx={vIdx} />}
@@ -46,7 +49,7 @@ export default async function SituacionPage({ searchParams }: { searchParams: Pr
 
 /* ---------- Estado: saldos por mes, de izquierda a derecha ----------
    Sin columna de acumulado: cada saldo del balance YA es acumulado por naturaleza. */
-function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?: number }) {
+function VistaEstado({ etq, nMeses, anio, esAdmin }: { etq: string; nMeses: number; anio?: number; esAdmin: boolean }) {
   const meses = mesesVista(etq, anio, nMeses);
   if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
   const m = esfMatrizArbol(meses);
@@ -69,6 +72,7 @@ function VistaEstado({ etq, nMeses, anio }: { etq: string; nMeses: number; anio?
             ? "Ecuación contable: cuadra (A = P + K) en todos los meses"
             : `No cuadra en ${descuadrados.map((x) => x.etiqueta).join(", ")} — diferencia de ${fmtNum(descuadrados[0].valor)}`}
         </span>
+        {esAdmin && <DescargarEstado estado="esf" />}
       </div>
       <StatementMatrix
         labels={m.labels}
