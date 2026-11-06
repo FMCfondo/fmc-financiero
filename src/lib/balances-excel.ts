@@ -25,13 +25,13 @@ const esDeResultado = (clase: number) => clase >= 4 && clase <= 7;
 /** 0 clase · 1 grupo · 2 cuenta · 3+ subcuenta y auxiliar. Es la jerarquía de la pantalla. */
 const nivelDe = (longitud: number) => ({ 1: 0, 2: 1, 4: 2, 6: 3, 8: 4, 10: 5 }[longitud] ?? 5);
 
-const NAVY = "FF13286E";
-const relleno = (argb: string): ExcelJS.Fill => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+export const NAVY = "FF13286E";
+export const relleno = (argb: string): ExcelJS.Fill => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
 const FONDO_NIVEL: Record<number, string> = { 0: NAVY, 1: "FFE2E8F7", 2: "FFF1F4FB" };
 
 /** Miles sin decimales, negativos entre paréntesis y raya en cero, como en los estados.
  *  El centavo sigue en la celda: el formato solo cambia lo que se ve. */
-const FORMATO = '#,##0;(#,##0);"-"';
+export const FORMATO = '#,##0;(#,##0);"-"';
 
 export async function balancesExcel(modo: ModoBalance): Promise<{ archivo: ExcelJS.Buffer; nombre: string }> {
   const periodos = D.periodos;

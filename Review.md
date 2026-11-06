@@ -460,6 +460,14 @@ Antes de dar por terminado un módulo:
   de SheetJS no escribe estilos ni inmoviliza paneles. El acumulado de la app coincide al
   peso con el de Siigo salvo la cuenta 54050501 en dic-2024 y dic-2025, que la app no
   trata como gasto.
+- **ER y ESF en Excel — HECHO (2026-11-06, pedido del usuario).** Botón en la vista Estado de
+  cada uno, solo administrador: `GET /api/estados/excel?estado=er|esf` (`estados-excel.ts`).
+  Mismo árbol y totales de la pantalla (`erMatrizArbol`, `esfMatrizArbol`), todos los meses
+  en una hoja, columna en blanco entre años y, en el ER, el acumulado de cada año. El detalle
+  abre contraído con la función de agrupar de Excel; la fila resumen va ENCIMA de su detalle
+  (`summaryBelow: false`). Comparado fila por fila contra la pantalla expandida en los cuatro
+  años, y abierto en Excel de escritorio. **No se carga en /presupuesto:** el cargador lee la
+  hoja «PPTO <año>» con las etiquetas del plan, que no son las del árbol PUC.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
