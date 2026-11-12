@@ -51,7 +51,12 @@ export function Concepto({ codigo, nombre, depth, esGrupo, has, open, onToggle }
     >
       {Array.from({ length: d }).map((_, i) => <span key={i} className={`guide ${i === d - 1 ? "line" : ""}`} />)}
       {has ? <ChevronRight size={13} className={`chev ${open ? "open" : ""}`} /> : <span className="w-[13px] shrink-0" />}
-      <span className="code w-[48px] shrink-0 pl-1">{codigo}</span>
+      {/* 48 px es un MÍNIMO, no un ancho fijo: los códigos de hasta 6 dígitos caben y
+          los nombres de una misma rama quedan alineados; un código PUC largo (7 a 10
+          dígitos, en lo más hondo del árbol) ensancha su caja en vez de montarse sobre
+          el nombre, y `pr-1.5` le deja aire. El nombre (`.etq`) cede ese espacio y, si
+          no le alcanza, pasa a su segunda línea como siempre. */}
+      <span className="code min-w-[48px] shrink-0 pl-1 pr-1.5">{codigo}</span>
       <span className={`etq ${esGrupo ? "text-fg font-medium" : "text-muted"}`}>{nombre}</span>
     </button>
   );

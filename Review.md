@@ -468,6 +468,14 @@ Antes de dar por terminado un módulo:
   (`summaryBelow: false`). Comparado fila por fila contra la pantalla expandida en los cuatro
   años, y abierto en Excel de escritorio. **No se carga en /presupuesto:** el cargador lee la
   hoja «PPTO <año>» con las etiquetas del plan, que no son las del árbol PUC.
+- **El ER de Estados Financieros con las líneas del Informe de Junta — HECHO (2026-11-12,
+  pedido del usuario: «la que uso y me gusta es la del informe de junta»).** La vista Estado
+  y su Excel usan `LINEAS_RESULTADO` (`erJunta` en er-junta.ts, `ResultadosJunta`); cada
+  línea de detalle se despliega en sus cuentas del PUC (`detalle` en informe-cuentas.ts,
+  con las subcuentas de otras líneas podadas). Verificado: cada línea y cada cuenta suman su
+  detalle en los cuatro años, y la pantalla coincide al peso con la hoja del informe de
+  OCT2026 (176 cifras). Los análisis vertical, horizontal e interanual siguen sobre el
+  árbol de cuentas.
 - **Plantilla del presupuesto — HECHO (2026-11-12).** Presupuesto › Cargar ofrece la hoja
   «PPTO <último año + 1>» (`plantilla-presupuesto.ts`, `GET /api/presupuesto/plantilla`):
   los conceptos y niveles del último plan, llena con sus cifras. Los conceptos con detalle

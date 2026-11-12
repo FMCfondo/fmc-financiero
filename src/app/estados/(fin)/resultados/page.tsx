@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { erMatrizArbol, analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
+import { analisisMatriz, interanualData, TAM_UNIDAD, type UnidadPeriodo } from "@/lib/statements";
 import { ensureLoaded, mesesVista, periodo, periodos, resolverEtq } from "@/lib/data";
 import { obtenerSesion } from "@/lib/auth";
 import { accesoA } from "@/lib/permisos";
 import { indicadoresMatriz } from "@/lib/indicadores";
 import { ejecucionPresupuestal } from "@/lib/informe";
 import { etqNombre, rangoNombre, nombrePeriodoInteranual } from "@/lib/periodos";
-import { fmtNum, fmtCont } from "@/lib/format";
+import { fmtCont } from "@/lib/format";
 import StatementMatrix, { CabeceraDocumento } from "@/components/StatementMatrix";
+import ResultadosJunta from "@/components/ResultadosJunta";
+import { erJunta } from "@/lib/er-junta";
 import AnalisisTabs from "@/components/AnalisisTabs";
 import MesesSelector from "@/components/MesesSelector";
 import AnalisisMatrix from "@/components/AnalisisMatrix";
@@ -61,7 +63,7 @@ export default async function ResultadosPage({ searchParams }: { searchParams: P
 function VistaEstado({ etq, nMeses, anio, esAdmin }: { etq: string; nMeses: number; anio?: number; esAdmin: boolean }) {
   const meses = mesesVista(etq, anio, nMeses);
   if (!meses.length) return <div className="card p-6 text-sm text-muted">No hay datos para ese año.</div>;
-  const m = erMatrizArbol(meses);
+  const m = erJunta(meses);
 
   return (
     <div className="space-y-3">
@@ -70,28 +72,16 @@ function VistaEstado({ etq, nMeses, anio, esAdmin }: { etq: string; nMeses: numb
         {!anio && <MesesSelector current={nMeses} />}
         {esAdmin && <DescargarEstado estado="er" />}
       </div>
-      <StatementMatrix
+      <ResultadosJunta
         labels={m.labels}
-        conAcum
+        lineas={m.lineas}
         resaltar={meses.findIndex((x) => x.etiqueta === etq)}
         encabezado={{ titulo: "Estado de Resultados", periodo: rangoNombre(meses.map((x) => x.etiqueta)), unidad: "Movimiento de cada mes · acumulado del año · pesos colombianos" }}
-        secciones={[
-          { titulo: "Ingresos", tono: "bg-pos", arbol: m.ingresos, totalLabel: "Total ingresos", totalVals: m.totalIng.vals, totalAcum: m.totalIng.acum },
-          { titulo: "Gastos (sin depreciaciones ni amortizaciones)", tono: "bg-gold", arbol: m.gastos, totalLabel: "Total gastos operativos", totalVals: m.totalGas.vals, totalAcum: m.totalGas.acum },
-        ]}
-        filasFinales={[
-          { nombre: "(=) EBITDA", vals: m.ebitda.vals, acum: m.ebitda.acum, tipo: "sub" },
-          { nombre: "(−) Depreciaciones", vals: m.dep.vals, acum: m.dep.acum },
-          { nombre: "(−) Amortizaciones", vals: m.amort.vals, acum: m.amort.acum },
-          { nombre: "(=) Utilidad antes de impuestos", vals: m.utilAntes.vals, acum: m.utilAntes.acum, tipo: "sub" },
-          { nombre: `(−) Impuesto de renta estimado (${fmtNum(m.tasa * 100)}%)`, vals: m.impuesto.vals, acum: m.impuesto.acum },
-          { nombre: "(=) Utilidad neta", vals: m.utilNeta.vals, acum: m.utilNeta.acum, tipo: "total" },
-        ]}
       />
       <p className="stmt-nota">
-        Estructura EBITDA: los gastos se muestran sin depreciaciones ni amortizaciones, que bajan como líneas propias hasta la
-        utilidad antes de impuestos. Cada columna es el movimiento del mes y el <b>Acumulado</b> del año va en el recuadro final;
-        el impuesto de cada mes es la provisión marginal (los meses suman el acumulado, que usa la provisión completa de{" "}
+        Con las líneas del Informe de Junta; cada línea se despliega en las cuentas de las que sale. Cada columna es el
+        movimiento del mes y el <b>Acumulado</b> del año va en el recuadro final; el impuesto de cada mes es la provisión
+        marginal (los meses suman el acumulado, que usa la provisión completa de{" "}
         <Link href={`/impuesto?p=${etq}`} className="text-accent2 hover:underline">Provisión de Impuesto</Link>).
       </p>
     </div>

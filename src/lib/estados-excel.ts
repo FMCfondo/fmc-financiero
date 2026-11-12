@@ -2,14 +2,16 @@ import "server-only";
 import ExcelJS from "exceljs";
 import * as D from "./data";
 import { mesCorto } from "./format";
-import { erMatrizArbol, esfMatrizArbol, type NodoM } from "./statements";
+import { esfMatrizArbol, type NodoM } from "./statements";
+import { erJunta } from "./er-junta";
 import { FORMATO, NAVY, relleno } from "./balances-excel";
 
 /* Estado de Resultados y Situación Financiera en Excel, con el mismo árbol y los mismos
    totales de la pantalla (pedido del 2026-11-06, para armar el presupuesto sobre esa
    estructura). Todos los meses en una hoja y una columna en blanco entre años. El ER lleva
    además el acumulado de cada año, como su pantalla; el ESF no, porque un saldo ya es
-   acumulado. No calcula nada: las filas salen de `erMatrizArbol` y `esfMatrizArbol`.
+   acumulado. No calcula nada: las filas salen de `erJunta` (las líneas del Informe de
+   Junta, desde el 2026-11-12) y de `esfMatrizArbol`.
 
    EL DETALLE VA AGRUPADO con la función de agrupar de Excel: abre contraído, y cada cuenta
    se despliega con su botón + o con los botones de nivel de la esquina. La fila que resume
@@ -34,22 +36,13 @@ function filasDelArbol(arbol: NodoM[]): Fila[] {
 const seccion = (nombre: string): Fila => ({ nombre, nivel: 0, estilo: "seccion" });
 const linea = (nombre: string, vals: number[], estilo: Estilo = "linea"): Fila => ({ nombre, vals, nivel: 0, estilo });
 
+/** Las líneas del Informe de Junta; las de detalle llevan agrupadas sus cuentas. */
 function filasER(meses: D.Periodo[]): Fila[] {
-  const m = erMatrizArbol(meses);
-  return [
-    seccion("Ingresos"),
-    ...filasDelArbol(m.ingresos),
-    linea("Total ingresos", m.totalIng.vals, "sub"),
-    seccion("Gastos (sin depreciaciones ni amortizaciones)"),
-    ...filasDelArbol(m.gastos),
-    linea("Total gastos operativos", m.totalGas.vals, "sub"),
-    linea("(=) EBITDA", m.ebitda.vals, "sub"),
-    linea("(−) Depreciaciones", m.dep.vals),
-    linea("(−) Amortizaciones", m.amort.vals),
-    linea("(=) Utilidad antes de impuestos", m.utilAntes.vals, "sub"),
-    linea(`(−) Impuesto de renta estimado (${Math.round(m.tasa * 100)}%)`, m.impuesto.vals),
-    linea("(=) Utilidad neta", m.utilNeta.vals, "total"),
-  ];
+  return erJunta(meses).lineas.flatMap((l) =>
+    l.nivel === "det"
+      ? [linea(`${l.signo} ${l.etiqueta}`, l.vals, "grupo"), ...filasDelArbol(l.hijos)]
+      : [linea(`${l.signo} ${l.etiqueta}`, l.vals, l.nivel === "tot" ? "total" : "sub")],
+  );
 }
 
 function filasESF(meses: D.Periodo[]): Fila[] {
