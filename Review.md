@@ -476,6 +476,15 @@ Antes de dar por terminado un módulo:
   detalle en los cuatro años, y la pantalla coincide al peso con la hoja del informe de
   OCT2026 (176 cifras). Los análisis vertical, horizontal e interanual siguen sobre el
   árbol de cuentas.
+- **Plantilla del presupuesto — HECHO (2026-11-12).** Presupuesto › Cargar ofrece la hoja
+  «PPTO <último año + 1>» (`plantilla-presupuesto.ts`, `GET /api/presupuesto/plantilla`):
+  los conceptos y niveles del último plan, llena con sus cifras. Los conceptos con detalle
+  son SUM de sus hijas y los totales siguen su etiqueta (`TOTALES`); cada fórmula va con su
+  resultado escrito, para que la hoja cargue aunque no se abra en Excel. Probada por el
+  cargador real (todos los renglones heredados exactos, sin confirmar). Contra el plan 2026
+  difiere en lo que esa hoja traía mal armado: un mes de Sistematización incluía un valor de
+  Data Crédito, el EBITDA dejaba fuera la diferencia en cambio de ingreso, y «TOTAL
+  FINANCIEROS» y «UTILIDAD ANTES DE OTROS ING Y EGR» traían intercambiados sus valores.
 - **`npm run lint` no pasa**: 24 errores y 17 avisos preexistentes, concentrados en
   `src/lib/data.ts` (13) y `src/app/ingesta/actions.ts` (7), casi todos `no-explicit-any`.
   No los introdujo el trabajo del Panel ni el del Informe, pero incumplen el checklist
