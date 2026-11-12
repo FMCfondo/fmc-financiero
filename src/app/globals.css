@@ -127,6 +127,11 @@ body {
 /* Primera columna fija (concepto): la referencia no se pierde al hacer scroll
    horizontal. Divisor sutil, y sombra solo cuando de verdad hay columnas debajo. */
 .stmt .col1 { position: sticky; left: 0; z-index: 10; background-color: var(--color-card); width: var(--stmt-col1); min-width: var(--stmt-col1); max-width: var(--stmt-col1); border-right: 1px solid var(--color-line); }
+/* Árbol del PUC (ER, ESF, flujo, análisis): en lo más hondo hay códigos de 8 y 10 dígitos que
+   ocupan hasta ~24 px más que la caja mínima del código (ver `Concepto`). La columna trae ese
+   espacio de fábrica para que ningún nombre se quede con menos sitio y pase a dos líneas. Va en
+   una clase y no en `style`: el doble clic de restablecer (StmtScroll) borra lo que esté en línea. */
+.stmt.arbol-puc { --stmt-col1: 352px; }
 /* Menos relleno vertical que las cifras: un concepto a dos líneas apenas hace crecer la fila. */
 .stmt tbody td.col1 { padding: 3px var(--stmt-px); }
 /* El texto del concepto (`.etq`) se parte en DOS líneas como máximo cuando la columna es

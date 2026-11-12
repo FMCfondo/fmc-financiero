@@ -70,7 +70,7 @@ export default function StatementMatrix({
         {!encabezado && <ExpandToggle ctx={ctx} />}
         <div className="card overflow-hidden">
           {encabezado && <CabeceraDocumento {...encabezado} derecha={<div className="mt-1.5"><ExpandToggle ctx={ctx} /></div>} />}
-          <StmtScroll>
+          <StmtScroll className="arbol-puc">
             <table>
               <thead>
                 <tr>
