@@ -216,23 +216,38 @@ export type LineaResultado = {
   /** Solo en las partidas que alguna nota nombra. */
   clave?: ClaveNota;
   valor: (etq: string, modo: Modo) => number;
+  /** De qué cuentas sale la línea, para desplegar su detalle en Estados Financieros.
+   *  Sumadas dan `valor` (lo comprueba la prueba del Estado de Resultados); las sub y
+   *  tot no llevan, porque son cuentas de otras líneas. */
+  detalle?: Detalle[];
 };
 
+/** Una cuenta del PUC que compone una línea. `excluir`: subcuentas que pertenecen a otra
+ *  línea (se restan del valor y salen del árbol). `soloHijos`: la cuenta ES la línea, y
+ *  lo que se despliega son sus hijas. `signo: -1` para las que restan en la línea. */
+export type Detalle = { codigo: string; excluir?: string[]; soloHijos?: boolean; signo?: 1 | -1 };
+
 const cta = (c: string) => (e: string, m: Modo) => v(e, c, m);
+/** La línea es exactamente una cuenta: se despliegan sus hijas. */
+const propia = (c: string): Detalle[] => [{ codigo: c, soloHijos: true }];
 
 export const LINEAS_RESULTADO: LineaResultado[] = [
-  { etiqueta: "Ingresos por inversiones", signo: "(+)", nivel: "det", pptoOrden: 1, valor: cta("4150") },
-  { etiqueta: "Ingresos por comisiones", signo: "(+)", nivel: "det", pptoOrden: 2, valor: cta("4180") },
-  { etiqueta: "Reintegro de provisiones", signo: "(+)", nivel: "det", valor: cta("425035") },
-  { etiqueta: "Recuperación de garantías", signo: "(+)", nivel: "det", pptoOrden: 3, valor: cta("425055") },
-  { etiqueta: "De ejercicios anteriores", signo: "(+)", nivel: "det", valor: cta("4265") },
+  { etiqueta: "Ingresos por inversiones", signo: "(+)", nivel: "det", pptoOrden: 1, valor: cta("4150"), detalle: propia("4150") },
+  { etiqueta: "Ingresos por comisiones", signo: "(+)", nivel: "det", pptoOrden: 2, valor: cta("4180"), detalle: propia("4180") },
+  { etiqueta: "Reintegro de provisiones", signo: "(+)", nivel: "det", valor: cta("425035"), detalle: propia("425035") },
+  { etiqueta: "Recuperación de garantías", signo: "(+)", nivel: "det", pptoOrden: 3, valor: cta("425055"), detalle: propia("425055") },
+  { etiqueta: "De ejercicios anteriores", signo: "(+)", nivel: "det", valor: cta("4265"), detalle: propia("4265") },
   /* La reserva constituida más las devoluciones en ventas (4175). El informe no le da
    * fila propia a la 4175: la pliega aquí, y así las cinco filas de ingreso sí suman su
    * subtotal. Verificado en may-2026, el único mes con devoluciones. */
   { etiqueta: "Provisiones (reservas)", signo: "(−)", nivel: "det", pptoOrden: 4, esGasto: true,
-    valor: (e, m) => v(e, COSTO_COBERTURA, m) - v(e, "4175", m) },
+    valor: (e, m) => v(e, COSTO_COBERTURA, m) - v(e, "4175", m),
+    detalle: [{ codigo: COSTO_COBERTURA }, { codigo: "4175", signo: -1 }] },
   { etiqueta: "INGRESOS DE OPERACIÓN", signo: "(=)", nivel: "sub", pptoOrden: 7, clave: "ingresosOperacion", valor: ingOperacion },
-  { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", pptoOrden: 8, esGasto: true, clave: "gastosAdmin", valor: gastosAdmin },
+  { etiqueta: "Gastos de Administración", signo: "(−)", nivel: "det", pptoOrden: 8, esGasto: true, clave: "gastosAdmin", valor: gastosAdmin,
+    // El grupo 51 sin lo que va en otras líneas: depreciaciones, amortizaciones y la 5199
+    // (costo de cobertura y diversos, que bajan en provisiones y otros egresos).
+    detalle: [{ codigo: "51", excluir: [...DEP_AMORT, "5199"], soloHijos: true }] },
   /* NO se imprime desde el 2026-09-09: el usuario la encontró confusa junto al EBITDA
      («considero que no es necesario, para no generar confusión con el EBITDA»). No es
      una repetición —es el EBITDA ANTES de otros ingresos y otros egresos, y en julio de
@@ -241,14 +256,17 @@ export const LINEAS_RESULTADO: LineaResultado[] = [
      sí la trae. */
   { etiqueta: "SUBTOTAL EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 43, oculta: true,
     valor: (e, m) => ingOperacion(e, m) - gastosAdmin(e, m) },
-  { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", pptoOrden: 44, valor: otrosIngresos },
-  { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", pptoOrden: 48, esGasto: true, valor: otrosGastos },
+  { etiqueta: "Otros ingresos", signo: "(+)", nivel: "det", pptoOrden: 44, valor: otrosIngresos,
+    detalle: FUERA_DE_OPERACION.map((codigo) => ({ codigo })) },
+  { etiqueta: "Otros egresos", signo: "(−)", nivel: "det", pptoOrden: 48, esGasto: true, valor: otrosGastos,
+    // La clase 5 fuera del grupo 51, más lo que queda en 5199 aparte del costo de cobertura.
+    detalle: [{ codigo: "5", excluir: ["51"], soloHijos: true }, { codigo: "5199", excluir: [COSTO_COBERTURA] }] },
   { etiqueta: "EBITDA", signo: "(=)", nivel: "sub", pptoOrden: 59, clave: "ebitda",
     // Ingresos menos gastos, sin depreciaciones ni amortizaciones. El costo de
     // cobertura SÍ es gasto: no se devuelve al resultado.
     valor: (e, m) => v(e, "4", m) - (v(e, "5", m) - DEP_AMORT.reduce((s, c) => s + v(e, c, m), 0)) },
-  { etiqueta: "Depreciaciones", signo: "(−)", nivel: "det", pptoOrden: 60, esGasto: true, valor: cta(DEP_AMORT[0]) },
-  { etiqueta: "Amortizaciones", signo: "(−)", nivel: "det", pptoOrden: 62, esGasto: true, valor: cta(DEP_AMORT[1]) },
+  { etiqueta: "Depreciaciones", signo: "(−)", nivel: "det", pptoOrden: 60, esGasto: true, valor: cta(DEP_AMORT[0]), detalle: propia(DEP_AMORT[0]) },
+  { etiqueta: "Amortizaciones", signo: "(−)", nivel: "det", pptoOrden: 62, esGasto: true, valor: cta(DEP_AMORT[1]), detalle: propia(DEP_AMORT[1]) },
   { etiqueta: "UTILIDAD ANTES DE IMPUESTOS", signo: "(=)", nivel: "sub", pptoOrden: 71,
     valor: (e, m) => v(e, "4", m) - v(e, "5", m) },
   { etiqueta: "Impuesto de renta", signo: "(−)", nivel: "det", pptoOrden: 72, esGasto: true,

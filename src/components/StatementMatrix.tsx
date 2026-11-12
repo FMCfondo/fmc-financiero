@@ -91,7 +91,7 @@ export default function StatementMatrix({
   );
 }
 
-type Num = (i: number) => string;
+export type Num = (i: number) => string;
 
 function Seccion({ s, conAcum, nCols, num }: { s: Seccion; conAcum: boolean; nCols: number; num: Num }) {
   return (
@@ -110,7 +110,7 @@ function Seccion({ s, conAcum, nCols, num }: { s: Seccion; conAcum: boolean; nCo
   );
 }
 
-function Fila({ n, conAcum, num }: { n: NodoM; conAcum: boolean; num: Num }) {
+export function Fila({ n, conAcum, num }: { n: NodoM; conAcum: boolean; num: Num }) {
   const ctx = useExpandCtx();
   const has = n.hijos.length > 0;
   const open = has && ctx.isOpen(n.codigo);
@@ -131,7 +131,7 @@ function Fila({ n, conAcum, num }: { n: NodoM; conAcum: boolean; num: Num }) {
   );
 }
 
-function FilaPlana({ f, conAcum, num, italica }: { f: FilaPlano; conAcum: boolean; num: Num; italica?: boolean }) {
+export function FilaPlana({ f, conAcum, num, italica }: { f: FilaPlano; conAcum: boolean; num: Num; italica?: boolean }) {
   const total = f.tipo === "total";
   const sub = f.tipo === "sub";
   const cls = total ? "total" : sub ? "subtotal" : "row";
