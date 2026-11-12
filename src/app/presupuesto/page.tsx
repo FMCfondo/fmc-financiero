@@ -6,7 +6,7 @@ import { fmtCOP, fmtM } from "@/lib/format";
 import PresupuestoCarga from "@/components/PresupuestoCarga";
 import PresupuestoMatrix from "@/components/PresupuestoMatrix";
 import MapeoEditor from "@/components/MapeoEditor";
-import { CalendarRange, Table2, Link2, Upload } from "lucide-react";
+import { CalendarRange, Table2, Link2, Upload, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +153,25 @@ function Cargar({ anios }: { anios: number[] }) {
           </div>
         ))}
       </div>
+
+      {/* La plantilla del año siguiente: la misma hoja que se carga abajo, ya con los
+          conceptos y grupos del último plan (ver plantilla-presupuesto.ts). */}
+      {anios.length > 0 && (
+        <div className="card p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-sm">
+            <div className="font-medium">Plantilla del presupuesto {ultimo + 1}</div>
+            <p className="text-muted mt-0.5 max-w-2xl">
+              La hoja «PPTO {ultimo + 1}» con los conceptos y grupos de {ultimo}, llena con su presupuesto para que lo
+              ajustes. Los totales son fórmulas y se recalculan solos; las etiquetas no se cambian, porque con ellas se
+              hereda el mapeo de cuentas. Al terminar, se carga aquí abajo.
+            </p>
+          </div>
+          <a href="/api/presupuesto/plantilla" download
+            className="flex shrink-0 items-center gap-2 px-4 py-2 rounded-lg brand-grad text-white text-sm font-medium">
+            <Download size={15} /> Descargar plantilla {ultimo + 1}
+          </a>
+        </div>
+      )}
 
       <div>
         <h2 className="font-medium mb-3">Cargar un presupuesto</h2>
